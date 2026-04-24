@@ -30,12 +30,18 @@ yarn-debug.log*
 yarn-error.log*
 .pnpm-debug.log*
 
-# env files (can opt-in for committing if needed)
+# env files — 모든 환경 파일은 기본적으로 커밋 금지
+# GEMINI_API_KEY 등 비밀 값은 .env.local에 두고, 공유 가능한 키 이름만 .env.example에 기재한다
 .env*
+!.env.example
 
-# vercel
+# vercel: 프로젝트 링크 메타데이터 / 로컬 배포 캐시
 .vercel
 
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# Claude Code 로컬 설정(개인 권한 허용 목록 / 런타임 락)
+.claude/settings.local.json
+.claude/scheduled_tasks.lock
