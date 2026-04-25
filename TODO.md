@@ -1,140 +1,96 @@
 # Paperis — TODO / 진척 기록
 
-> 마지막 갱신: 2026-04-25 (MVP 8단계 + PWA 설치 지원 완료, 프로덕션 배포됨)
-> MVP 로드맵 원본: [CLAUDE.md](CLAUDE.md) "개발 우선순위 (MVP)" 섹션
+> 마지막 갱신: 2026-04-25 (v1.0.2 출시 — GitHub master + paperis.vercel.app 라이브)
+> 외부 노출 문서는 [README.md](README.md), 컨텍스트는 [CLAUDE.md](CLAUDE.md). 이 파일은 작업 일지·기술부채 보관용.
+
+---
+
+## 출시 버전
+
+| 버전 | 날짜 | 핵심 |
+|---|---|---|
+| **v1.0.2** | 2026-04-25 | 페이지 번호 버튼, 출퇴근 재생목록(장바구니+병렬 짧은 narration+커스텀 트랙 플레이어), 키보드 시크 ←/→/Space, 트랙→PaperCard 모달, 헤더 로고 홈 링크 |
+| v1.0.1 | 2026-04-25 | 추천 가중치 슬라이더(최신성/인용수/저널/니즈) + OpenAlex enrichment + 결정론적 스코어링, PMC Open Access full-text 요약, 마스터-디테일 + 카드 캐시, Gemini 503 자동 재시도 |
+| v1.0.0 (MVP) | 2026-04-24 | PubMed 검색 + 니즈 필터, Gemini 한국어/영어 스트리밍 요약, Gemini TTS narration / dialogue (멀티스피커, audio/wav), 연관 학습, PDF 업로드(unpdf), PWA 설치, Vercel 배포 |
 
 ---
 
 ## 완료된 작업
 
-### 1단계 — PubMed API 연동
-- [x] 공통 타입 정의 ([types/index.ts](types/index.ts))
-  - `Paper`, `NeedFilter`, `Language`, `ListenStyle`, `AccessLevel`, `PubmedSearchResponse`
-- [x] PubMed E-utilities 클라이언트 ([lib/pubmed.ts](lib/pubmed.ts))
-  - `esearch → efetch` 파이프라인, 경량 XML 파서(제목/Abstract/저자/저널/DOI/PMCID/PublicationType)
-  - 니즈 필터 → PubMed 검색식 매핑 (treatment / diagnosis / trend / balanced)
-  - `hasabstract[Filter]` + `english[Language]` 기본 적용
-  - `PUBMED_API_KEY` 있으면 자동 부착(없어도 동작)
-- [x] API 라우트 ([app/api/pubmed/route.ts](app/api/pubmed/route.ts))
-  - `GET /api/pubmed?q=...&filter=...&retmax=...`
+### MVP 1~8단계 (v1.0.0)
+- 1단계 PubMed 연동 ([lib/pubmed.ts](lib/pubmed.ts), [app/api/pubmed/route.ts](app/api/pubmed/route.ts), [types/index.ts](types/index.ts))
+- 2단계 Gemini 요약 ([lib/gemini.ts](lib/gemini.ts) `streamSummary`, [app/api/summarize/route.ts](app/api/summarize/route.ts))
+- 3단계 기본 UI ([components/SearchBar.tsx](components/SearchBar.tsx) / [PaperList.tsx](components/PaperList.tsx) / [PaperCard.tsx](components/PaperCard.tsx))
+- 4단계 Gemini TTS ([lib/tts.ts](lib/tts.ts) — `gemini-2.5-flash-preview-tts`, `[A]:`/`[B]:` 정규화, 24kHz mono PCM → WAV 헤더 수동 래핑)
+- 5단계 추천 3편 (`recommendPapers` → 이후 v1.0.1에서 결정론적 스코어링으로 교체)
+- 6단계 연관 학습 ([app/api/related/route.ts](app/api/related/route.ts) — `MAX_RELATED_DEPTH=2`, excludePmids로 중복 방지)
+- 7단계 PDF 업로드 ([components/PdfUpload.tsx](components/PdfUpload.tsx), [app/api/pdf/route.ts](app/api/pdf/route.ts) — unpdf, `Promise.try` 폴리필, `next.config.ts` `serverExternalPackages`)
+- 8단계 Vercel 배포 — `paperis.vercel.app`, `GEMINI_API_KEY` Production/Development 등록
+- PWA 설치 — manifest.ts + sw.js + 192/512/maskable 아이콘 + RegisterSW
+- 안정성 — `callWithRetry` 지수 백오프, `[요약 중단]` 마커 기반 친절한 에러 박스 + 다시 시도 버튼
 
-### 2단계 — Gemini 요약 연동
-- [x] 스택 결정: **Gemini 단일 스택** (요약+TTS 모두, `@google/genai` SDK)
-  - Claude/OpenAI 도입 금지 — memory에 기록됨
-- [x] 요약 라이브러리 ([lib/gemini.ts](lib/gemini.ts))
-  - `streamSummary({ paper, mode, language })` 제너레이터
-  - 모드: `read` / `narration` / `dialogue` (phase 4 재사용)
-  - 재활의학 용어 보존 규칙 (spasticity, FIM, Barthel, CIMT, mAs, NIHSS, Fugl-Meyer)
-- [x] 스트리밍 라우트 ([app/api/summarize/route.ts](app/api/summarize/route.ts))
-  - POST, `text/plain; charset=utf-8`, `ReadableStream<Uint8Array>` 로 토큰 단위 전송
+### v1.0.1 — 추천 시스템 재설계 + Full-text 요약 + 레이아웃
+- **추천 시스템 재설계**: Gemini가 픽킹하던 구조를 **결정론적 스코어링**으로 분리
+  - [lib/openalex.ts](lib/openalex.ts) — PMID 일괄 enrichment(인용수, `2yr_mean_citedness`)
+  - [lib/scoring.ts](lib/scoring.ts) — 4축 점수(최신성/인용수/저널/니즈), 가중치별 정렬
+  - [lib/gemini.ts](lib/gemini.ts) `explainRecommendations` — 픽킹 결과에 한국어 한 문장 이유만 생성
+  - [components/RecommendWeights.tsx](components/RecommendWeights.tsx) — 4 슬라이더 + localStorage(`paperis.recommend.weights.v1`)
+  - 결과: 환각 PMID 위험 사라짐 + 사용자가 "최신/인용/저널/필터" 4축으로 추천을 직접 조절
+- **PMC Open Access full-text 요약**:
+  - [lib/pmc.ts](lib/pmc.ts) — JATS XML 파싱(fig/table/refs 제거, 30k자 캡, head 70%+tail 25% 트림)
+  - [app/api/pmc/route.ts](app/api/pmc/route.ts), [lib/xml-utils.ts](lib/xml-utils.ts) — `pubmed.ts`와 공용
+  - `SummarizeInput.sourceLabel` 추가 → 시스템 인스트럭션이 "abstract-only" disclaimer 자동 생략
+  - PaperCard 첨부 슬롯 통합: PDF 업로드(closed) / PMC 가져오기(open) 모두 `fullText` 단일 필드
+- **마스터-디테일 레이아웃**:
+  - URL이 source of truth(`?q&filter&page&pmid`) — 새로고침/공유에도 유지
+  - 데스크톱 좌목록 우상세, 모바일은 스택 네비
+  - [lib/card-cache.ts](lib/card-cache.ts) — pmid 키 세션 캐시(요약/오디오/연관/첨부 상태 보존)
 
-### 3단계 — 기본 UI
-- [x] 홈 페이지 ([app/page.tsx](app/page.tsx)) — 검색 흐름, 로딩 스켈레톤, 에러 박스, 추천 검색 칩 4개
-- [x] [components/SearchBar.tsx](components/SearchBar.tsx) — 입력창 + 니즈 필터 칩(균형/치료/진단/동향)
-- [x] [components/PaperList.tsx](components/PaperList.tsx) / [components/PaperCard.tsx](components/PaperCard.tsx)
-  - 제목·저자·저널·연도·Open Access 배지·Publication Type·Abstract 더 보기/접기
-  - PubMed / PMC / DOI 링크
-  - AI 요약 한국어/English 버튼 + 스트리밍 커서 + 중단 버튼
-
-### 4단계 — Gemini TTS 연동
-- [x] TTS 라이브러리 ([lib/tts.ts](lib/tts.ts))
-  - `gemini-2.5-flash-preview-tts` 기반
-  - 내레이션: 단일 스피커 (`voiceConfig`) — 기본 음성 `Charon`
-  - 대화체: 멀티 스피커 단일 호출 (`multiSpeakerVoiceConfig`) — A=`Kore`, B=`Puck`
-  - `[A]:` / `[B]:` → `A:` / `B:` 정규화
-  - 24kHz 16-bit mono PCM → 수동 WAV 헤더 래핑, `audio/wav` 반환
-- [x] TTS 라우트 ([app/api/tts/route.ts](app/api/tts/route.ts))
-  - POST `{ paper, style, language, scriptOnly? }`, Gemini로 스크립트 생성 후 합성
-  - `maxDuration = 300` (대화체 장문 대응)
-  - `X-Paperis-Script-Preview` 헤더에 스크립트 앞 2000자
-- [x] 플레이어 ([components/AudioPlayer.tsx](components/AudioPlayer.tsx)) — `<audio controls>` 얇은 래퍼
-- [x] PaperCard 통합 — 내레이션/대화체 버튼, 생성 중 취소, blob URL 생명주기 관리(`URL.revokeObjectURL`)
-
-### 부가 작업 — 안정성/UX
-- [x] Gemini 503 대응: `callWithRetry` 지수 백오프(500ms→1s→2s + jitter, 최대 3회)
-- [x] 친절한 에러 메시지: 구글 2중 JSON 에러를 파싱해 "Gemini 서비스가 일시적으로 혼잡합니다…"로 치환
-- [x] `[요약 중단]` 마커를 클라이언트에서 감지해 성공/에러 텍스트 분리, 빨간 박스 + "다시 시도" 버튼
-- [x] 오디오 에러도 동일 패턴 + `pendingStyle` 유지로 올바른 스타일 재시도
-- [x] 타이틀/lang/폰트: [app/layout.tsx](app/layout.tsx), [app/globals.css](app/globals.css) 한국어·Geist 적용
-
----
-
-## 남은 작업 (MVP 로드맵)
-
-### ~~5단계 — 니즈 필터 + AI 추천 3개~~ (완료)
-- [x] 니즈 필터 칩 (치료/진단/동향/균형) — SearchBar
-- [x] AI 추천 3개 ([lib/gemini.ts](lib/gemini.ts) `recommendPapers`, [app/api/recommend/route.ts](app/api/recommend/route.ts))
-  - Gemini 구조화 출력(`responseSchema`)로 JSON 3개 강제
-  - 필터별 가이드(treatment=RCT, diagnosis=validation, trend=review/meta, balanced=mixed)
-  - 환각 PMID 필터링(검색 결과 집합 내에서만 선택 허용)
-  - 재시도 로직(`callWithRetry`) 재사용
-- [x] UI ([app/page.tsx](app/page.tsx), [components/PaperCard.tsx](components/PaperCard.tsx))
-  - 검색 결과 상단에 "AI 추천 3편" 섹션, 아래에 "전체 결과" 섹션으로 분리
-  - 추천 카드: 앰버색 보더·배지(`AI 추천 #1/2/3`) + 이유 박스
-  - 추천은 검색 렌더 이후 백그라운드 비동기로 fetch → 검색 UX 지연 없음
-  - 실패 시 조용히 "추천 다시 시도" 링크만 표시, 전체 결과는 그대로 보임
-
-### ~~6단계 — 연관 주제 연결 학습~~ (완료)
-- [x] "이 주제 더 찾아보기" 토글 + 자연어 힌트 입력창 (PaperCard 내부)
-- [x] Gemini가 시드 논문 + 힌트로 PubMed 검색식 생성 ([lib/gemini.ts](lib/gemini.ts) `generateRelatedQuery`, 구조화 출력)
-- [x] 결과는 재검색해 최대 5편 인라인 렌더링 ([app/api/related/route.ts](app/api/related/route.ts))
-- [x] 무한 체인 방지: `MAX_RELATED_DEPTH=2` — 총 3레벨까지 탐색, 그 이하는 버튼 숨김
-- [x] 중복 방지: 시드 PMID + 이미 펼친 PMID들을 `excludePmids`로 서버에 전달해 필터링
-- [x] "더 찾기" 버튼으로 같은 힌트/새 힌트로 추가 5편 요청 가능
-
-### ~~7단계 — PDF 업로드 처리~~ (완료)
-- [x] 유료 논문(`access === "closed"`) 카드에 PDF 업로드 슬롯 자동 표시
-- [x] Drag&drop + 파일 선택 + 15MB 상한 + PDF MIME/확장자 검증 ([components/PdfUpload.tsx](components/PdfUpload.tsx))
-- [x] 서버에서 `unpdf`(pdfjs-dist serverless) + Node 22.17 호환 `Promise.try` 폴리필로 파싱 ([app/api/pdf/route.ts](app/api/pdf/route.ts))
-  - `pdf-parse` v2는 Next/Turbopack에서 pdfjs worker 경로가 꼬여 실패 → 서버리스 친화적인 `unpdf`로 전환
-  - `next.config.ts` `serverExternalPackages: ["unpdf", "pdfjs-dist"]`로 번들러 개입 차단
-  - 추출 텍스트가 200자 미만이면 422(스캔 PDF 안내)
-- [x] 서버 저장 없음 — 응답 후 버퍼 폐기, 파일 시스템에 남기지 않음
-- [x] 클라이언트에서 `pdfAttachment` 상태로 보관, `effectivePaper.abstract = pdfText`로 downstream 호출(요약/TTS/연결 학습)에 전달 ([components/PaperCard.tsx](components/PaperCard.tsx))
-- [x] "PDF 연결됨" 배지 + 파일명·페이지·글자수 표시 + "해제" 버튼으로 다시 Abstract 모드로
-
-### ~~8단계 — Vercel 배포~~ (완료)
-- [x] Vercel CLI(`vercel`)로 로컬에서 배포, 프로젝트 `randy-kims-projects-6c97c3d7/paperis` 생성·링크
-- [x] Production URL: https://paperis.vercel.app (alias) + 롱폼 URL
-- [x] `GEMINI_API_KEY`를 Production, Development에 주입 (Preview는 git-branch 요구로 스킵)
-- [x] `next build` 로컬 통과 확인 + Vercel 빌드 통과 (34s)
-- [x] Live smoke test: `/`, `/api/pubmed`, `/api/summarize` 정상
-- [ ] Hobby 플랜 maxDuration 실측 — `/api/tts` 대화체 장문에서 timeout 발생 여부 확인 필요
-- [ ] (선택) favicon / OG 이미지 / meta 튜닝
-- [ ] (선택) GitHub 레포 연결해 push-auto-deploy 전환 + Preview env 추가
-
-### 추가 — PWA 설치 지원 (완료)
-- [x] Web App Manifest ([app/manifest.ts](app/manifest.ts)) — standalone, 한국어, theme/background 컬러
-- [x] 아이콘 PNG 3종 ([public/icons/](public/icons/)) — 192/512/512-maskable + apple-icon-180
-- [x] Service Worker ([public/sw.js](public/sw.js)) — 정적 자산 cache-first, API/스트리밍은 우회(respondWith 호출 안 함)
-- [x] Metadata API로 viewport theme-color(light/dark), apple-web-app, icons 선언 ([app/layout.tsx](app/layout.tsx))
-- [x] 클라이언트 등록 ([components/RegisterSW.tsx](components/RegisterSW.tsx)) — production 빌드에서만 `/sw.js` 등록
-- [x] 라이브 확인: manifest/sw/icons 모두 200, manifest 내용 올바름
+### v1.0.2 — 페이지네이션 UX + 출퇴근 재생목록
+- 숫자형 페이지네이션 ([components/Pagination.tsx](components/Pagination.tsx)) — `← 1 … 11 [12] 13 … 50 →`
+- **출퇴근 재생목록(장바구니 패턴)**:
+  - [lib/cart.ts](lib/cart.ts) — localStorage + custom event(같은 탭 컴포넌트 동기화), 최대 10편
+  - [components/CartButton.tsx](components/CartButton.tsx) — 카드 헤더 토글
+  - [components/CartPanel.tsx](components/CartPanel.tsx) — 슬라이드 오버 + 짧은 모드 체크박스 + 한 번에 생성
+  - [app/api/playlist/route.ts](app/api/playlist/route.ts) — `Promise.all` 병렬 narration + TTS, 트랙별 base64 JSON
+  - [lib/gemini.ts](lib/gemini.ts) `SummarizeInput.brief` — 1-2분 출퇴근 다이제스트 모드
+- **커스텀 플레이어**:
+  - [components/PlaylistPlayer.tsx](components/PlaylistPlayer.tsx) — ⏮ ⏭ 트랙 점프, ±10초 시크, 진행바, 트랙 리스트
+  - 키보드: ← / → 10초 시크, Space 재생/일시정지 (입력창 포커스 시 무시)
+  - "📄 이 논문 보기" → [components/PaperModal.tsx](components/PaperModal.tsx) 풀 PaperCard, ESC로 닫힘
+  - 카드 캐시 덕에 모달에서 본 요약이 검색 결과에서도 그대로 보임
+- **헤더 UX**: 로고/이름 클릭 → 홈(`/`), SearchBar가 URL prop 변화에 동기화
 
 ---
 
 ## 기술부채 / 개선 후보 (우선순위 낮음)
 
-- [ ] **키 회전**: 이 대화 로그에 `GEMINI_API_KEY` 노출됨 → Google AI Studio에서 revoke 후 재발급 권장
+- [ ] **키 회전**: 이 대화 로그에 `GEMINI_API_KEY`/Vercel 토큰 노출됨 → 발급처에서 revoke 후 재발급 권장
+- [ ] **백그라운드 청취**: CartPanel 닫으면 `<audio>`가 unmount → 재생 정지. 패널 외부에 persistent 플레이어 영역을 두고 패널 닫아도 음악 유지
+- [ ] **트랙 길이 제어**: brief=true도 모델 변동에 따라 1.5–3분 범위. 글자수 기반 컷오프 또는 더 강한 프롬프트 제약
 - [ ] **PWA 오프라인 지원**: 지금 SW는 설치 가능성만 보장. 홈 shell/정적 페이지 precache 추가 시 오프라인 첫 화면 가능
-- [ ] **Open Access 논문 full text 요약**: 현재는 `access: "open"` 표시만 함. PMC fetch 붙여 full text 요약 모드 추가
-- [ ] **스크립트 미리보기 UI**: 서버가 `X-Paperis-Script-Preview` 헤더로 주는데 클라이언트는 아직 활용 안 함. 오디오 위에 "스크립트 보기" 토글
-- [ ] **검색 결과 페이지네이션 / 더 보기**: 현재 최대 50건 고정
-- [ ] **PubMed rate limit**: 초당 3회 제한 대응 (API 키 없을 때). 현재는 사용자 1인 개발 기준이라 문제없음
 - [ ] **에러 바운더리**: React error boundary 없음. 런타임 에러 시 화면이 깨짐
 - [ ] **모바일 반응형 점검**: 카드 내부 버튼 그룹이 좁은 폭에서 좀 빡빡함
-- [ ] **테스트**: 단위 테스트 0개. `lib/pubmed.ts` XML 파서, `lib/tts.ts` WAV 래퍼, `[A]:` 정규화 같은 순수 함수부터 추가 가치 높음
-- [ ] **CSP / 보안 헤더**: 프로덕션 배포 전 기본 `Content-Security-Policy` / `X-Frame-Options` 설정
-- [ ] **TTS 비용/길이 제어**: 현재 스크립트 길이를 제한하지 않음. 길이 상한 / 요약 압축 옵션
-- [ ] **장기 캐시**: 같은 PMID + 같은 옵션으로 요약/오디오 재요청 시 Vercel KV 등으로 캐싱
+- [ ] **테스트**: 단위 테스트 0개. `lib/pubmed.ts` XML 파서, `lib/scoring.ts` 점수 계산, `lib/pmc.ts` 본문 추출, `[A]:` 정규화 같은 순수 함수부터 추가 가치 높음
+- [ ] **OpenAlex enrichment 캐싱**: 가중치 슬라이더 움직일 때마다 매번 OpenAlex 재호출 — 같은 PMID 셋이면 메모리 캐시 또는 Vercel KV
+- [ ] **Hobby 플랜 maxDuration 실측**: 대화체 장문 / 5편 이상 playlist에서 timeout 발생 케이스 정리
+- [ ] **CSP / 보안 헤더**: `Content-Security-Policy` / `X-Frame-Options`
+- [ ] **PubMed rate limit**: 초당 3회 제한 대응 (API 키 없을 때 다중 사용자 대응)
+- [ ] **장기 캐시**: 같은 PMID + 같은 옵션으로 요약/오디오 재요청 시 Vercel KV / Blob 등
 - [ ] **Gemini TTS 안정판 전환**: `preview` 꼬리표 떨어지면 모델명 업데이트
+- [ ] **트랙 IndexedDB 영속화**: 현재는 새로고침하면 트랙 사라짐. 출퇴근에 한 번 만들고 며칠 듣게 하려면 영속화 필요
+- [ ] **(선택) GitHub ↔ Vercel 자동 배포**: 현재는 로컬 `vercel deploy --prod` 수동. push 자동 트리거로 전환 + Preview env 추가
 
 ---
 
 ## 의사결정 기록 (변경 금지 항목)
 
 - **단일 AI 스택**: 요약+TTS 모두 Gemini. Claude / OpenAI SDK 도입 금지. 필요 시 사용자와 재합의 후에만.
+- **추천 = 결정론적 + 설명**: 픽킹은 [lib/scoring.ts](lib/scoring.ts) 4축 가중 점수가 담당, Gemini는 [lib/gemini.ts](lib/gemini.ts) `explainRecommendations`로 한 줄 이유만 생성. 환각 PMID 방지 + 사용자가 직접 컨트롤 가능.
 - **대화체 태그 포맷**: `[A]:` / `[B]:` 고정. 프롬프트(`lib/gemini.ts`)와 TTS(`lib/tts.ts`) 양쪽이 이 포맷에 묶여 있음 — 바꾸려면 동시에 수정.
-- **WAV 헤더 수동 래핑**: Gemini TTS가 PCM을 주고 브라우저는 WAV를 바로 재생. 이 경로 유지.
+- **WAV 헤더 수동 래핑**: Gemini TTS가 24kHz mono PCM을 주고 브라우저는 WAV를 바로 재생. 이 경로 유지.
 - **한국어 우선 UI**: 영어 토글은 있지만 기본 UI 문구·에러 메시지는 한국어.
-- **PDF 파서는 `unpdf` 사용**: `pdf-parse`는 Turbopack에서 worker 경로 문제로 실패. `pdfjs-dist`는 번들러 개입 시 `Promise.try` 폴리필이 필요 (Node 22.17 미만). `next.config.ts`의 `serverExternalPackages`에서 제거하지 말 것.
+- **PDF 파서는 `unpdf` 사용**: `pdf-parse`는 Turbopack에서 worker 경로 문제로 실패. `pdfjs-dist`는 번들러 개입 시 `Promise.try` 폴리필이 필요. `next.config.ts`의 `serverExternalPackages`에서 제거하지 말 것.
+- **재생목록 패턴 = 트랙 분리 (한 파일 X)**: 한 WAV로 합쳐 받으면 트랙 점프·"이 논문 보기"가 어려움. 항상 트랙별 base64로 응답하고 클라이언트가 큐로 다룬다.
+- **카드 상태 캐시는 pmid 키**: 검색 결과·추천·연관·playlist 모달 — 어디서 같은 논문을 열어도 동일 캐시 인스턴스. `lib/card-cache.ts` 모듈 단위 Map.
+- **URL이 검색 source of truth**: `?q&filter&page&pmid`. SearchBar는 controlled가 아니라 prop 변경 시 useEffect로 동기화.
