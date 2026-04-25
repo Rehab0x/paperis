@@ -19,6 +19,7 @@ interface RequestBody {
   paper?: Partial<Paper>;
   style?: ListenStyle;
   language?: Language;
+  sourceLabel?: string;
   /** true면 오디오 없이 스크립트만 JSON으로 반환 (디버깅용). */
   scriptOnly?: boolean;
 }
@@ -35,10 +36,16 @@ function isPaper(obj: unknown): obj is Paper {
 async function collectScript(
   paper: Paper,
   style: ListenStyle,
-  language: Language
+  language: Language,
+  sourceLabel?: string
 ): Promise<string> {
   let acc = "";
-  for await (const chunk of streamSummary({ paper, mode: style, language })) {
+  for await (const chunk of streamSummary({
+    paper,
+    mode: style,
+    language,
+    sourceLabel,
+  })) {
     acc += chunk;
   }
   return acc.trim();
@@ -69,7 +76,14 @@ export async function POST(request: NextRequest) {
       : "ko";
 
   try {
-    const script = await collectScript(body.paper as Paper, style, language);
+    const sourceLabel =
+      typeof body.sourceLabel === "string" ? body.sourceLabel : undefined;
+    const script = await collectScript(
+      body.paper as Paper,
+      style,
+      language,
+      sourceLabel
+    );
     if (!script) {
       return Response.json(
         { error: "스크립트 생성 결과가 비어 있습니다." },

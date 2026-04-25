@@ -19,11 +19,19 @@ function parseRetmax(raw: string | null): number {
   return Math.min(Math.max(Math.trunc(n), 1), 50);
 }
 
+function parseStart(raw: string | null): number {
+  const n = raw ? Number(raw) : 0;
+  if (!Number.isFinite(n)) return 0;
+  // PubMed esearch retstart 상한이 9999. 너무 깊은 페이지는 의미 없음.
+  return Math.min(Math.max(Math.trunc(n), 0), 9999);
+}
+
 export async function GET(request: NextRequest) {
   const { searchParams } = request.nextUrl;
   const query = searchParams.get("q")?.trim() ?? "";
   const filter = parseFilter(searchParams.get("filter"));
   const retmax = parseRetmax(searchParams.get("retmax"));
+  const start = parseStart(searchParams.get("start"));
 
   if (!query) {
     return Response.json(
@@ -33,8 +41,8 @@ export async function GET(request: NextRequest) {
   }
 
   try {
-    const { count, papers } = await searchPapers(query, filter, retmax);
-    const body: PubmedSearchResponse = { count, papers };
+    const { count, total, papers } = await searchPapers(query, filter, retmax, start);
+    const body: PubmedSearchResponse = { count, total, papers };
     return Response.json(body);
   } catch (err) {
     const message = err instanceof Error ? err.message : "알 수 없는 오류";

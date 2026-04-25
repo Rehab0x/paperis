@@ -11,6 +11,7 @@ interface RequestBody {
   paper?: Partial<Paper>;
   mode?: SummaryMode;
   language?: Language;
+  sourceLabel?: string;
 }
 
 function isPaper(obj: unknown): obj is Paper {
@@ -50,6 +51,7 @@ export async function POST(request: NextRequest) {
           paper: body.paper as Paper,
           mode,
           language,
+          sourceLabel: typeof body.sourceLabel === "string" ? body.sourceLabel : undefined,
         })) {
           controller.enqueue(encoder.encode(chunk));
         }

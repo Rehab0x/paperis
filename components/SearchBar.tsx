@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, type FormEvent } from "react";
+import { useEffect, useState, type FormEvent } from "react";
 import type { NeedFilter } from "@/types";
 
 const FILTERS: { value: NeedFilter; label: string; hint: string }[] = [
@@ -25,6 +25,16 @@ export default function SearchBar({
 }: Props) {
   const [query, setQuery] = useState(initialQuery);
   const [filter, setFilter] = useState<NeedFilter>(initialFilter);
+
+  // URL(외부) 쿼리/필터가 바뀌면(추천 칩 클릭, 로고 클릭, 뒤로가기 등) 입력값 동기화
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setQuery(initialQuery);
+  }, [initialQuery]);
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setFilter(initialFilter);
+  }, [initialFilter]);
 
   function handleSubmit(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();

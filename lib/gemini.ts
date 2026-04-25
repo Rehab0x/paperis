@@ -1,11 +1,5 @@
 import { GoogleGenAI, Type } from "@google/genai";
-import type {
-  Language,
-  ListenStyle,
-  NeedFilter,
-  Paper,
-  Recommendation,
-} from "@/types";
+import type { Language, ListenStyle, NeedFilter, Paper } from "@/types";
 
 const DEFAULT_MODEL = "gemini-2.5-flash";
 const MAX_RETRY_ATTEMPTS = 3;
@@ -82,6 +76,17 @@ export interface SummarizeInput {
   paper: Paper;
   mode?: SummaryMode;
   language?: Language;
+  /**
+   * paper.abstract에 들어 있는 텍스트의 출처 라벨.
+   * 미제공 시 "Abstract"로 간주(disclaimer 자동 부착).
+   * 예) "PMC full text", "User-uploaded PDF"
+   */
+  sourceLabel?: string;
+  /**
+   * narration 모드에서 짧게(약 1-2분) 생성할지 여부.
+   * 출퇴근용 플레이리스트에서 여러 편을 묶어 듣기 위해 사용.
+   */
+  brief?: boolean;
 }
 
 function getClient(): GoogleGenAI {
@@ -99,10 +104,19 @@ function languageLabel(lang: Language): string {
 }
 
 // 시스템 인스트럭션: 모드별
-function systemInstructionFor(mode: SummaryMode, lang: Language): string {
+function systemInstructionFor(
+  mode: SummaryMode,
+  lang: Language,
+  hasFullText: boolean,
+  brief = false
+): string {
   const langLabel = languageLabel(lang);
   const baseGlossary =
     "Preserve English medical/rehabilitation terms exactly when they are more precise than a translation (e.g., spasticity, FIM, Barthel Index, CIMT, modified Ashworth scale, NIHSS, Fugl-Meyer). For other terms, prefer native language phrasing.";
+
+  const sourceNote = hasFullText
+    ? "The user has provided the full text of the paper, so use the full study details (methods, results tables, discussion) directly. Do NOT add a disclaimer about being abstract-only."
+    : "Only the abstract is provided. State at the top that the summary is based on the abstract only.";
 
   switch (mode) {
     case "read":
@@ -111,12 +125,16 @@ function systemInstructionFor(mode: SummaryMode, lang: Language): string {
         "Produce a clinically focused summary of the given paper. Include: (1) study question & design, (2) population, (3) intervention/exposure with protocol details (dose, frequency, duration, device settings when relevant), (4) primary/secondary outcomes with concrete numbers and statistics (effect size, CI, p-values when reported), (5) clinical takeaways for rehabilitation practice, (6) limitations and cautions.",
         "Be concise but do not omit numeric results. Use clear headings and bullet points.",
         baseGlossary,
-        "If the abstract is the only source, note that the summary is based on the abstract only.",
+        sourceNote,
       ].join(" ");
     case "narration":
       return [
-        `You are a seasoned rehabilitation medicine professor giving a 5-10 minute spoken lecture to residents. Output strictly in ${langLabel}.`,
-        "Write a natural, conversational lecture script suitable for TTS playback. Focus on what is clinically interesting and practically relevant.",
+        brief
+          ? `You are a rehabilitation medicine attending giving a brief 1-2 minute spoken digest to residents during morning rounds. Output strictly in ${langLabel}.`
+          : `You are a seasoned rehabilitation medicine professor giving a 5-10 minute spoken lecture to residents. Output strictly in ${langLabel}.`,
+        brief
+          ? "Cover only: (a) what the study asked and how, (b) the key numerical result, (c) the single most actionable clinical takeaway. Skip nuanced limitations unless critical. Aim for a tight, fast-paced commute-friendly digest."
+          : "Write a natural, conversational lecture script suitable for TTS playback. Focus on what is clinically interesting and practically relevant.",
         "Do not use headings, bullet points, or markdown. Write flowing spoken prose only. Explain jargon in plain terms the first time it appears, but keep core terminology precise.",
         baseGlossary,
       ].join(" ");
@@ -131,8 +149,8 @@ function systemInstructionFor(mode: SummaryMode, lang: Language): string {
   }
 }
 
-// 사용자 프롬프트: 논문 메타 + Abstract
-function userPromptFor(paper: Paper): string {
+// 사용자 프롬프트: 논문 메타 + 본문(Abstract 또는 Full text)
+function userPromptFor(paper: Paper, sourceLabel?: string): string {
   const authorsLine =
     paper.authors.length > 0
       ? paper.authors.slice(0, 6).join(", ") +
@@ -140,6 +158,10 @@ function userPromptFor(paper: Paper): string {
       : "N/A";
   const pubTypes =
     paper.publicationTypes.length > 0 ? paper.publicationTypes.join(", ") : "N/A";
+  const bodyHeader = sourceLabel ? `${sourceLabel}:` : "Abstract:";
+  const accessLine = sourceLabel
+    ? `Source: ${sourceLabel}`
+    : `Access: ${paper.access === "open" ? "Open Access (PMC available)" : "Abstract only"}`;
 
   return [
     `Title: ${paper.title || "N/A"}`,
@@ -148,10 +170,10 @@ function userPromptFor(paper: Paper): string {
     `Publication types: ${pubTypes}`,
     `PMID: ${paper.pmid}`,
     paper.doi ? `DOI: ${paper.doi}` : "",
-    `Access: ${paper.access === "open" ? "Open Access (PMC available)" : "Abstract only"}`,
+    accessLine,
     "",
-    "Abstract:",
-    paper.abstract || "(abstract unavailable)",
+    bodyHeader,
+    paper.abstract || "(text unavailable)",
   ]
     .filter(Boolean)
     .join("\n");
@@ -174,8 +196,15 @@ export async function* streamSummary(
   }
 
   const ai = getClient();
-  const systemInstruction = systemInstructionFor(mode, language);
-  const userPrompt = userPromptFor(paper);
+  const sourceLabel = input.sourceLabel?.trim() || undefined;
+  const hasFullText = Boolean(sourceLabel);
+  const systemInstruction = systemInstructionFor(
+    mode,
+    language,
+    hasFullText,
+    input.brief ?? false
+  );
+  const userPrompt = userPromptFor(paper, sourceLabel);
 
   // 503/UNAVAILABLE 같은 일시 오류는 첫 청크가 나오기 전까지만 재시도 가능.
   // 스트림 중간에 끊어지면 이미 부분 출력을 소비했을 수 있으므로 그대로 실패로 올린다.
@@ -211,59 +240,16 @@ export async function* streamSummary(
   throw new Error(friendlyErrorMessage(lastErr, language));
 }
 
-// --- AI 추천 3편 ---
+// --- AI 추천 이유 생성 ---
+// 결정론적 스코어링이 골라준 top 3에 대해 "왜 추천하는지"만 한국어 한 문장으로 생성.
+// 픽킹 자체는 lib/scoring.ts에서 하므로 환각 PMID 위험 없음.
 
 const RECOMMEND_MODEL = DEFAULT_MODEL;
 
-function filterGuidance(filter: NeedFilter): string {
-  switch (filter) {
-    case "treatment":
-      return "User's niche is TREATMENT: prioritize interventional studies (RCTs, clinical trials) with concrete protocols and reported effect sizes.";
-    case "diagnosis":
-      return "User's niche is DIAGNOSIS: prioritize validation, reliability, accuracy, or measurement-property studies of assessment tools.";
-    case "trend":
-      return "User's niche is TRENDS: prioritize systematic reviews, meta-analyses, and papers introducing novel therapeutic concepts or frontier technology.";
-    case "balanced":
-    default:
-      return "User's niche is BALANCED: pick a diverse mix covering different facets (one interventional, one diagnostic/observational, one big-picture review if possible).";
-  }
-}
-
-function recommendUserPrompt(papers: Paper[], filter: NeedFilter): string {
-  const list = papers
-    .map((p, i) => {
-      const abstract = p.abstract.slice(0, 500).replace(/\s+/g, " ").trim();
-      const authors =
-        p.authors.slice(0, 3).join(", ") +
-        (p.authors.length > 3 ? ` et al.` : "");
-      const types = p.publicationTypes.slice(0, 3).join(", ") || "N/A";
-      return [
-        `#${i + 1} PMID: ${p.pmid}`,
-        `Title: ${p.title || "N/A"}`,
-        `Authors: ${authors || "N/A"}`,
-        `Journal: ${p.journal || "N/A"} (${p.year || "N/A"})`,
-        `Types: ${types}`,
-        `Access: ${p.access}`,
-        `Abstract: ${abstract || "N/A"}`,
-      ].join("\n");
-    })
-    .join("\n\n---\n\n");
-
-  return [
-    `Select the 3 most valuable papers for a rehabilitation physician from the following ${papers.length} candidates.`,
-    filterGuidance(filter),
-    "Criteria: relevance to the niche, clinical applicability, recency, abstract quality (concrete numbers, clear methodology), and publication type weight.",
-    "Rank from 1 (best) to 3. Output JSON only, following the provided schema. Each pmid must exactly match one from the list. Each reason must be a single sentence in Korean (<= 80 characters).",
-    "",
-    "Candidate papers:",
-    list,
-  ].join("\n");
-}
-
-const recommendSchema = {
+const reasonSchema = {
   type: Type.OBJECT,
   properties: {
-    recommendations: {
+    reasons: {
       type: Type.ARRAY,
       items: {
         type: Type.OBJECT,
@@ -276,60 +262,102 @@ const recommendSchema = {
       },
     },
   },
-  required: ["recommendations"],
-  propertyOrdering: ["recommendations"],
+  required: ["reasons"],
+  propertyOrdering: ["reasons"],
 };
 
-export async function recommendPapers(
-  papers: Paper[],
-  filter: NeedFilter = "balanced"
-): Promise<Recommendation[]> {
-  if (papers.length === 0) return [];
-  if (papers.length <= 3) {
-    // 후보가 3편 이하면 전원 추천으로 처리 (이유는 범용 문구)
-    return papers.map((p) => ({
-      pmid: p.pmid,
-      reason: "후보가 3편 이하라 모두 추천합니다.",
-    }));
-  }
+export interface ExplainCandidate {
+  paper: Paper;
+  topFactor: "recency" | "citations" | "journal" | "niche";
+  citedByCount?: number;
+  publicationYear?: number | null;
+  journalName?: string | null;
+  journalCitedness?: number | null;
+  scoreTotal: number;
+}
+
+const FACTOR_LABEL: Record<ExplainCandidate["topFactor"], string> = {
+  recency: "recency (latest)",
+  citations: "citations (high citation count)",
+  journal: "journal impact",
+  niche: "niche fit (publication type)",
+};
+
+function explainPrompt(candidates: ExplainCandidate[], filter: NeedFilter): string {
+  const list = candidates
+    .map((c, i) => {
+      const abstract = c.paper.abstract.slice(0, 360).replace(/\s+/g, " ").trim();
+      const types = c.paper.publicationTypes.slice(0, 3).join(", ") || "N/A";
+      return [
+        `#${i + 1} PMID: ${c.paper.pmid}`,
+        `Title: ${c.paper.title || "N/A"}`,
+        `Journal: ${c.journalName ?? c.paper.journal ?? "N/A"} (${c.publicationYear ?? c.paper.year ?? "N/A"})`,
+        `Types: ${types}`,
+        `Citations: ${c.citedByCount ?? 0}`,
+        c.journalCitedness != null
+          ? `Journal 2yr mean citedness: ${c.journalCitedness.toFixed(2)}`
+          : null,
+        `Top factor (decided by deterministic scoring): ${FACTOR_LABEL[c.topFactor]}`,
+        `Abstract: ${abstract || "N/A"}`,
+      ]
+        .filter(Boolean)
+        .join("\n");
+    })
+    .join("\n\n---\n\n");
+
+  return [
+    "These 3 papers were already selected by a deterministic ranker for a rehabilitation physician.",
+    `User's niche filter is "${filter}".`,
+    "Write ONE Korean sentence per paper (<= 80 characters) explaining WHY this paper is worth reading next.",
+    "Anchor the reason on the paper's strongest factor (top factor below) but keep it natural — do not literally say 'top factor: recency'.",
+    "Do not invent numbers; only use the metadata I give you.",
+    "Output JSON only, following the schema. The pmid in each item must exactly match the pmid in my list.",
+    "",
+    "Selected papers:",
+    list,
+  ].join("\n");
+}
+
+export async function explainRecommendations(
+  candidates: ExplainCandidate[],
+  filter: NeedFilter
+): Promise<Map<string, string>> {
+  if (candidates.length === 0) return new Map();
 
   const ai = getClient();
-  const validPmids = new Set(papers.map((p) => p.pmid));
+  const validPmids = new Set(candidates.map((c) => c.paper.pmid));
 
   const response = await callWithRetry(() =>
     ai.models.generateContent({
       model: RECOMMEND_MODEL,
-      contents: [{ role: "user", parts: [{ text: recommendUserPrompt(papers, filter) }] }],
+      contents: [
+        { role: "user", parts: [{ text: explainPrompt(candidates, filter) }] },
+      ],
       config: {
-        temperature: 0.3,
+        temperature: 0.4,
         responseMimeType: "application/json",
-        responseSchema: recommendSchema,
+        responseSchema: reasonSchema,
       },
     })
   );
 
   const text = response.text ?? "";
-  let parsed: { recommendations?: Array<{ pmid?: unknown; reason?: unknown }> };
+  let parsed: { reasons?: Array<{ pmid?: unknown; reason?: unknown }> };
   try {
     parsed = JSON.parse(text);
   } catch {
-    throw new Error("Gemini 추천 응답을 JSON으로 파싱하지 못했습니다.");
+    throw new Error("Gemini 추천 이유 응답을 JSON으로 파싱하지 못했습니다.");
   }
 
-  const raw = Array.isArray(parsed.recommendations) ? parsed.recommendations : [];
-  const seen = new Set<string>();
-  const recs: Recommendation[] = [];
-  for (const item of raw) {
+  const out = new Map<string, string>();
+  for (const item of parsed.reasons ?? []) {
     const pmid = typeof item.pmid === "string" ? item.pmid.trim() : "";
     const reason = typeof item.reason === "string" ? item.reason.trim() : "";
     if (!pmid || !reason) continue;
-    if (!validPmids.has(pmid)) continue; // 환각 PMID 방지
-    if (seen.has(pmid)) continue;
-    seen.add(pmid);
-    recs.push({ pmid, reason });
-    if (recs.length >= 3) break;
+    if (!validPmids.has(pmid)) continue;
+    out.set(pmid, reason);
   }
-  return recs;
+  return out;
 }
 
 // --- 연관 주제 검색어 생성 ---

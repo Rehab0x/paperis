@@ -1,3 +1,4 @@
+import { findAll, findFirst, getAttr, stripTagsAndDecode } from "@/lib/xml-utils";
 import type { NeedFilter, Paper } from "@/types";
 
 const EUTILS_BASE = "https://eutils.ncbi.nlm.nih.gov/entrez/eutils";
@@ -31,11 +32,21 @@ function buildSearchTerm(query: string, filter: NeedFilter | undefined): string 
 }
 
 // esearch: 쿼리 → PMID 목록
-async function esearch(term: string, retmax: number): Promise<string[]> {
+interface EsearchResult {
+  idlist: string[];
+  total: number;
+}
+
+async function esearch(
+  term: string,
+  retmax: number,
+  retstart = 0
+): Promise<EsearchResult> {
   const params = new URLSearchParams({
     db: "pubmed",
     term,
     retmax: String(retmax),
+    retstart: String(retstart),
     retmode: "json",
     sort: "relevance",
     tool: TOOL,
@@ -50,8 +61,12 @@ async function esearch(term: string, retmax: number): Promise<string[]> {
   if (!res.ok) {
     throw new Error(`PubMed esearch 실패 (${res.status})`);
   }
-  const data: { esearchresult?: { idlist?: string[] } } = await res.json();
-  return data.esearchresult?.idlist ?? [];
+  const data: {
+    esearchresult?: { idlist?: string[]; count?: string };
+  } = await res.json();
+  const idlist = data.esearchresult?.idlist ?? [];
+  const total = Number(data.esearchresult?.count ?? "0") || 0;
+  return { idlist, total };
 }
 
 // efetch: PMID 목록 → 상세 XML
@@ -75,43 +90,7 @@ async function efetchXml(pmids: string[]): Promise<string> {
   return res.text();
 }
 
-// --- 최소 XML 파서: PubMed efetch 응답 전용 ---
-
-// HTML 엔티티 디코딩 + XML 태그 제거
-function stripTagsAndDecode(input: string): string {
-  return input
-    .replace(/<[^>]+>/g, "")
-    .replace(/&amp;/g, "&")
-    .replace(/&lt;/g, "<")
-    .replace(/&gt;/g, ">")
-    .replace(/&quot;/g, '"')
-    .replace(/&apos;/g, "'")
-    .replace(/&#(\d+);/g, (_, code: string) => String.fromCharCode(Number(code)))
-    .replace(/\s+/g, " ")
-    .trim();
-}
-
-function findAll(xml: string, tag: string): string[] {
-  const re = new RegExp(`<${tag}(?:\\s[^>]*)?>([\\s\\S]*?)</${tag}>`, "g");
-  const out: string[] = [];
-  let match: RegExpExecArray | null;
-  while ((match = re.exec(xml)) !== null) {
-    out.push(match[1]);
-  }
-  return out;
-}
-
-function findFirst(xml: string, tag: string): string | null {
-  const re = new RegExp(`<${tag}(?:\\s[^>]*)?>([\\s\\S]*?)</${tag}>`);
-  const match = re.exec(xml);
-  return match ? match[1] : null;
-}
-
-function getAttr(openTag: string, attr: string): string | null {
-  const re = new RegExp(`${attr}="([^"]*)"`);
-  const match = re.exec(openTag);
-  return match ? match[1] : null;
-}
+// PubMed efetch 응답 파싱은 lib/xml-utils.ts의 헬퍼를 사용
 
 function parseAuthors(articleXml: string): string[] {
   const authorListXml = findFirst(articleXml, "AuthorList");
@@ -256,16 +235,17 @@ function parsePubmedArticles(xml: string): Paper[] {
 export async function searchPapers(
   query: string,
   filter: NeedFilter = "balanced",
-  retmax = 20
-): Promise<{ count: number; papers: Paper[] }> {
+  retmax = 20,
+  retstart = 0
+): Promise<{ count: number; total: number; papers: Paper[] }> {
   if (!query.trim()) {
-    return { count: 0, papers: [] };
+    return { count: 0, total: 0, papers: [] };
   }
 
   const term = buildSearchTerm(query, filter);
-  const pmids = await esearch(term, retmax);
+  const { idlist: pmids, total } = await esearch(term, retmax, retstart);
   if (pmids.length === 0) {
-    return { count: 0, papers: [] };
+    return { count: 0, total, papers: [] };
   }
 
   const xml = await efetchXml(pmids);
@@ -279,5 +259,5 @@ export async function searchPapers(
     .map((id) => papersByPmid.get(id))
     .filter((p): p is Paper => Boolean(p));
 
-  return { count: papers.length, papers };
+  return { count: papers.length, total, papers };
 }

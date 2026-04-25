@@ -2,13 +2,14 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import AudioPlayer from "./AudioPlayer";
+import CartButton from "./CartButton";
 import PdfUpload from "./PdfUpload";
 import {
   defaultCardState,
   getCardState,
   setCardState,
   type AudioState,
-  type PdfAttachment,
+  type FullTextAttachment,
   type RelatedState,
 } from "@/lib/card-cache";
 import type {
@@ -87,18 +88,18 @@ export default function PaperCard({
   const [relatedError, setRelatedError] = useState<string>(seed.relatedError);
   const relatedAbortRef = useRef<AbortController | null>(null);
 
-  // PDF 업로드로 받아온 full text. 세션 한정(서버에 저장되지 않음).
-  const [pdfAttachment, setPdfAttachment] = useState<PdfAttachment | null>(
-    seed.pdfAttachment
-  );
+  // PDF 업로드 또는 PMC fetch로 받아온 full text. 세션 한정(서버에 저장되지 않음).
+  const [fullText, setFullText] = useState<FullTextAttachment | null>(seed.fullText);
+  const [pmcLoading, setPmcLoading] = useState(false);
+  const [pmcError, setPmcError] = useState<string>("");
 
-  // PDF가 연결되면 abstract 자리에 full text를 꽂아 downstream 호출에 사용.
+  // full text가 연결되면 abstract 자리에 본문을 꽂아 downstream 호출에 사용.
   const effectivePaper: Paper = useMemo(
     () =>
-      pdfAttachment
-        ? { ...paper, abstract: pdfAttachment.text, access: "open" }
+      fullText
+        ? { ...paper, abstract: fullText.text, access: "open" }
         : paper,
-    [paper, pdfAttachment]
+    [paper, fullText]
   );
 
   // 상태가 바뀔 때마다 캐시에 스냅샷. remount 시 seed로 복원됨.
@@ -118,7 +119,7 @@ export default function PaperCard({
       relatedStatus,
       related,
       relatedError,
-      pdfAttachment,
+      fullText,
     });
   }, [
     paper.pmid,
@@ -136,7 +137,7 @@ export default function PaperCard({
     relatedStatus,
     related,
     relatedError,
-    pdfAttachment,
+    fullText,
   ]);
 
   // unmount 시 in-flight 요청만 중단. 오디오 blob URL은 유지해 remount 때 재생 가능.
@@ -168,7 +169,16 @@ export default function PaperCard({
       const res = await fetch("/api/summarize", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ paper: effectivePaper, mode: "read", language: lang }),
+        body: JSON.stringify({
+          paper: effectivePaper,
+          mode: "read",
+          language: lang,
+          sourceLabel: fullText
+            ? fullText.source === "pmc"
+              ? "PMC full text"
+              : "User-uploaded PDF"
+            : undefined,
+        }),
         signal: ac.signal,
       });
 
@@ -229,7 +239,16 @@ export default function PaperCard({
       const res = await fetch("/api/tts", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ paper: effectivePaper, style, language: lang }),
+        body: JSON.stringify({
+          paper: effectivePaper,
+          style,
+          language: lang,
+          sourceLabel: fullText
+            ? fullText.source === "pmc"
+              ? "PMC full text"
+              : "User-uploaded PDF"
+            : undefined,
+        }),
         signal: ac.signal,
       });
 
@@ -315,6 +334,36 @@ export default function PaperCard({
     }
   }
 
+  async function fetchPmcFullText() {
+    if (!paper.pmcId) return;
+    setPmcLoading(true);
+    setPmcError("");
+    try {
+      const res = await fetch(
+        `/api/pmc?pmcId=${encodeURIComponent(paper.pmcId)}`
+      );
+      const data = await res.json().catch(() => null);
+      if (!res.ok || !data || typeof data.text !== "string") {
+        const msg =
+          (data && typeof data === "object" && "error" in data
+            ? String((data as { error: string }).error)
+            : "") || `HTTP ${res.status}`;
+        throw new Error(msg);
+      }
+      setFullText({
+        source: "pmc",
+        text: data.text,
+        label: data.pmcId ?? paper.pmcId,
+        pages: 0,
+        chars: typeof data.chars === "number" ? data.chars : data.text.length,
+      });
+    } catch (err) {
+      setPmcError(err instanceof Error ? err.message : "PMC fetch 실패");
+    } finally {
+      setPmcLoading(false);
+    }
+  }
+
   const isStreaming = summaryStatus === "streaming";
   const isGeneratingAudio = audioStatus === "generating";
   const isLoadingRelated = relatedStatus === "loading";
@@ -368,6 +417,7 @@ export default function PaperCard({
               {t}
             </span>
           ))}
+          <CartButton paper={paper} />
         </div>
       </div>
 
@@ -445,37 +495,72 @@ export default function PaperCard({
         ) : null}
       </div>
 
-      {!compact && paper.access === "closed" ? (
+      {!compact ? (
         <div className="mt-4 border-t border-zinc-100 pt-4 dark:border-zinc-800">
           <div className="mb-2 flex flex-wrap items-center gap-2">
             <span className="text-[11px] font-semibold uppercase tracking-wide text-zinc-500 dark:text-zinc-400">
-              PDF 연결
+              본문 연결
             </span>
-            {pdfAttachment ? (
+            {fullText ? (
               <>
                 <span className="inline-flex items-center gap-1 rounded-full bg-indigo-100 px-2 py-0.5 text-[11px] font-semibold text-indigo-900 dark:bg-indigo-900/40 dark:text-indigo-200">
-                  PDF 연결됨
+                  {fullText.source === "pmc" ? "PMC 전문 연결됨" : "PDF 연결됨"}
                 </span>
                 <span className="text-[11px] text-zinc-500 dark:text-zinc-400">
-                  {pdfAttachment.filename} · {pdfAttachment.pages}p ·{" "}
-                  {pdfAttachment.chars.toLocaleString()}자
+                  {fullText.label}
+                  {fullText.pages > 0 ? ` · ${fullText.pages}p` : ""}
+                  {" · "}
+                  {fullText.chars.toLocaleString()}자
                 </span>
                 <button
                   type="button"
-                  onClick={() => setPdfAttachment(null)}
+                  onClick={() => setFullText(null)}
                   className="text-[11px] text-zinc-500 underline-offset-2 hover:text-red-600 hover:underline dark:text-zinc-400"
                 >
                   해제
                 </button>
               </>
+            ) : paper.access === "open" && paper.pmcId ? (
+              <span className="text-[11px] text-zinc-500 dark:text-zinc-400">
+                Open Access 논문입니다. PMC 전문을 가져와 full text로 요약할 수 있어요.
+              </span>
             ) : (
               <span className="text-[11px] text-zinc-500 dark:text-zinc-400">
                 Abstract만 제공되는 논문입니다. PDF를 올리면 full text로 요약됩니다.
               </span>
             )}
           </div>
-          {!pdfAttachment ? (
-            <PdfUpload onExtracted={(payload) => setPdfAttachment(payload)} />
+
+          {!fullText && paper.access === "open" && paper.pmcId ? (
+            <div className="flex flex-col gap-2">
+              <button
+                type="button"
+                onClick={fetchPmcFullText}
+                disabled={pmcLoading}
+                className="inline-flex h-8 w-fit items-center rounded-full bg-emerald-700 px-3 text-[11px] font-medium text-white transition hover:bg-emerald-600 disabled:cursor-not-allowed disabled:opacity-50 dark:bg-emerald-600 dark:hover:bg-emerald-500"
+              >
+                {pmcLoading ? "PMC 본문 가져오는 중…" : "PMC 전문 가져오기"}
+              </button>
+              {pmcError ? (
+                <div className="rounded-xl border border-red-200 bg-red-50 p-2 text-[11px] text-red-800 dark:border-red-900/50 dark:bg-red-950/40 dark:text-red-300">
+                  {pmcError}
+                </div>
+              ) : null}
+            </div>
+          ) : null}
+
+          {!fullText && paper.access === "closed" ? (
+            <PdfUpload
+              onExtracted={(payload) =>
+                setFullText({
+                  source: "pdf",
+                  text: payload.text,
+                  label: payload.filename,
+                  pages: payload.pages,
+                  chars: payload.chars,
+                })
+              }
+            />
           ) : null}
         </div>
       ) : null}
