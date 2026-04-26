@@ -2,7 +2,7 @@
 // PMC E-utilities efetch는 JATS XML을 반환한다. body 섹션의 <sec>/<title>/<p>만
 // 본문 텍스트로 추출하고 figure/table/수식/참고문헌은 제거.
 
-import { findFirst } from "@/lib/xml-utils";
+import { findFirst, getAttr, stripTagsAndDecode } from "@/lib/xml-utils";
 
 const EUTILS_BASE = "https://eutils.ncbi.nlm.nih.gov/entrez/eutils";
 const TOOL = "paperis";
@@ -12,6 +12,42 @@ export interface PmcFullText {
   text: string;
   chars: number;
   pmcId: string;
+  /** PMC 응답에서 직접 파싱한 PMID. 시드 PMID와 비교해 미스매치 검증. */
+  articlePmid: string | null;
+  /** PMC 응답에서 직접 파싱한 제목. 사용자에게 미스매치 시 보여줌. */
+  articleTitle: string | null;
+}
+
+// JATS <article-meta>에서 ArticleId 중 pmid 타입 + 제목을 뽑는다.
+function extractArticleIdentity(articleXml: string): {
+  pmid: string | null;
+  title: string | null;
+} {
+  let pmid: string | null = null;
+  // <article-id pub-id-type="pmid">12345</article-id>
+  const re = /<article-id(\s[^>]*)?>([\s\S]*?)<\/article-id>/g;
+  let m: RegExpExecArray | null;
+  while ((m = re.exec(articleXml)) !== null) {
+    const type = getAttr(m[1] ?? "", "pub-id-type");
+    if (type === "pmid") {
+      pmid = stripTagsAndDecode(m[2]).trim() || null;
+      break;
+    }
+  }
+
+  // <title-group><article-title>…</article-title></title-group>
+  let title: string | null = null;
+  const titleGroup = findFirst(articleXml, "title-group");
+  if (titleGroup) {
+    const t = findFirst(titleGroup, "article-title");
+    if (t) title = stripTagsAndDecode(t) || null;
+  }
+  if (!title) {
+    const t = findFirst(articleXml, "article-title");
+    if (t) title = stripTagsAndDecode(t) || null;
+  }
+
+  return { pmid, title };
 }
 
 function normalizePmcId(raw: string): string {
@@ -100,6 +136,9 @@ export async function fetchPmcFullText(rawPmcId: string): Promise<PmcFullText> {
     throw new Error("PMC 응답에 article이 없습니다.");
   }
 
+  const { pmid: articlePmid, title: articleTitle } =
+    extractArticleIdentity(article);
+
   // 일부 PMC 항목은 body가 비어 있고 abstract만 제공됨
   const body = findFirst(article, "body");
   const abstract = findFirst(article, "abstract");
@@ -127,6 +166,8 @@ export async function fetchPmcFullText(rawPmcId: string): Promise<PmcFullText> {
     text,
     chars: text.length,
     pmcId: rawPmcId.startsWith("PMC") ? rawPmcId : `PMC${numericId}`,
+    articlePmid,
+    articleTitle,
   };
 }
 

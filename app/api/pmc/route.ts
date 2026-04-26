@@ -21,6 +21,8 @@ export async function GET(request: NextRequest) {
       text: trimmed,
       chars: trimmed.length,
       originalChars: result.chars,
+      articlePmid: result.articlePmid,
+      articleTitle: result.articleTitle,
     });
   } catch (err) {
     const message = err instanceof Error ? err.message : "알 수 없는 오류";

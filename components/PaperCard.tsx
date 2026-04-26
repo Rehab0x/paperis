@@ -93,6 +93,16 @@ export default function PaperCard({
   const [pmcLoading, setPmcLoading] = useState(false);
   const [pmcError, setPmcError] = useState<string>("");
 
+  // PMC 응답이 시드 PMID와 다를 때 사용자가 결정하기 전 임시 보관소
+  interface PmcMismatch {
+    text: string;
+    label: string;
+    chars: number;
+    articlePmid: string | null;
+    articleTitle: string | null;
+  }
+  const [pmcMismatch, setPmcMismatch] = useState<PmcMismatch | null>(null);
+
   // full text가 연결되면 abstract 자리에 본문을 꽂아 downstream 호출에 사용.
   const effectivePaper: Paper = useMemo(
     () =>
@@ -338,6 +348,7 @@ export default function PaperCard({
     if (!paper.pmcId) return;
     setPmcLoading(true);
     setPmcError("");
+    setPmcMismatch(null);
     try {
       const res = await fetch(
         `/api/pmc?pmcId=${encodeURIComponent(paper.pmcId)}`
@@ -350,18 +361,55 @@ export default function PaperCard({
             : "") || `HTTP ${res.status}`;
         throw new Error(msg);
       }
+
+      const articlePmid: string | null =
+        typeof data.articlePmid === "string" ? data.articlePmid : null;
+      const articleTitle: string | null =
+        typeof data.articleTitle === "string" ? data.articleTitle : null;
+      const label: string = data.pmcId ?? paper.pmcId;
+      const chars: number =
+        typeof data.chars === "number" ? data.chars : data.text.length;
+
+      // PMC가 다른 논문 본문을 반환한 케이스: 사용자가 결정해야 함
+      if (articlePmid && articlePmid !== paper.pmid) {
+        setPmcMismatch({
+          text: data.text,
+          label,
+          chars,
+          articlePmid,
+          articleTitle,
+        });
+        return;
+      }
+
       setFullText({
         source: "pmc",
         text: data.text,
-        label: data.pmcId ?? paper.pmcId,
+        label,
         pages: 0,
-        chars: typeof data.chars === "number" ? data.chars : data.text.length,
+        chars,
       });
     } catch (err) {
       setPmcError(err instanceof Error ? err.message : "PMC fetch 실패");
     } finally {
       setPmcLoading(false);
     }
+  }
+
+  function acceptPmcMismatch() {
+    if (!pmcMismatch) return;
+    setFullText({
+      source: "pmc",
+      text: pmcMismatch.text,
+      label: pmcMismatch.label,
+      pages: 0,
+      chars: pmcMismatch.chars,
+    });
+    setPmcMismatch(null);
+  }
+
+  function dismissPmcMismatch() {
+    setPmcMismatch(null);
   }
 
   const isStreaming = summaryStatus === "streaming";
@@ -522,7 +570,7 @@ export default function PaperCard({
               </>
             ) : paper.access === "open" && paper.pmcId ? (
               <span className="text-[11px] text-zinc-500 dark:text-zinc-400">
-                Open Access 논문입니다. PMC 전문을 가져와 full text로 요약할 수 있어요.
+                Open Access 논문 — PMC 전문을 가져오거나 PDF를 올려 full text로 요약할 수 있어요.
               </span>
             ) : (
               <span className="text-[11px] text-zinc-500 dark:text-zinc-400">
@@ -546,21 +594,62 @@ export default function PaperCard({
                   {pmcError}
                 </div>
               ) : null}
+              {pmcMismatch ? (
+                <div className="flex flex-col gap-2 rounded-xl border border-amber-300 bg-amber-50 p-3 text-[11px] text-amber-900 dark:border-amber-900/60 dark:bg-amber-950/40 dark:text-amber-200">
+                  <div>
+                    PMC가 다른 논문 본문을 반환했어요.
+                    {pmcMismatch.articlePmid ? (
+                      <>
+                        {" "}받은 PMID: <strong>{pmcMismatch.articlePmid}</strong>
+                        {" / 시드 PMID: "}
+                        <strong>{paper.pmid}</strong>
+                      </>
+                    ) : null}
+                    {pmcMismatch.articleTitle ? (
+                      <div className="mt-1 italic line-clamp-2">
+                        받은 본문 제목: “{pmcMismatch.articleTitle}”
+                      </div>
+                    ) : null}
+                  </div>
+                  <div className="flex flex-wrap gap-2">
+                    <button
+                      type="button"
+                      onClick={acceptPmcMismatch}
+                      className="inline-flex h-7 items-center rounded-full border border-amber-400 bg-white px-2.5 text-[11px] font-medium text-amber-900 hover:border-amber-600 dark:border-amber-700 dark:bg-zinc-900 dark:text-amber-200"
+                    >
+                      그래도 사용
+                    </button>
+                    <button
+                      type="button"
+                      onClick={dismissPmcMismatch}
+                      className="inline-flex h-7 items-center rounded-full px-2.5 text-[11px] font-medium text-amber-800 hover:underline dark:text-amber-300"
+                    >
+                      취소
+                    </button>
+                  </div>
+                  <div className="text-[10px] text-amber-700/80 dark:text-amber-300/80">
+                    PDF를 직접 올리면 더 정확합니다 ↓
+                  </div>
+                </div>
+              ) : null}
             </div>
           ) : null}
 
-          {!fullText && paper.access === "closed" ? (
-            <PdfUpload
-              onExtracted={(payload) =>
-                setFullText({
-                  source: "pdf",
-                  text: payload.text,
-                  label: payload.filename,
-                  pages: payload.pages,
-                  chars: payload.chars,
-                })
-              }
-            />
+          {/* PDF 업로드: closed-access는 항상, open-access는 PMC가 없거나 사용자가 PDF로 대체하고 싶을 때 */}
+          {!fullText ? (
+            <div className={paper.access === "open" && paper.pmcId ? "mt-2" : ""}>
+              <PdfUpload
+                onExtracted={(payload) =>
+                  setFullText({
+                    source: "pdf",
+                    text: payload.text,
+                    label: payload.filename,
+                    pages: payload.pages,
+                    chars: payload.chars,
+                  })
+                }
+              />
+            </div>
           ) : null}
         </div>
       ) : null}

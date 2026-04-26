@@ -2,7 +2,7 @@
 
 > **From papers to practice** — 바쁜 의료인이 짬짬이 최신 PubMed 연구를 따라갈 수 있게 해주는 서비스
 
-[![version](https://img.shields.io/badge/version-1.0.2-blue.svg)](#) 🌐 **Live**: [paperis.vercel.app](https://paperis.vercel.app)
+[![version](https://img.shields.io/badge/version-1.0.3-blue.svg)](#) 🌐 **Live**: [paperis.vercel.app](https://paperis.vercel.app)
 
 PubMed 검색 결과를 AI가 정리해주고, 출퇴근길에 헤드폰으로 들을 수 있게 한국어 narration 오디오로 만들어주는 웹앱이다. MVP는 **재활의학과(특히 뇌졸중 재활)** 에 초점이 맞춰져 있다.
 
@@ -152,6 +152,13 @@ public/
 
 ## 변경 이력
 
+### v1.0.3 (2026-04-25)
+- PMC 응답 PMID 미스매치 검증 — 다른 논문 본문이면 빨간 경고 + "그래도 사용" / 취소
+- Open Access 카드에도 PDF 업로드 슬롯 노출 — PMC가 미스매치/실패해도 즉시 우회
+- 장바구니 항목 클릭 → PaperCard 모달 (요약/본문/연관 학습 그대로)
+- 장바구니에 "본문(full text)으로 narration" 토글 — 카드 캐시 + Open Access 자동 PMC fetch + abstract fallback
+- `/api/playlist`가 paper별 `sourceLabels` 배열 수용 → 풀텍스트 기반 narration의 abstract-only disclaimer 제거
+
 ### v1.0.2 (2026-04-25)
 - 페이지네이션 숫자 버튼 (`[1] [2] [3] …`)
 - 출퇴근 재생목록(장바구니 + 짧은 모드 narration 병렬 합성 + 커스텀 트랙 플레이어)
@@ -190,4 +197,4 @@ public/
 
 ---
 
-*Paperis v1.0.2 — 2026.04*
+*Paperis v1.0.3 — 2026.04*

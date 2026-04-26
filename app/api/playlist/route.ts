@@ -15,6 +15,8 @@ interface RequestBody {
   language?: Language;
   /** 짧은 1-2분 요약(true, 기본) vs 풀 5-10분(false). */
   brief?: boolean;
+  /** papers와 같은 길이의 배열. 각 paper의 abstract 출처 라벨(예: "PMC full text"). null이면 abstract만으로 간주. */
+  sourceLabels?: (string | null)[];
 }
 
 interface TrackOut {
@@ -36,7 +38,8 @@ function isPaper(obj: unknown): obj is Paper {
 async function collectScript(
   paper: Paper,
   language: Language,
-  brief: boolean
+  brief: boolean,
+  sourceLabel?: string
 ): Promise<string> {
   let acc = "";
   for await (const chunk of streamSummary({
@@ -44,6 +47,7 @@ async function collectScript(
     mode: "narration",
     language,
     brief,
+    sourceLabel,
   })) {
     acc += chunk;
   }
@@ -76,6 +80,7 @@ export async function POST(request: NextRequest) {
       ? body.language
       : "ko";
   const brief = body.brief !== false; // 기본 true
+  const sourceLabels = Array.isArray(body.sourceLabels) ? body.sourceLabels : [];
 
   // 각 paper에 대해 [script 생성 → TTS] 를 병렬 실행
   const tasks = papers.map(async (paper, idx): Promise<TrackOut> => {
@@ -88,7 +93,12 @@ export async function POST(request: NextRequest) {
       bytes: 0,
     };
     try {
-      const script = await collectScript(paper, language, brief);
+      const rawLabel = sourceLabels[idx];
+      const sourceLabel =
+        typeof rawLabel === "string" && rawLabel.trim().length > 0
+          ? rawLabel
+          : undefined;
+      const script = await collectScript(paper, language, brief, sourceLabel);
       if (!script) throw new Error("스크립트 생성 결과가 비어 있습니다.");
       base.script = script;
 
