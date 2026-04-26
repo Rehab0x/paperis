@@ -7,7 +7,7 @@
 **Paperis**는 바쁜 의료인이 짬짬이 최신 PubMed 연구 지견을 따라갈 수 있게 해주는 서비스다. 검색·요약·듣기·연관학습·full-text·재생목록을 한 흐름으로 제공한다.
 
 - 슬로건: "From papers to practice"
-- 현재 버전: v1.0.2 (2026-04-25, paperis.vercel.app 라이브)
+- 현재 버전: v1.1.0 (2026-04-26, paperis.vercel.app 라이브)
 - MVP 타겟: 재활의학과 의사 (뇌졸중 재활 특화)
 - 향후 확장: 의학 전 분야 → 전 과학 분야
 
@@ -26,6 +26,8 @@
 | 인용수 / 저널 메트릭 | OpenAlex Works API (무료, 키 불필요) |
 | PMC 본문 | PMC E-utilities efetch (JATS XML) |
 | PDF 파싱 | unpdf (pdfjs-dist serverless 빌드) |
+| 인증 | Auth.js v5 (`next-auth@beta`) + Google OAuth |
+| DB | Neon Postgres + Drizzle ORM (`@auth/drizzle-adapter`) |
 | 배포 | Vercel |
 
 ---
@@ -71,6 +73,12 @@ public/sw.js, public/icons/ PWA 자산
 ```
 GEMINI_API_KEY=        # 필수. 요약 / 추천 이유 / 연관 쿼리 / TTS / 플레이리스트
 PUBMED_API_KEY=        # 선택. 없어도 동작 (초당 3회 제한)
+
+# v1.1+ 로그인/계정 동기화 (없으면 비로그인 모드만 동작)
+DATABASE_URL=          # Neon Postgres pooled
+AUTH_SECRET=
+AUTH_GOOGLE_ID=
+AUTH_GOOGLE_SECRET=
 ```
 
 ---
@@ -107,6 +115,13 @@ PUBMED_API_KEY=        # 선택. 없어도 동작 (초당 3회 제한)
 - Open Access(`paper.access === "open"` + `pmcId`): `/api/pmc?pmcId=...` 자동 호출 가능.
 - 유료(`access === "closed"`): `<PdfUpload>` 슬롯, `/api/pdf` 멀티파트.
 - 둘 다 `lib/card-cache.ts`의 `fullText` 필드(`source: "pdf" | "pmc"`)로 통합. 이후 요약/TTS/연관 호출에서 자동으로 abstract 자리에 full text 주입.
+
+### 로그인 + 동기화 (v1.1)
+- `auth.ts` (Auth.js v5) — Google OAuth + database session + `@auth/drizzle-adapter` + `session` 콜백에서 `user.id` 명시 매핑.
+- `lib/db/schema.ts` — Auth.js 표준 4개(users, accounts, sessions, verificationToken) + `user_cart`, `user_weights`.
+- 비로그인: 기존 localStorage만. 로그인: 첫 시점에 `AccountSyncProvider`가 server↔local 머지 후 양방향 sync.
+- 카트 PUT은 **race-safe 멱등 upsert** (Neon HTTP는 진정한 트랜잭션 X). delete-all 패턴 금지.
+- `setStoredWeights`는 같은 값이면 dispatch 생략, page state는 functional update + equality 체크 — weights 무한 루프 방지.
 
 ---
 
@@ -154,6 +169,9 @@ PUBMED_API_KEY=        # 선택. 없어도 동작 (초당 3회 제한)
 - **URL이 검색 source of truth**: SearchBar는 controlled가 아닌 prop 변경 시 useEffect로 동기화.
 - **PDF 파서는 `unpdf`**: `pdf-parse`는 Turbopack worker 경로 이슈로 실패. `next.config.ts` `serverExternalPackages: ["unpdf", "pdfjs-dist"]` 유지.
 - **한국어 우선 UI**: 영어 토글은 있지만 기본 UI 문구·에러 메시지는 한국어.
+- **인증 = Auth.js v5 + Google + Neon Postgres**: 다른 provider/DB 도입은 사용자 재합의 후. session strategy는 `database`(JWT 아님), session 콜백에서 `user.id` 매핑 필수.
+- **카트 PUT은 멱등 upsert**: Neon HTTP는 statement-level이라 진짜 트랜잭션 X. delete + insert 패턴 race condition으로 unique 충돌 발생함. `onConflictDoUpdate` + `notInArray` delete만 사용.
+- **로그인 무관 동작 보존**: 비로그인 사용자도 모든 기능 그대로 동작. 서버 동기화는 부가 기능.
 
 ---
 
@@ -166,4 +184,4 @@ PUBMED_API_KEY=        # 선택. 없어도 동작 (초당 3회 제한)
 
 ---
 
-*Paperis CLAUDE.md — v1.0.2 시점 갱신, 2026.04*
+*Paperis CLAUDE.md — v1.1.0 시점 갱신, 2026.04*

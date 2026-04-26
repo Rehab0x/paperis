@@ -6,11 +6,16 @@ import { useRouter, useSearchParams } from "next/navigation";
 import SearchBar from "@/components/SearchBar";
 import PaperList from "@/components/PaperList";
 import PaperCard from "@/components/PaperCard";
-import RecommendWeights, {
-  loadStoredWeights,
-} from "@/components/RecommendWeights";
+import RecommendWeights from "@/components/RecommendWeights";
 import Pagination from "@/components/Pagination";
 import CartPanel from "@/components/CartPanel";
+import AuthMenu from "@/components/AuthMenu";
+import { getCart, subscribeCart, type CartItem } from "@/lib/cart";
+import {
+  getStoredWeights,
+  subscribeWeights,
+  weightsAreEqual,
+} from "@/lib/weights-store";
 import {
   DEFAULT_RECOMMEND_WEIGHTS,
   type NeedFilter,
@@ -64,16 +69,19 @@ function HomeImpl() {
   const recAbortRef = useRef<AbortController | null>(null);
   const searchAbortRef = useRef<AbortController | null>(null);
 
-  // 추천 가중치 — localStorage에서 복원, 변경 시 자동 재추천
+  // 추천 가중치 — localStorage(혹은 서버 동기화로 갱신된 값)에서 복원
   const [weights, setWeights] = useState<RecommendWeightsType>(
     DEFAULT_RECOMMEND_WEIGHTS
   );
-  // 마운트 후 localStorage 적용 (SSR 안전 — 첫 렌더는 DEFAULT, 그 다음 1회 보정)
   useEffect(() => {
-    const stored = loadStoredWeights();
-    // localStorage와 메모리 state 동기화. 매번 호출되는 게 아니라 마운트 시 1회뿐.
+    // 마운트 시 1회 + 외부(서버 동기화)에서 갱신될 때마다 다시 반영.
+    // 같은 값이면 prev 그대로 반환해 React 리렌더 차단 — 무한 루프 방지.
     // eslint-disable-next-line react-hooks/set-state-in-effect
-    setWeights(stored);
+    setWeights(getStoredWeights());
+    return subscribeWeights(() => {
+      const fresh = getStoredWeights();
+      setWeights((prev) => (weightsAreEqual(prev, fresh) ? prev : fresh));
+    });
   }, []);
 
   function pushParams(updates: Record<string, string | null>) {
@@ -226,10 +234,23 @@ function HomeImpl() {
     return { recommendedPapers: rec, otherPapers: rest };
   }, [papers, recMap, recStatus]);
 
+  // 카트도 selectedPaper 후보로 — 검색 결과에 없는 카트 항목도 우측 상세에 표시 가능
+  const [cartItems, setCartItems] = useState<CartItem[]>([]);
+  useEffect(() => {
+    // localStorage(외부 시스템) 동기화 — 마운트 1회 + 변경 이벤트 구독
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setCartItems(getCart());
+    return subscribeCart(() => setCartItems(getCart()));
+  }, []);
+
   const selectedPaper = useMemo(() => {
     if (!selectedPmid) return null;
-    return papers.find((p) => p.pmid === selectedPmid) ?? null;
-  }, [papers, selectedPmid]);
+    const fromSearch = papers.find((p) => p.pmid === selectedPmid);
+    if (fromSearch) return fromSearch;
+    const fromCart = cartItems.find((it) => it.pmid === selectedPmid);
+    if (fromCart) return fromCart.paper;
+    return null;
+  }, [papers, selectedPmid, cartItems]);
 
   // 추천 트리거: papers / filter / weights 변경 시 1페이지에서만 재호출. debounce 350ms.
   useEffect(() => {
@@ -284,8 +305,9 @@ function HomeImpl() {
                 From papers to practice
               </span>
             </Link>
-            <span className="ml-auto">
+            <span className="ml-auto flex items-center gap-2">
               <CartPanel />
+              <AuthMenu />
             </span>
           </div>
           <SearchBar

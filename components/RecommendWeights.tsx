@@ -5,8 +5,13 @@ import {
   DEFAULT_RECOMMEND_WEIGHTS,
   type RecommendWeights,
 } from "@/types";
+import {
+  getStoredWeights,
+  setStoredWeights,
+} from "@/lib/weights-store";
 
-const STORAGE_KEY = "paperis.recommend.weights.v1";
+// 외부에 그대로 노출 (page.tsx에서 import 중) — 내부적으론 store 모듈에 위임
+export const loadStoredWeights = getStoredWeights;
 
 const AXES: {
   key: keyof RecommendWeights;
@@ -24,23 +29,6 @@ interface Props {
   onChange: (next: RecommendWeights) => void;
 }
 
-export function loadStoredWeights(): RecommendWeights {
-  if (typeof window === "undefined") return DEFAULT_RECOMMEND_WEIGHTS;
-  try {
-    const raw = window.localStorage.getItem(STORAGE_KEY);
-    if (!raw) return DEFAULT_RECOMMEND_WEIGHTS;
-    const parsed = JSON.parse(raw) as Partial<RecommendWeights>;
-    return {
-      recency: clamp(parsed.recency ?? DEFAULT_RECOMMEND_WEIGHTS.recency),
-      citations: clamp(parsed.citations ?? DEFAULT_RECOMMEND_WEIGHTS.citations),
-      journal: clamp(parsed.journal ?? DEFAULT_RECOMMEND_WEIGHTS.journal),
-      niche: clamp(parsed.niche ?? DEFAULT_RECOMMEND_WEIGHTS.niche),
-    };
-  } catch {
-    return DEFAULT_RECOMMEND_WEIGHTS;
-  }
-}
-
 function clamp(n: number): number {
   if (!Number.isFinite(n)) return 50;
   if (n < 0) return 0;
@@ -51,14 +39,9 @@ function clamp(n: number): number {
 export default function RecommendWeights({ value, onChange }: Props) {
   const [open, setOpen] = useState(false);
 
-  // value 변경 시 localStorage에 저장 (부모가 호출자)
+  // value 변경 시 store에 저장 — store가 자체 dispatch도 처리
   useEffect(() => {
-    if (typeof window === "undefined") return;
-    try {
-      window.localStorage.setItem(STORAGE_KEY, JSON.stringify(value));
-    } catch {
-      // ignore quota/private mode
-    }
+    setStoredWeights(value);
   }, [value]);
 
   function update(key: keyof RecommendWeights, e: ChangeEvent<HTMLInputElement>) {

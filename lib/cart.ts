@@ -73,6 +73,20 @@ export function clearCart(): void {
   safeWrite([]);
 }
 
+// 외부(서버 동기화 등)에서 카트 전체를 일괄 교체할 때 사용.
+export function setCart(items: CartItem[]): void {
+  // 안전성: 잘못된 항목 제거
+  const valid = items.filter(
+    (it) =>
+      it &&
+      typeof it.pmid === "string" &&
+      typeof it.addedAt === "number" &&
+      it.paper &&
+      typeof it.paper === "object"
+  );
+  safeWrite(valid.slice(0, MAX_ITEMS));
+}
+
 export function getCartCount(): number {
   return safeRead().length;
 }

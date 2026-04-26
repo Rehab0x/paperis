@@ -1,6 +1,6 @@
 # Paperis — TODO / 진척 기록
 
-> 마지막 갱신: 2026-04-25 (v1.0.2 출시 — GitHub master + paperis.vercel.app 라이브)
+> 마지막 갱신: 2026-04-26 (v1.1.0 출시 — 로그인/계정 동기화)
 > 외부 노출 문서는 [README.md](README.md), 컨텍스트는 [CLAUDE.md](CLAUDE.md). 이 파일은 작업 일지·기술부채 보관용.
 
 ---
@@ -9,7 +9,9 @@
 
 | 버전 | 날짜 | 핵심 |
 |---|---|---|
-| **v1.0.2** | 2026-04-25 | 페이지 번호 버튼, 출퇴근 재생목록(장바구니+병렬 짧은 narration+커스텀 트랙 플레이어), 키보드 시크 ←/→/Space, 트랙→PaperCard 모달, 헤더 로고 홈 링크 |
+| **v1.1.0** | 2026-04-26 | Google OAuth 로그인 (Auth.js v5), Neon Postgres + Drizzle ORM, 카트/추천 가중치 디바이스 간 동기화, 비로그인 모드는 그대로 |
+| v1.0.3 | 2026-04-25 | PMC PMID 미스매치 검증, Open Access 카드 PDF 업로드, 카트 항목 클릭 → 메인 우측 상세, 풀텍스트 기반 재생목록 narration |
+| v1.0.2 | 2026-04-25 | 페이지 번호 버튼, 출퇴근 재생목록(장바구니+병렬 짧은 narration+커스텀 트랙 플레이어), 키보드 시크 ←/→/Space, 트랙→PaperCard 모달, 헤더 로고 홈 링크 |
 | v1.0.1 | 2026-04-25 | 추천 가중치 슬라이더(최신성/인용수/저널/니즈) + OpenAlex enrichment + 결정론적 스코어링, PMC Open Access full-text 요약, 마스터-디테일 + 카드 캐시, Gemini 503 자동 재시도 |
 | v1.0.0 (MVP) | 2026-04-24 | PubMed 검색 + 니즈 필터, Gemini 한국어/영어 스트리밍 요약, Gemini TTS narration / dialogue (멀티스피커, audio/wav), 연관 학습, PDF 업로드(unpdf), PWA 설치, Vercel 배포 |
 
@@ -46,6 +48,27 @@
   - 데스크톱 좌목록 우상세, 모바일은 스택 네비
   - [lib/card-cache.ts](lib/card-cache.ts) — pmid 키 세션 캐시(요약/오디오/연관/첨부 상태 보존)
 
+### v1.1.0 — 로그인 + 디바이스 동기화
+- **인증**: Auth.js v5 + Google OAuth + database session ([auth.ts](auth.ts), [app/api/auth/[...nextauth]/route.ts](app/api/auth/%5B...nextauth%5D/route.ts))
+  - `session` 콜백에서 `user.id` 명시 매핑 — Drizzle adapter + database session 조합에서 클라이언트로 user.id 전달 보장
+- **DB**: Neon Postgres + Drizzle ORM ([lib/db/schema.ts](lib/db/schema.ts), [lib/db/index.ts](lib/db/index.ts), [drizzle.config.ts](drizzle.config.ts))
+  - Auth.js 표준 4개 + `user_cart` (unique on user_id+pmid) + `user_weights` (PK user_id)
+- **계정 API** ([app/api/account/cart/route.ts](app/api/account/cart/route.ts), [app/api/account/weights/route.ts](app/api/account/weights/route.ts))
+  - 카트 PUT은 race-safe **멱등 upsert** (`onConflictDoUpdate` + `notInArray` delete) — Neon HTTP는 statement-level이라 진짜 트랜잭션 X
+- **클라이언트 동기화** ([components/AccountSyncProvider.tsx](components/AccountSyncProvider.tsx), [lib/cart.ts](lib/cart.ts), [lib/weights-store.ts](lib/weights-store.ts))
+  - 첫 로그인: server↔local 머지 후 한 번 PUT
+  - 평상시: subscribeCart/subscribeWeights → 350ms debounce → 서버 PUT
+  - `setStoredWeights`는 같은 값이면 dispatch 생략, page subscribe 콜백은 functional update + equality 체크 → 무한 루프 방지
+- **헤더 UI** ([components/AuthMenu.tsx](components/AuthMenu.tsx)): 로그인 버튼 / 로그인 후 아바타 드롭다운(이름/이메일/로그아웃)
+- 비로그인 모드는 기존 localStorage만 사용해 그대로 동작 — 서버 동기화는 부가 기능
+
+### v1.0.3 — PMC 미스매치 + 풀텍스트 재생목록
+- PMC 응답에 `articlePmid`, `articleTitle` 동봉 → 시드 PMID와 다른 본문 감지 + 빨간 경고 + "그래도 사용" / 취소 + PDF 업로드 fallback ([lib/pmc.ts](lib/pmc.ts), [components/PaperCard.tsx](components/PaperCard.tsx))
+- Open Access 카드도 PDF 업로드 슬롯 노출
+- 장바구니 항목 클릭 → 메인 페이지 우측 상세 (PaperModal 대신 마스터-디테일 통합)
+- 재생목록 "본문(full text)으로 narration" 토글 — 카드 캐시 + Open Access 자동 PMC fetch + abstract fallback ([components/CartPanel.tsx](components/CartPanel.tsx))
+- `/api/playlist` paper별 `sourceLabels` 배열 수용 → abstract-only disclaimer 자동 제거
+
 ### v1.0.2 — 페이지네이션 UX + 출퇴근 재생목록
 - 숫자형 페이지네이션 ([components/Pagination.tsx](components/Pagination.tsx)) — `← 1 … 11 [12] 13 … 50 →`
 - **출퇴근 재생목록(장바구니 패턴)**:
@@ -62,6 +85,15 @@
 - **헤더 UX**: 로고/이름 클릭 → 홈(`/`), SearchBar가 URL prop 변화에 동기화
 
 ---
+
+## 다음 후보 (v1.2 ~)
+
+- [ ] **이메일 magic link 로그인**: Resend/SES 등 메일 발신 셋업 후 Auth.js EmailProvider 추가 — Google 외 옵션
+- [ ] **청취 진행률 / 들은 트랙 표시**: 같은 큐를 며칠에 나눠 듣기 + 트랙별 lastPosition 서버 저장
+- [ ] **트랙 IndexedDB 영속화**: 한 번 만든 재생목록을 새로고침 후에도 유지
+- [ ] **백그라운드 청취**: CartPanel 닫아도 audio 유지되는 persistent mini-player
+- [ ] **검색/탐색 히스토리** 서버 저장
+- [ ] **카드 캐시 서버 저장**: 요약/오디오는 비싸니 디바이스 간 공유
 
 ## 기술부채 / 개선 후보 (우선순위 낮음)
 
@@ -85,6 +117,9 @@
 
 ## 의사결정 기록 (변경 금지 항목)
 
+- **인증 = Auth.js v5 + Google OAuth + Neon Postgres + Drizzle**: 다른 provider/DB 도입은 사용자 재합의 후. session strategy `database`(JWT 아님), session 콜백에서 `user.id` 명시 매핑 필수.
+- **카트 PUT 멱등 upsert**: Neon HTTP는 statement-level이라 진짜 트랜잭션 X. delete + insert 패턴 race condition으로 unique 충돌 발생함. `onConflictDoUpdate` + `notInArray` delete만 사용.
+- **로그인 무관 동작 보존**: 비로그인 사용자도 모든 기능 그대로 동작. 서버 동기화는 부가 기능.
 - **단일 AI 스택**: 요약+TTS 모두 Gemini. Claude / OpenAI SDK 도입 금지. 필요 시 사용자와 재합의 후에만.
 - **추천 = 결정론적 + 설명**: 픽킹은 [lib/scoring.ts](lib/scoring.ts) 4축 가중 점수가 담당, Gemini는 [lib/gemini.ts](lib/gemini.ts) `explainRecommendations`로 한 줄 이유만 생성. 환각 PMID 방지 + 사용자가 직접 컨트롤 가능.
 - **대화체 태그 포맷**: `[A]:` / `[B]:` 고정. 프롬프트(`lib/gemini.ts`)와 TTS(`lib/tts.ts`) 양쪽이 이 포맷에 묶여 있음 — 바꾸려면 동시에 수정.

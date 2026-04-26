@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import {
   CART_LIMIT,
   clearCart,
@@ -42,6 +43,8 @@ function base64ToBlobUrl(b64: string, type: string): string {
 }
 
 export default function CartPanel() {
+  const router = useRouter();
+  const searchParams = useSearchParams();
   const [open, setOpen] = useState(false);
   const [items, setItems] = useState<CartItem[]>([]);
   const [genStatus, setGenStatus] = useState<GenStatus>("idle");
@@ -73,6 +76,15 @@ export default function CartPanel() {
     () => count * (brief ? 90 : 360),
     [count, brief]
   );
+
+  // 카트 항목 클릭 → 패널 닫고 메인 페이지 우측 상세에 표시
+  function showInMainDetail(pmid: string) {
+    const next = new URLSearchParams(searchParams.toString());
+    next.set("pmid", pmid);
+    const qs = next.toString();
+    router.replace(qs ? `/?${qs}` : "/", { scroll: false });
+    setOpen(false);
+  }
 
   async function generate() {
     if (count === 0) return;
@@ -262,7 +274,7 @@ export default function CartPanel() {
                     </span>
                     <button
                       type="button"
-                      onClick={() => setOpenPaper(it.paper)}
+                      onClick={() => showInMainDetail(it.pmid)}
                       className="min-w-0 flex-1 text-left"
                       aria-label={`${it.paper.title || "논문"} 상세 보기`}
                     >
