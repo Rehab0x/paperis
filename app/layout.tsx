@@ -1,9 +1,10 @@
 import type { Metadata, Viewport } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
+import PlayerBar from "@/components/PlayerBar";
+import PlayerProvider from "@/components/PlayerProvider";
 import RegisterSW from "@/components/RegisterSW";
-import SessionProviderWrapper from "@/components/SessionProviderWrapper";
-import AccountSyncProvider from "@/components/AccountSyncProvider";
+import TtsQueueProvider from "@/components/TtsQueueProvider";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -56,10 +57,12 @@ export default function RootLayout({
       className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
     >
       <body className="min-h-full flex flex-col">
-        <SessionProviderWrapper>
-          {children}
-          <AccountSyncProvider />
-        </SessionProviderWrapper>
+        <TtsQueueProvider>
+          <PlayerProvider>
+            {children}
+            <PlayerBar />
+          </PlayerProvider>
+        </TtsQueueProvider>
         <RegisterSW />
       </body>
     </html>

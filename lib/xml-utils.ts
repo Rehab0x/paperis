@@ -1,5 +1,5 @@
-// PubMed/PMC XML 응답을 다루기 위한 경량 헬퍼.
-// 본격 XML 파서를 도입하기엔 사용 범위가 좁아 정규식 기반으로 충분.
+// PubMed/PMC/EuropePMC XML 응답을 다루기 위한 경량 헬퍼.
+// 본격 XML 파서를 쓰기엔 사용 범위가 좁아 정규식 기반으로 충분.
 
 export function stripTagsAndDecode(input: string): string {
   return input
@@ -36,7 +36,7 @@ export function getAttr(openTag: string, attr: string): string | null {
   return match ? match[1] : null;
 }
 
-// HTML 엔티티 디코딩만 (공백 정규화 없이)
+// HTML/XML 엔티티 디코딩만 (공백 정규화 없이)
 export function decodeEntities(input: string): string {
   return input
     .replace(/&amp;/g, "&")

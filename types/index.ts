@@ -1,12 +1,10 @@
-// 공통 타입 정의
-
-export type NeedFilter = "treatment" | "diagnosis" | "trend" | "balanced";
+// Paperis v2 공통 타입
 
 export type Language = "ko" | "en";
-
-export type ListenStyle = "narration" | "dialogue";
-
+export type SortMode = "recency" | "citations" | "relevance";
 export type AccessLevel = "open" | "closed";
+export type PaperType = "research" | "review";
+export type FullTextSource = "unpaywall" | "europepmc" | "pmc" | "pdf";
 
 export interface Paper {
   pmid: string;
@@ -21,46 +19,9 @@ export interface Paper {
   publicationTypes: string[];
   access: AccessLevel;
   url: string;
-}
-
-export interface PubmedSearchRequest {
-  query: string;
-  filter?: NeedFilter;
-  retmax?: number;
-}
-
-export interface PubmedSearchResponse {
-  /** 이번 페이지에 실제로 반환된 논문 수 */
-  count: number;
-  /** PubMed의 총 검색 결과 수 (페이지네이션 계산용) */
-  total: number;
-  papers: Paper[];
-}
-
-export interface ApiError {
-  error: string;
-}
-
-export interface RecommendWeights {
-  recency: number;
-  citations: number;
-  journal: number;
-  niche: number;
-}
-
-export const DEFAULT_RECOMMEND_WEIGHTS: RecommendWeights = {
-  recency: 50,
-  citations: 50,
-  journal: 50,
-  niche: 50,
-};
-
-export interface ScoreBreakdown {
-  total: number;
-  recency: number; // 0..1
-  citations: number; // 0..1
-  journal: number; // 0..1
-  niche: number; // 0..1
+  // OpenAlex enrichment (없으면 undefined). 클라 정렬·표시에 사용.
+  citedByCount?: number;
+  journalCitedness?: number | null;
 }
 
 export interface EnrichmentData {
@@ -68,40 +29,104 @@ export interface EnrichmentData {
   citedByCount: number;
   publicationYear: number | null;
   journalName: string | null;
-  /** OpenAlex 2yr_mean_citedness — IF에 가까운 저널 수준 영향력 지표 */
   journalCitedness: number | null;
 }
 
-export interface Recommendation {
+export interface ApiError {
+  error: string;
+}
+
+// /api/search
+export interface SearchRequest {
+  q: string;
+  sort: SortMode;
+  retmax?: number;
+  retstart?: number;
+}
+
+export interface SearchResponse {
+  query: string;     // Gemini가 만든 PubMed 검색식
+  note: string;      // 검색 각도 한 줄 설명
+  papers: Paper[];
+  total: number;
+  sort: SortMode;
+  cached: boolean;   // 검색식 캐시 hit 여부
+}
+
+// /api/summarize
+export interface MiniSummary {
   pmid: string;
-  reason: string;
-  /** 결정론적 스코어링 결과. 0..1 정규화된 4축 + 합산 */
-  score?: ScoreBreakdown;
-  /** 카드에 표시할 가장 강한 한 가지 요인 라벨 */
-  topFactor?: "recency" | "citations" | "journal" | "niche";
+  paperType: PaperType;
+  bullets: string[];
 }
 
-export interface RecommendRequest {
+export interface SummarizeMiniRequest {
   papers: Paper[];
-  filter?: NeedFilter;
   language?: Language;
-  weights?: Partial<RecommendWeights>;
 }
 
-export interface RecommendResponse {
-  recommendations: Recommendation[];
+export interface SummarizeMiniResponse {
+  summaries: MiniSummary[];
 }
 
-export interface RelatedRequest {
+export interface SummarizeReadRequest {
   paper: Paper;
-  hint?: string;
-  excludePmids?: string[];
+  language?: Language;
+  sourceLabel?: string;
 }
 
-export interface RelatedResponse {
-  /** Gemini가 생성한 PubMed 검색식 */
-  query: string;
-  /** 어떤 각도로 검색했는지 한 줄 설명 */
-  note: string;
-  papers: Paper[];
+// /api/fulltext
+export interface FullTextRequest {
+  pmid: string;
+  doi?: string | null;
+  pmcId?: string | null;
+}
+
+export interface FullTextSuccess {
+  ok: true;
+  text: string;
+  source: FullTextSource;
+  sourceUrl?: string;
+  charCount: number;
+}
+
+export interface FullTextAttempt {
+  source: FullTextSource;
+  /** 시도 자체를 못 한 경우의 사유 (예: DOI 없음, 환경변수 미설정) */
+  skipReason?: string;
+  /** 시도했으나 결과가 없거나 실패한 사유 */
+  failReason?: string;
+}
+
+export interface FullTextFailure {
+  ok: false;
+  attempted: FullTextAttempt[];
+}
+
+export type FullTextResponse = FullTextSuccess | FullTextFailure;
+
+// /api/tts
+export interface TtsRequestBody {
+  paper: Paper;
+  language: Language;
+  providerName?: string;
+  voice?: string;
+  sourceLabel?: string;   // 풀텍스트 첨부 시 narration 생성에 반영
+}
+
+// Audio library (IndexedDB 레코드)
+export interface AudioTrack {
+  id: string;
+  pmid: string;
+  title: string;
+  authors: string[];
+  journal: string;
+  year: string;
+  language: Language;
+  voice: string;
+  providerName: string;
+  audioBlob: Blob;
+  durationMs: number;
+  createdAt: number;
+  paperSnapshot: Paper;
 }

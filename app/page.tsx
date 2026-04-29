@@ -1,516 +1,382 @@
 "use client";
 
-import { Suspense, useEffect, useMemo, useRef, useState } from "react";
-import Link from "next/link";
+import { Suspense, useCallback, useEffect, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
+import Link from "next/link";
+import LibraryLink from "@/components/LibraryLink";
+import PaperDetailPanel from "@/components/PaperDetailPanel";
+import ResultsList from "@/components/ResultsList";
 import SearchBar from "@/components/SearchBar";
-import PaperList from "@/components/PaperList";
-import PaperCard from "@/components/PaperCard";
-import RecommendWeights from "@/components/RecommendWeights";
-import Pagination from "@/components/Pagination";
-import CartPanel from "@/components/CartPanel";
-import AuthMenu from "@/components/AuthMenu";
-import { getCart, subscribeCart, type CartItem } from "@/lib/cart";
+import SortControl from "@/components/SortControl";
+import TtsQueueBadge from "@/components/TtsQueueBadge";
 import {
-  getStoredWeights,
-  subscribeWeights,
-  weightsAreEqual,
-} from "@/lib/weights-store";
-import {
-  DEFAULT_RECOMMEND_WEIGHTS,
-  type NeedFilter,
-  type Paper,
-  type PubmedSearchResponse,
-  type RecommendResponse,
-  type RecommendWeights as RecommendWeightsType,
+  getClientCachedQuery,
+  setClientCachedQuery,
+} from "@/lib/client-cache";
+import type {
+  MiniSummary,
+  Paper,
+  SearchRequest,
+  SearchResponse,
+  SortMode,
+  SummarizeMiniRequest,
+  SummarizeMiniResponse,
 } from "@/types";
 
-type Status = "idle" | "loading" | "success" | "error";
-type RecommendStatus = "idle" | "loading" | "ready" | "error";
-type RecMap = Record<string, { reason: string; rank: number }>;
+const VALID_SORTS: SortMode[] = ["relevance", "recency", "citations"];
 
-const PAGE_SIZE = 20;
-const ALLOWED_FILTERS: NeedFilter[] = ["treatment", "diagnosis", "trend", "balanced"];
-
-const SUGGESTIONS: { label: string; query: string; filter: NeedFilter }[] = [
-  { label: "뇌졸중 재활 치료", query: "stroke rehabilitation", filter: "treatment" },
-  { label: "보행 분석 평가", query: "gait analysis post stroke", filter: "diagnosis" },
-  { label: "경직 최신 동향", query: "post stroke spasticity", filter: "trend" },
-  { label: "CIMT 중재", query: "constraint induced movement therapy", filter: "treatment" },
-];
-
-function parseFilter(raw: string | null): NeedFilter {
-  if (raw && (ALLOWED_FILTERS as string[]).includes(raw)) return raw as NeedFilter;
-  return "balanced";
+function parseSort(value: string | null): SortMode {
+  if (value && (VALID_SORTS as string[]).includes(value)) {
+    return value as SortMode;
+  }
+  return "relevance";
 }
 
-function parsePage(raw: string | null): number {
-  const n = raw ? Math.trunc(Number(raw)) : 1;
-  if (!Number.isFinite(n) || n < 1) return 1;
-  return Math.min(n, 500);
-}
-
-function HomeImpl() {
+function HomeInner() {
   const router = useRouter();
   const searchParams = useSearchParams();
-
-  const q = searchParams.get("q")?.trim() ?? "";
-  const filter = parseFilter(searchParams.get("filter"));
-  const page = parsePage(searchParams.get("page"));
+  const q = searchParams.get("q") ?? "";
+  const sort = parseSort(searchParams.get("sort"));
   const selectedPmid = searchParams.get("pmid");
 
-  const [status, setStatus] = useState<Status>("idle");
   const [papers, setPapers] = useState<Paper[]>([]);
-  const [total, setTotal] = useState<number>(0);
-  const [errorMessage, setErrorMessage] = useState<string>("");
+  const [translated, setTranslated] = useState<{
+    query: string;
+    note: string;
+  } | null>(null);
+  const [total, setTotal] = useState(0);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [showQueryDetail, setShowQueryDetail] = useState(false);
 
-  const [recStatus, setRecStatus] = useState<RecommendStatus>("idle");
-  const [recMap, setRecMap] = useState<RecMap>({});
-  const recAbortRef = useRef<AbortController | null>(null);
-  const searchAbortRef = useRef<AbortController | null>(null);
-
-  // 추천 가중치 — localStorage(혹은 서버 동기화로 갱신된 값)에서 복원
-  const [weights, setWeights] = useState<RecommendWeightsType>(
-    DEFAULT_RECOMMEND_WEIGHTS
+  const [miniSummaries, setMiniSummaries] = useState<Map<string, MiniSummary>>(
+    () => new Map()
   );
-  useEffect(() => {
-    // 마운트 시 1회 + 외부(서버 동기화)에서 갱신될 때마다 다시 반영.
-    // 같은 값이면 prev 그대로 반환해 React 리렌더 차단 — 무한 루프 방지.
-    // eslint-disable-next-line react-hooks/set-state-in-effect
-    setWeights(getStoredWeights());
-    return subscribeWeights(() => {
-      const fresh = getStoredWeights();
-      setWeights((prev) => (weightsAreEqual(prev, fresh) ? prev : fresh));
-    });
-  }, []);
+  const [miniLoading, setMiniLoading] = useState<Set<string>>(() => new Set());
 
-  function pushParams(updates: Record<string, string | null>) {
-    const next = new URLSearchParams(searchParams.toString());
-    for (const [k, v] of Object.entries(updates)) {
-      if (v === null || v === "") next.delete(k);
-      else next.set(k, v);
-    }
-    const qs = next.toString();
-    router.replace(qs ? `/?${qs}` : "/", { scroll: false });
-  }
+  // 같은 (q, sort) 조합을 중복 호출하지 않도록 마지막 키를 기억
+  const lastFetchedRef = useRef<string>("");
+  // 자동으로 미니 요약을 시도한 검색 키(중복 자동요청 방지)
+  const autoMiniKeyRef = useRef<string>("");
 
-  function onSearch(query: string, nextFilter: NeedFilter) {
-    pushParams({ q: query, filter: nextFilter, page: "1", pmid: null });
-  }
-
-  function gotoPage(n: number) {
-    pushParams({ page: String(n), pmid: null });
-    if (typeof window !== "undefined") window.scrollTo({ top: 0, behavior: "smooth" });
-  }
-
-  function selectPmid(pmid: string | null) {
-    pushParams({ pmid });
-  }
-
-  async function fetchRecommendations(
-    fetchedPapers: Paper[],
-    filterArg: NeedFilter,
-    weightsArg: RecommendWeightsType
-  ) {
-    recAbortRef.current?.abort();
-    const ac = new AbortController();
-    recAbortRef.current = ac;
-
-    setRecMap({});
-    setRecStatus("loading");
-
-    try {
-      const res = await fetch("/api/recommend", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          papers: fetchedPapers,
-          filter: filterArg,
-          weights: weightsArg,
-        }),
-        signal: ac.signal,
-      });
-      if (!res.ok) {
-        setRecStatus("error");
-        return;
+  const updateUrl = useCallback(
+    (next: { q?: string; sort?: SortMode; pmid?: string | null }) => {
+      const params = new URLSearchParams(searchParams.toString());
+      if (next.q !== undefined) {
+        if (next.q) params.set("q", next.q);
+        else params.delete("q");
       }
-      const data = (await res.json()) as RecommendResponse;
-      const next: RecMap = {};
-      data.recommendations.forEach((r, idx) => {
-        next[r.pmid] = { reason: r.reason, rank: idx + 1 };
-      });
-      setRecMap(next);
-      setRecStatus(data.recommendations.length > 0 ? "ready" : "error");
-    } catch (err) {
-      if (ac.signal.aborted) return;
-      console.error("[recommend]", err);
-      setRecStatus("error");
-    }
-  }
-
-  // URL 쿼리(q/filter/page)가 바뀌면 자동으로 검색 실행.
-  // 모든 setState는 async 핸들 안에서 호출(이펙트 본문 동기 호출 금지 규칙 준수).
-  useEffect(() => {
-    searchAbortRef.current?.abort();
-    const ac = new AbortController();
-    searchAbortRef.current = ac;
-
-    async function run() {
-      // 검색어 비어 있으면 초기 상태로 복귀
-      if (!q) {
-        setStatus("idle");
-        setPapers([]);
-        setTotal(0);
-        setRecMap({});
-        setRecStatus("idle");
-        return;
+      if (next.sort !== undefined) params.set("sort", next.sort);
+      if (next.pmid !== undefined) {
+        if (next.pmid) params.set("pmid", next.pmid);
+        else params.delete("pmid");
       }
+      router.push(`/?${params.toString()}`, { scroll: false });
+    },
+    [router, searchParams]
+  );
 
-      setStatus("loading");
-      setErrorMessage("");
-      // 페이지 전환 시엔 추천 패널 즉시 비우기 (page=1만 추천 대상)
-      setRecMap({});
-      setRecStatus("idle");
+  const handleSearchSubmit = useCallback(
+    (value: string) => {
+      // 새 검색을 시작하면 기존 선택은 풀어줌
+      updateUrl({ q: value, sort, pmid: null });
+    },
+    [updateUrl, sort]
+  );
 
-      const start = (page - 1) * PAGE_SIZE;
-      const params = new URLSearchParams({
-        q,
-        filter,
-        retmax: String(PAGE_SIZE),
-        start: String(start),
+  const handleSortChange = useCallback(
+    (next: SortMode) => {
+      if (next === sort) return;
+      updateUrl({ sort: next });
+    },
+    [updateUrl, sort]
+  );
+
+  const handleSelect = useCallback(
+    (pmid: string) => {
+      updateUrl({ pmid: pmid === selectedPmid ? null : pmid });
+    },
+    [updateUrl, selectedPmid]
+  );
+
+  const requestMiniSummary = useCallback(
+    async (targets: Paper[]) => {
+      const remaining = targets.filter(
+        (p) => !miniSummaries.has(p.pmid) && !miniLoading.has(p.pmid)
+      );
+      if (remaining.length === 0) return;
+
+      setMiniLoading((prev) => {
+        const next = new Set(prev);
+        for (const p of remaining) next.add(p.pmid);
+        return next;
       });
 
       try {
-        const res = await fetch(`/api/pubmed?${params.toString()}`, {
-          signal: ac.signal,
+        const body: SummarizeMiniRequest = { papers: remaining };
+        const res = await fetch("/api/summarize", {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify(body),
         });
-        const data = (await res.json()) as PubmedSearchResponse | { error: string };
-        if (ac.signal.aborted) return;
-
-        if (!res.ok || "error" in data) {
-          const msg = "error" in data ? data.error : `HTTP ${res.status}`;
-          setErrorMessage(msg);
-          setPapers([]);
-          setTotal(0);
-          setStatus("error");
-          return;
+        const json: SummarizeMiniResponse | { error?: string } = await res.json();
+        if (res.ok && "summaries" in json) {
+          setMiniSummaries((prev) => {
+            const next = new Map(prev);
+            for (const s of json.summaries) next.set(s.pmid, s);
+            return next;
+          });
+        } else {
+          // 실패는 조용히 무시 — 한눈에 요약은 부가 정보
+          console.warn(
+            "[paperis] mini summary 실패",
+            "error" in json ? json.error : res.status
+          );
         }
-
-        setPapers(data.papers);
-        setTotal(data.total);
-        setStatus("success");
-        // 추천 트리거는 weights/papers 의존 effect에서 처리 (가중치 변경에도 자동 재요청)
       } catch (err) {
-        if (ac.signal.aborted) return;
-        setErrorMessage(err instanceof Error ? err.message : "네트워크 오류");
-        setPapers([]);
-        setTotal(0);
-        setStatus("error");
+        console.warn("[paperis] mini summary 네트워크 오류", err);
+      } finally {
+        setMiniLoading((prev) => {
+          const next = new Set(prev);
+          for (const p of remaining) next.delete(p.pmid);
+          return next;
+        });
       }
-    }
+    },
+    [miniSummaries, miniLoading]
+  );
 
-    void run();
-    return () => ac.abort();
-  }, [q, filter, page]);
+  const handleLoadMini = useCallback(
+    (pmid: string) => {
+      const target = papers.find((p) => p.pmid === pmid);
+      if (!target) return;
+      void requestMiniSummary([target]);
+    },
+    [papers, requestMiniSummary]
+  );
 
-  const loading = status === "loading";
-
-  // 추천/일반 섹션 분리 (page=1에서만 의미)
-  const { recommendedPapers, otherPapers } = useMemo(() => {
-    if (recStatus !== "ready") {
-      return { recommendedPapers: [] as Paper[], otherPapers: papers };
-    }
-    const byPmid = new Map(papers.map((p) => [p.pmid, p] as const));
-    const orderedPmids = Object.entries(recMap)
-      .sort((a, b) => a[1].rank - b[1].rank)
-      .map(([pmid]) => pmid);
-    const rec: Paper[] = [];
-    for (const pmid of orderedPmids) {
-      const p = byPmid.get(pmid);
-      if (p) rec.push(p);
-    }
-    const recSet = new Set(orderedPmids);
-    const rest = papers.filter((p) => !recSet.has(p.pmid));
-    return { recommendedPapers: rec, otherPapers: rest };
-  }, [papers, recMap, recStatus]);
-
-  // 카트도 selectedPaper 후보로 — 검색 결과에 없는 카트 항목도 우측 상세에 표시 가능
-  const [cartItems, setCartItems] = useState<CartItem[]>([]);
+  // q + sort 변화에 따라 /api/search 호출
   useEffect(() => {
-    // localStorage(외부 시스템) 동기화 — 마운트 1회 + 변경 이벤트 구독
-    // eslint-disable-next-line react-hooks/set-state-in-effect
-    setCartItems(getCart());
-    return subscribeCart(() => setCartItems(getCart()));
-  }, []);
-
-  const selectedPaper = useMemo(() => {
-    if (!selectedPmid) return null;
-    const fromSearch = papers.find((p) => p.pmid === selectedPmid);
-    if (fromSearch) return fromSearch;
-    const fromCart = cartItems.find((it) => it.pmid === selectedPmid);
-    if (fromCart) return fromCart.paper;
-    return null;
-  }, [papers, selectedPmid, cartItems]);
-
-  // 추천 트리거: papers / filter / weights 변경 시 1페이지에서만 재호출. debounce 350ms.
-  useEffect(() => {
-    if (status !== "success" || page !== 1 || papers.length === 0) {
-      if (recStatus !== "idle") {
-        // 1페이지가 아니거나 결과가 없으면 추천 패널 비움 (state 동기화)
-        // eslint-disable-next-line react-hooks/set-state-in-effect
-        setRecStatus("idle");
-      }
+    const trimmed = q.trim();
+    const fetchKey = `${trimmed}::${sort}`;
+    if (!trimmed) {
+      setPapers([]);
+      setTranslated(null);
+      setTotal(0);
+      setError(null);
+      setMiniSummaries(new Map());
+      setMiniLoading(new Set());
+      lastFetchedRef.current = "";
+      autoMiniKeyRef.current = "";
       return;
     }
-    const timer = setTimeout(() => {
-      void fetchRecommendations(papers, filter, weights);
-    }, 350);
-    return () => clearTimeout(timer);
-    // fetchRecommendations는 매 렌더 새로 만들어지므로 deps에서 제외
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [papers, filter, weights, status, page]);
+    if (lastFetchedRef.current === fetchKey) return;
+    lastFetchedRef.current = fetchKey;
+    // 새 검색 → 이전 미니 요약 비움
+    setMiniSummaries(new Map());
+    setMiniLoading(new Set());
+    autoMiniKeyRef.current = "";
 
-  // 선택한 pmid가 현재 페이지 결과에 없으면 URL 정리
+    let cancelled = false;
+    const controller = new AbortController();
+
+    (async () => {
+      setLoading(true);
+      setError(null);
+      try {
+        const body: SearchRequest = { q: trimmed, sort };
+        const res = await fetch("/api/search", {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify(body),
+          signal: controller.signal,
+        });
+        const json: SearchResponse | { error?: string } = await res.json();
+        if (cancelled) return;
+        if (!res.ok || !("papers" in json)) {
+          const msg =
+            "error" in json && json.error
+              ? json.error
+              : `검색 실패 (${res.status})`;
+          setError(msg);
+          setPapers([]);
+          setTranslated(null);
+          setTotal(0);
+          return;
+        }
+        setPapers(json.papers);
+        setTranslated({ query: json.query, note: json.note });
+        setTotal(json.total);
+        setClientCachedQuery(trimmed, json.query, json.note);
+      } catch (err) {
+        if (cancelled || (err as Error).name === "AbortError") return;
+        setError(err instanceof Error ? err.message : "검색 실패");
+        setPapers([]);
+        setTotal(0);
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+      controller.abort();
+    };
+  }, [q, sort]);
+
+  // 입력 중 캐시된 변환식이 있으면 미리 보여준다 (선택, 시각적 힌트만)
   useEffect(() => {
-    if (selectedPmid && status === "success" && !selectedPaper) {
-      const next = new URLSearchParams(searchParams.toString());
-      next.delete("pmid");
-      const qs = next.toString();
-      router.replace(qs ? `/?${qs}` : "/", { scroll: false });
+    if (!q.trim()) {
+      setTranslated(null);
+      return;
     }
-  }, [selectedPmid, status, selectedPaper, searchParams, router]);
+    if (translated) return;
+    const cached = getClientCachedQuery(q);
+    if (cached) setTranslated(cached);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [q]);
 
-  const hasSelection = Boolean(selectedPaper);
-  const totalPages = total > 0 ? Math.min(Math.ceil(total / PAGE_SIZE), 500) : 0;
-  const pageStart = (page - 1) * PAGE_SIZE + 1;
-  const pageEnd = (page - 1) * PAGE_SIZE + papers.length;
+  // 결과가 도착하면 상위 3개 미니 요약을 자동으로 batch 호출 (검색 키당 1회)
+  useEffect(() => {
+    if (loading || papers.length === 0) return;
+    const fetchKey = lastFetchedRef.current;
+    if (!fetchKey || autoMiniKeyRef.current === fetchKey) return;
+    autoMiniKeyRef.current = fetchKey;
+    void requestMiniSummary(papers.slice(0, 3));
+  }, [loading, papers, requestMiniSummary]);
+
+  const selectedPaper =
+    selectedPmid != null ? papers.find((p) => p.pmid === selectedPmid) : null;
 
   return (
-    <div className="flex flex-1 flex-col bg-zinc-50 dark:bg-black">
-      <header className="sticky top-0 z-10 border-b border-zinc-200 bg-zinc-50/80 backdrop-blur dark:border-zinc-800 dark:bg-black/70">
-        <div className="mx-auto flex w-full max-w-6xl flex-col gap-3 px-4 py-4 sm:px-6">
-          <div className="flex items-center gap-2">
+    <div className="flex w-full flex-1 flex-col">
+      <header className="sticky top-0 z-10 border-b border-zinc-200 bg-white/85 backdrop-blur dark:border-zinc-800 dark:bg-zinc-950/85">
+        <div className="mx-auto flex max-w-6xl flex-col gap-3 px-4 py-3 sm:py-4">
+          <div className="flex items-center justify-between gap-4">
             <Link
               href="/"
-              aria-label="홈으로"
-              className="flex items-center gap-2 rounded-lg outline-none transition hover:opacity-80 focus-visible:ring-2 focus-visible:ring-zinc-400"
+              className="text-lg font-semibold tracking-tight text-zinc-900 dark:text-zinc-100"
             >
-              <span className="inline-flex h-7 w-7 items-center justify-center rounded-lg bg-zinc-900 text-xs font-bold text-white dark:bg-zinc-100 dark:text-zinc-900">
-                P
-              </span>
-              <span className="text-lg font-semibold tracking-tight text-zinc-900 dark:text-zinc-50">
-                Paperis
-              </span>
-              <span className="ml-2 hidden text-xs text-zinc-500 dark:text-zinc-400 sm:inline">
-                From papers to practice
+              Paperis
+              <span className="ml-1.5 align-text-top text-[10px] font-mono text-zinc-400">
+                v2
               </span>
             </Link>
-            <span className="ml-auto flex items-center gap-2">
-              <CartPanel />
-              <AuthMenu />
-            </span>
+            <div className="flex items-center gap-2">
+              <TtsQueueBadge />
+              <LibraryLink />
+            </div>
           </div>
-          <SearchBar
-            initialQuery={q}
-            initialFilter={filter}
-            disabled={loading}
-            onSearch={onSearch}
-          />
+          <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+            <div className="flex-1">
+              <SearchBar
+                initialValue={q}
+                loading={loading}
+                onSubmit={handleSearchSubmit}
+              />
+            </div>
+            <SortControl
+              value={sort}
+              onChange={handleSortChange}
+              disabled={loading}
+            />
+          </div>
+          {translated && q.trim() ? (
+            <div className="text-xs text-zinc-500">
+              <button
+                type="button"
+                onClick={() => setShowQueryDetail((v) => !v)}
+                className="font-mono text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-300"
+                title="변환된 검색식 보기/숨기기"
+              >
+                {showQueryDetail ? "▾" : "▸"} 검색식
+              </button>
+              {showQueryDetail ? (
+                <span className="ml-2 break-all font-mono text-zinc-500 dark:text-zinc-400">
+                  {translated.query}
+                </span>
+              ) : null}
+              {translated.note ? (
+                <span className="ml-2 italic text-zinc-400">
+                  · {translated.note}
+                </span>
+              ) : null}
+            </div>
+          ) : null}
         </div>
       </header>
 
-      <main className="mx-auto w-full max-w-6xl flex-1 px-4 py-6 sm:px-6">
-        <div className="flex flex-col gap-6 md:grid md:grid-cols-[minmax(0,1fr)_minmax(0,1.4fr)] md:gap-6">
-          {/* 목록 패널 */}
-          <section
-            className={
-              "flex flex-col gap-4 " +
-              (hasSelection ? "hidden md:flex" : "flex")
-            }
-          >
-            {status === "idle" ? (
-              <div className="flex flex-col gap-2">
-                <p className="text-xs uppercase tracking-wide text-zinc-400">
-                  추천 검색
+      <main className="mx-auto flex w-full max-w-6xl flex-1 gap-6 px-4 py-6 pb-32">
+        {/* 결과 목록: lg 미만에서 패널이 떠 있을 땐 숨김 (단일 컬럼 흐름) */}
+        <section
+          className={[
+            "min-w-0 flex-1",
+            selectedPaper ? "hidden lg:block" : "block",
+          ].join(" ")}
+        >
+          {error ? (
+            <div className="mb-4 rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700 dark:border-red-900 dark:bg-red-950 dark:text-red-300">
+              {error}
+            </div>
+          ) : null}
+          {!q.trim() && !loading ? (
+            <div className="rounded-2xl border border-dashed border-zinc-300 bg-white p-10 text-center dark:border-zinc-700 dark:bg-zinc-950">
+              <h1 className="text-2xl font-semibold text-zinc-800 dark:text-zinc-100">
+                자연어로 PubMed를 검색하세요
+              </h1>
+              <p className="mt-2 text-sm text-zinc-500">
+                질문을 그대로 입력하면 Gemini가 검색식으로 바꿔
+                돌립니다.
+              </p>
+            </div>
+          ) : null}
+
+          {q.trim() && !loading && papers.length === 0 && !error ? (
+            <p className="text-sm text-zinc-500">검색 결과가 없습니다.</p>
+          ) : null}
+
+          {(papers.length > 0 || loading) && (
+            <>
+              {!loading && total > 0 ? (
+                <p className="mb-3 text-xs text-zinc-500">
+                  PubMed 전체 결과 {total.toLocaleString()}건 중 상위{" "}
+                  {papers.length}건 표시
                 </p>
-                <div className="flex flex-wrap gap-2">
-                  {SUGGESTIONS.map((s) => (
-                    <button
-                      key={s.label}
-                      type="button"
-                      onClick={() => onSearch(s.query, s.filter)}
-                      className="rounded-full border border-zinc-200 bg-white px-3 py-1.5 text-xs text-zinc-700 transition hover:border-zinc-400 dark:border-zinc-800 dark:bg-zinc-900 dark:text-zinc-300 dark:hover:border-zinc-600"
-                    >
-                      {s.label}
-                    </button>
-                  ))}
-                </div>
-              </div>
-            ) : null}
+              ) : null}
+              <ResultsList
+                papers={papers}
+                loading={loading}
+                selectedPmid={selectedPmid}
+                miniSummaries={miniSummaries}
+                miniLoading={miniLoading}
+                onSelect={handleSelect}
+                onLoadMini={handleLoadMini}
+              />
+            </>
+          )}
+        </section>
 
-            {loading ? (
-              <div className="flex flex-col gap-3">
-                {[0, 1, 2, 3].map((i) => (
-                  <div
-                    key={i}
-                    className="h-24 animate-pulse rounded-2xl border border-zinc-200 bg-white/60 dark:border-zinc-800 dark:bg-zinc-900/60"
-                  />
-                ))}
-              </div>
-            ) : null}
-
-            {status === "error" ? (
-              <div className="rounded-2xl border border-red-200 bg-red-50 p-4 text-sm text-red-800 dark:border-red-900/50 dark:bg-red-950/40 dark:text-red-300">
-                {errorMessage || "검색 중 문제가 발생했습니다."}
-              </div>
-            ) : null}
-
-            {status === "success" ? (
-              <>
-                <div className="flex items-baseline justify-between gap-2">
-                  <h2 className="text-sm font-medium text-zinc-600 dark:text-zinc-400">
-                    검색 결과{" "}
-                    <span className="font-semibold text-zinc-900 dark:text-zinc-100">
-                      {total.toLocaleString()}
-                    </span>
-                    건
-                    {totalPages > 0 ? (
-                      <span className="ml-1 text-xs text-zinc-400">
-                        · {pageStart}–{pageEnd}
-                      </span>
-                    ) : null}
-                  </h2>
-                  <span className="text-xs text-zinc-400">
-                    “{q}” · {filter}
-                  </span>
-                </div>
-
-                {papers.length === 0 ? (
-                  <div className="rounded-2xl border border-dashed border-zinc-300 bg-white p-8 text-center text-sm text-zinc-500 dark:border-zinc-700 dark:bg-zinc-900">
-                    결과가 없습니다. 다른 키워드로 검색해 보세요.
-                  </div>
-                ) : (
-                  <>
-                    {/* 추천 — 1페이지에서만 */}
-                    {page === 1 ? (
-                      <section className="flex flex-col gap-3">
-                        <RecommendWeights value={weights} onChange={setWeights} />
-                        <div className="flex items-baseline justify-between">
-                          <h3 className="text-xs font-semibold uppercase tracking-wide text-amber-700 dark:text-amber-400">
-                            AI 추천 3편
-                          </h3>
-                          {recStatus === "loading" ? (
-                            <span className="text-[11px] text-zinc-400">분석 중…</span>
-                          ) : recStatus === "error" ? (
-                            <button
-                              type="button"
-                              onClick={() => fetchRecommendations(papers, filter, weights)}
-                              className="text-[11px] text-zinc-500 underline-offset-2 hover:underline dark:text-zinc-400"
-                            >
-                              추천 다시 시도
-                            </button>
-                          ) : null}
-                        </div>
-
-                        {recStatus === "loading" ? (
-                          <div className="flex flex-col gap-3">
-                            {[0, 1, 2].map((i) => (
-                              <div
-                                key={i}
-                                className="h-20 animate-pulse rounded-2xl border border-amber-200/60 bg-amber-50/40 dark:border-amber-900/40 dark:bg-amber-950/20"
-                              />
-                            ))}
-                          </div>
-                        ) : recStatus === "ready" && recommendedPapers.length > 0 ? (
-                          <PaperList
-                            papers={recommendedPapers}
-                            recommendations={recMap}
-                            compact
-                            onSelect={selectPmid}
-                            selectedPmid={selectedPmid}
-                          />
-                        ) : null}
-                      </section>
-                    ) : null}
-
-                    <section className="flex flex-col gap-3">
-                      <h3 className="text-xs font-semibold uppercase tracking-wide text-zinc-500 dark:text-zinc-400">
-                        {page === 1 && recStatus === "ready"
-                          ? "전체 결과"
-                          : "검색 결과"}
-                      </h3>
-                      <PaperList
-                        papers={page === 1 && recStatus === "ready" ? otherPapers : papers}
-                        startRank={
-                          (page - 1) * PAGE_SIZE +
-                          (page === 1 && recStatus === "ready"
-                            ? recommendedPapers.length + 1
-                            : 1)
-                        }
-                        compact
-                        onSelect={selectPmid}
-                        selectedPmid={selectedPmid}
-                      />
-                    </section>
-
-                    {/* 페이지네이션 */}
-                    <Pagination
-                      page={page}
-                      totalPages={totalPages}
-                      onChange={gotoPage}
-                    />
-                  </>
-                )}
-              </>
-            ) : null}
-          </section>
-
-          {/* 상세 패널 */}
-          <aside
-            className={
-              "md:sticky md:top-[132px] md:h-[calc(100vh-148px)] md:overflow-y-auto md:pr-1 " +
-              (hasSelection ? "block" : "hidden md:block")
-            }
-          >
-            {selectedPaper ? (
-              <>
-                <div className="mb-3 flex items-center justify-between md:hidden">
-                  <button
-                    type="button"
-                    onClick={() => selectPmid(null)}
-                    className="inline-flex h-8 items-center gap-1 rounded-full border border-zinc-300 bg-white px-3 text-xs font-medium text-zinc-700 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-300"
-                  >
-                    ← 목록
-                  </button>
-                  <span className="text-[11px] text-zinc-500 dark:text-zinc-400">
-                    PMID {selectedPaper.pmid}
-                  </span>
-                </div>
-                <PaperCard
-                  key={selectedPaper.pmid}
-                  paper={selectedPaper}
-                  rank={
-                    (page - 1) * PAGE_SIZE +
-                    papers.findIndex((p) => p.pmid === selectedPaper.pmid) +
-                    1
-                  }
-                  recommendationReason={recMap[selectedPaper.pmid]?.reason}
-                  recommendationRank={recMap[selectedPaper.pmid]?.rank}
-                />
-              </>
-            ) : (
-              <div className="hidden h-full items-center justify-center rounded-2xl border border-dashed border-zinc-300 bg-white p-10 text-center text-sm text-zinc-500 dark:border-zinc-700 dark:bg-zinc-900 md:flex">
-                {status === "success" && papers.length > 0
-                  ? "목록에서 논문을 고르면 여기에 상세 내용이 표시됩니다."
-                  : "검색하면 결과가 왼쪽에 나타납니다."}
-              </div>
-            )}
-          </aside>
-        </div>
-
-        <footer className="mt-10 text-center text-xs text-zinc-400">
-          Data from PubMed / NCBI E-utilities · Paperis MVP
-        </footer>
+        {/* 디테일 패널:
+            - lg+ : 항상 보이고 (선택 안되어 있으면 placeholder), 사이드 컬럼
+            - lg 미만 : 선택된 논문이 있을 때만 보이고 메인 영역 통째로 차지 */}
+        <aside
+          className={[
+            "shrink-0 lg:block lg:w-[420px]",
+            selectedPaper ? "block w-full" : "hidden",
+          ].join(" ")}
+        >
+          {selectedPaper ? (
+            <PaperDetailPanel
+              key={selectedPaper.pmid}
+              paper={selectedPaper}
+              onBack={() => updateUrl({ pmid: null })}
+            />
+          ) : (
+            <div className="sticky top-32 rounded-2xl border border-dashed border-zinc-300 bg-white p-6 text-sm text-zinc-500 dark:border-zinc-700 dark:bg-zinc-950">
+              왼쪽 카드를 클릭하면 상세 정보가 여기에 표시됩니다.
+            </div>
+          )}
+        </aside>
       </main>
     </div>
   );
@@ -519,7 +385,7 @@ function HomeImpl() {
 export default function Home() {
   return (
     <Suspense fallback={null}>
-      <HomeImpl />
+      <HomeInner />
     </Suspense>
   );
 }

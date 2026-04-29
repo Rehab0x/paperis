@@ -1,15 +1,15 @@
-# Paperis — CLAUDE.md
+# Paperis v2 — CLAUDE.md
 
-> 외부 노출 문서는 [README.md](README.md), 작업 일지는 [TODO.md](TODO.md). 이 파일은 **AI 코드 어시스턴트용 컨텍스트·컨벤션** 문서.
+> 외부 노출 문서는 [README.md](README.md). 이 파일은 **AI 코드 어시스턴트용 컨텍스트·컨벤션** 문서. 이 문서는 v2 브랜치 전용이며, master에는 v1.1 시점의 CLAUDE.md가 그대로 있다.
 
 ## 프로젝트 개요
 
-**Paperis**는 바쁜 의료인이 짬짬이 최신 PubMed 연구 지견을 따라갈 수 있게 해주는 서비스다. 검색·요약·듣기·연관학습·full-text·재생목록을 한 흐름으로 제공한다.
+**Paperis v2**는 v1 시리즈를 한 번 단순화해서 다시 시작한 라인이다. 핵심 가치는 똑같다 — 바쁜 의료인이 짬짬이 PubMed 최신 연구를 따라갈 수 있게 한다. 다만 v2는 검색-청취 흐름을 한 번에 보이게 깎아냈다.
 
+- 현재: v2 브랜치 (master는 v1.1.0 라이브)
+- 타겟: 재활의학과 의사 (뇌졸중 재활 특화)
 - 슬로건: "From papers to practice"
-- 현재 버전: v1.1.0 (2026-04-26, paperis.vercel.app 라이브)
-- MVP 타겟: 재활의학과 의사 (뇌졸중 재활 특화)
-- 향후 확장: 의학 전 분야 → 전 과학 분야
+- 출퇴근 청취가 1순위 시나리오 — 새 기능을 평가할 때 항상 "이게 출퇴근 청취 흐름에 도움이 되는가?"부터 묻는다.
 
 ---
 
@@ -19,169 +19,106 @@
 |------|------|
 | 언어 | TypeScript (strict) |
 | 프레임워크 | Next.js 16 (App Router, Turbopack) |
-| 스타일링 | Tailwind CSS v4 |
-| AI 요약 / 추천 이유 / 연관 쿼리 | Gemini 2.5 Flash (`@google/genai`, streaming) |
-| TTS | Gemini TTS (`gemini-2.5-flash-preview-tts`, 단일/멀티스피커) |
+| 스타일 | Tailwind CSS v4 (CSS-first, config 파일 없음 — `app/globals.css`의 `@import "tailwindcss"`) |
+| 자연어 → 검색식 | Gemini 2.5 Flash Lite (`gemini-2.5-flash-lite`, `responseSchema`) |
+| 요약 / Narration | Gemini 2.5 Flash (`gemini-2.5-flash`, streaming) |
+| TTS | Gemini TTS (`gemini-2.5-flash-preview-tts`, narration only) |
 | 논문 데이터 | PubMed E-utilities (esearch + efetch) |
-| 인용수 / 저널 메트릭 | OpenAlex Works API (무료, 키 불필요) |
-| PMC 본문 | PMC E-utilities efetch (JATS XML) |
-| PDF 파싱 | unpdf (pdfjs-dist serverless 빌드) |
-| 인증 | Auth.js v5 (`next-auth@beta`) + Google OAuth |
-| DB | Neon Postgres + Drizzle ORM (`@auth/drizzle-adapter`) |
+| 인용수 / 저널 메트릭 | OpenAlex Works API |
+| 풀텍스트 | Unpaywall → Europe PMC → PMC efetch → unpdf(업로드) |
+| 오디오 저장 | IndexedDB (`idb`) |
 | 배포 | Vercel |
 
+> **인증/DB 없음.** v1에 있던 Auth.js, Neon Postgres, Drizzle은 v2에서 모두 제거. 사용자 데이터는 브라우저 안에만 (localStorage + IndexedDB).
+
 ---
 
-## 프로젝트 구조
+## 환경변수 (.env.local)
 
 ```
-app/
-  page.tsx                  메인 화면 (마스터-디테일 + URL state)
-  layout.tsx                루트 레이아웃 (PWA 메타, SW 등록)
-  manifest.ts               Web App Manifest
-  api/
-    pubmed/route.ts         논문 검색 (q, filter, start, retmax)
-    recommend/route.ts      4축 가중 스코어링 + Gemini 이유 → 추천 3편
-    related/route.ts        시드 + 힌트 → 연관 논문
-    summarize/route.ts      읽기 모드 스트리밍 요약
-    tts/route.ts            한 편 narration / dialogue 합성 (audio/wav)
-    playlist/route.ts       여러 편 짧은 narration 병렬 합성 (트랙 JSON+base64)
-    pmc/route.ts            Open Access full-text 추출
-    pdf/route.ts            PDF 업로드 → 텍스트 추출 (서버 저장 X)
-components/
-  SearchBar, PaperList, PaperCard, PaperModal
-  Pagination, RecommendWeights
-  CartButton, CartPanel, PlaylistPlayer
-  AudioPlayer, PdfUpload, RegisterSW
-lib/
-  pubmed.ts, pmc.ts         PubMed/PMC API 클라이언트
-  gemini.ts                 streamSummary / explainRecommendations / generateRelatedQuery
-  tts.ts                    Gemini TTS + WAV 헤더 수동 래핑
-  openalex.ts               PMID 일괄 enrichment
-  scoring.ts                4축 결정론적 점수 계산
-  cart.ts                   장바구니 (localStorage + custom event)
-  card-cache.ts             카드별 세션 캐시 (pmid 키 모듈 Map)
-  xml-utils.ts              PubMed/PMC XML 헬퍼
-types/index.ts              공통 타입
-public/sw.js, public/icons/ PWA 자산
+GEMINI_API_KEY=        # 필수
+PUBMED_API_KEY=        # 권장 (없으면 초당 3회 제한)
+UNPAYWALL_EMAIL=       # 권장 (없으면 풀텍스트 체인 1단계 스킵)
 ```
 
 ---
 
-## 환경변수 (.env.local, Git 제외)
+## 핵심 흐름
 
-```
-GEMINI_API_KEY=        # 필수. 요약 / 추천 이유 / 연관 쿼리 / TTS / 플레이리스트
-PUBMED_API_KEY=        # 선택. 없어도 동작 (초당 3회 제한)
+### 1. 검색 (`/api/search`)
+- 입력: `{ q: string (자연어), sort: SortMode, retmax?, retstart? }`
+- 처리: `getCachedQuery(q)` → 미스 시 `translateNaturalLanguage(q)` (Gemini 2.5 Flash Lite, JSON 모드, `{ query, note }`) → `searchPubMed(query, sort, ...)` (esearch + efetch + parser) → `enrichPapers(papers)` (OpenAlex 일괄, soft-fail) → sort=citations이면 `citedByCount` desc 후정렬
+- 응답: `{ query, note, papers, total, sort, cached }`
+- 캐시: 서버 모듈 LRU(`lib/query-cache.ts`, 24h TTL, 200개) + 클라 localStorage(`lib/client-cache.ts`, 24h TTL, 50개)
+- URL이 source of truth — `?q&sort&pmid`. SearchBar는 prop 변경 → useEffect로 입력값 동기화 (master 패턴 보존)
 
-# v1.1+ 로그인/계정 동기화 (없으면 비로그인 모드만 동작)
-DATABASE_URL=          # Neon Postgres pooled
-AUTH_SECRET=
-AUTH_GOOGLE_ID=
-AUTH_GOOGLE_SECRET=
-```
+### 2. 미니 요약 (`/api/summarize`)
+- `lib/paper-type.ts` `classifyPaperType` → `"research"` | `"review"`
+- `generateMiniSummaries(papers, language)` — Gemini 2.5 Flash, `responseSchema`로 `{ summaries: [{ pmid, paperType, bullets[] }] }`. 4-5 bullet, 각 60자 이내
+- 프롬프트가 paperType별로 분기 (연구는 N/효과크기/p값 강조, 리뷰는 합의/논쟁 강조)
+- 페이지에서 상위 3개는 자동 batch, 4번~ 카드는 클릭 시 단일
 
----
+### 3. 긴 요약 (`/api/summarize/read`)
+- `streamSummary({ paper, mode: "read", language, sourceLabel })` 제너레이터
+- plain text streaming (response body로 chunk 그대로 전송, 클라가 ReadableStream으로 점진 렌더)
+- 풀텍스트가 있으면 `paper.abstract` 자리에 본문 주입 + `sourceLabel` 지정 → 시스템 인스트럭션이 abstract-only disclaimer 자동 생략
 
-## 핵심 기능 (사용자 관점)
+### 4. 풀텍스트 체인 (`/api/fulltext`)
+- 순서: Unpaywall(DOI 필요 + UNPAYWALL_EMAIL) → Europe PMC(DOI/PMCID/PMID) → PMC efetch(PMCID)
+- 각 단계 try/catch 후 다음으로 폴백. 모두 실패 시 `{ ok: false, attempted: [...] }` 반환 → 클라가 `PdfUpload` 슬롯 노출
+- 응답 텍스트는 30k자로 트림 (head 70% + tail 25% + 중간 생략 마커)
+- HTML→텍스트는 `lib/fulltext/html-extract.ts`에서 직접 처리 (Readability 의존 없음). 정확도 부족 시 추후 Readability 도입 검토
 
-자세한 동작은 [README.md](README.md) 참고. 여기는 **AI가 코드 작업할 때 알아야 할 흐름**만.
+### 5. TTS (`/api/tts`)
+- 입력: `{ paper, language, providerName?, voice?, sourceLabel?, fullText? }`
+- 처리: `generateNarrationText(paper, language, sourceLabel)`로 narration 스크립트 생성 → `getTtsProvider(providerName).synthesize({ text, language, voice })` → `audio/wav` 응답 + `x-audio-duration-ms` 등 메타 헤더
+- Gemini provider는 24kHz/16-bit/mono PCM을 받아 RIFF 헤더로 감싼 WAV 반환 — 모든 DataView write가 little-endian (`true`)이어야 브라우저 재생 가능
+- 새 provider 추가 시 `lib/tts/{provider-name}.ts`만 작성하고 `lib/tts/index.ts`의 registry에 등록
 
-### 검색 (`/api/pubmed`)
-- esearch → efetch 파이프라인. esearch는 `count`(전체)와 `idlist`(현재 페이지)를 줌.
-- 페이지네이션은 `start` 쿼리 파라미터(retstart). 페이지 크기 20 고정.
-- URL이 검색 상태의 source of truth — `?q&filter&page&pmid`. SearchBar는 prop 변경에 useEffect로 동기화(외부 변화 → 입력값 갱신).
-
-### 추천 (`/api/recommend`)
-- **결정론적 + 설명** 분리. 픽킹은 `lib/scoring.ts` 4축 가중 점수 (recency / citations / journal / niche).
-  - 인용수와 `2yr_mean_citedness`는 `lib/openalex.ts`로 일괄 enrichment.
-  - 가중치는 클라이언트 슬라이더(`components/RecommendWeights.tsx`, localStorage `paperis.recommend.weights.v1`).
-- Gemini는 `lib/gemini.ts` `explainRecommendations`로 top 3에 한국어 한 문장 이유만 생성. 환각 PMID 위험 없음.
-- 1페이지에서만 호출. 가중치 변경은 350ms debounce 후 재호출.
-
-### 요약 (`/api/summarize`)
-- `streamSummary({ paper, mode, language, sourceLabel?, brief? })` 제너레이터.
-- `mode`: `read` | `narration` | `dialogue`. `dialogue`는 `[A]:` / `[B]:` 라인 단위.
-- `sourceLabel`이 있으면 시스템 인스트럭션이 "abstract-only" disclaimer 자동 생략. PMC full-text나 PDF 업로드 첨부 시 사용.
-- `brief: true`는 narration을 1-2분 출퇴근 다이제스트로. 재생목록 합성에서 사용.
-
-### 듣기 — 한 편 (`/api/tts`) / 여러 편 (`/api/playlist`)
-- 단일: 카드 안 narration/dialogue 버튼. 한 번에 하나.
-- 재생목록: 장바구니에 모은 논문(`lib/cart.ts`)을 `Promise.all` 병렬로 합성. 트랙별 base64 inline JSON 응답 → 클라이언트가 blob URL로 변환해 큐.
-- 플레이어(`PlaylistPlayer`): ⏮ ⏭ 트랙 점프, ±10초 시크, 키보드(←/→/Space, 입력 필드 포커스 시 무시).
-- 트랙에 원본 `Paper` 동봉 → "📄 이 논문 보기"에서 `PaperModal` 띄움. 카드 캐시(`lib/card-cache.ts`)가 같은 pmid면 검색 결과 카드와 상태 공유.
-
-### 본문 첨부
-- Open Access(`paper.access === "open"` + `pmcId`): `/api/pmc?pmcId=...` 자동 호출 가능.
-- 유료(`access === "closed"`): `<PdfUpload>` 슬롯, `/api/pdf` 멀티파트.
-- 둘 다 `lib/card-cache.ts`의 `fullText` 필드(`source: "pdf" | "pmc"`)로 통합. 이후 요약/TTS/연관 호출에서 자동으로 abstract 자리에 full text 주입.
-
-### 로그인 + 동기화 (v1.1)
-- `auth.ts` (Auth.js v5) — Google OAuth + database session + `@auth/drizzle-adapter` + `session` 콜백에서 `user.id` 명시 매핑.
-- `lib/db/schema.ts` — Auth.js 표준 4개(users, accounts, sessions, verificationToken) + `user_cart`, `user_weights`.
-- 비로그인: 기존 localStorage만. 로그인: 첫 시점에 `AccountSyncProvider`가 server↔local 머지 후 양방향 sync.
-- 카트 PUT은 **race-safe 멱등 upsert** (Neon HTTP는 진정한 트랜잭션 X). delete-all 패턴 금지.
-- `setStoredWeights`는 같은 값이면 dispatch 생략, page state는 functional update + equality 체크 — weights 무한 루프 방지.
+### 6. 오디오 라이브러리 + 플레이어
+- `lib/audio-library.ts` — `idb`로 IndexedDB DB(`paperis-audio`) 트랙 store CRUD. `appendTrack` (항상 새 레코드), `listTracks` (createdAt desc), `removeTrack`, `clearTracks`, `countTracks`, `subscribeAudioLibrary`
+- 변경 알림: 같은 탭은 `CustomEvent("paperis:audio-library-changed")`, 다른 탭은 `BroadcastChannel("paperis-audio-library")` — `subscribeAudioLibrary`가 양쪽 모두 구독
+- `components/PlayerProvider.tsx` — 글로벌 컨텍스트, 단일 `HTMLAudioElement` ref 보유. queue/currentIndex/isPlaying/currentTime 상태. ended 이벤트 → 자동 다음 트랙. 키보드 단축키(Space, ←/→, Shift+←/→)는 입력 포커스 시 무시
+- `components/PlayerBar.tsx` — 하단 고정. `currentIndex < 0`일 땐 렌더 X
+- **TTS 변환 → 트랙 삽입 흐름 (load-bearing)**: TtsButton 클릭 → `/api/tts` → 응답 받으면 `appendTrack` → 토스트 한 줄("라이브러리 끝에 추가됨"). **자동 재생 X, 페이지 이동 X, 모달 X.** 출퇴근 직전 여러 편 미리 변환해두는 시나리오 최적화. PlayerBar는 라이브러리에서 명시적으로 트랙을 누를 때만 활성화
 
 ---
 
 ## 코딩 컨벤션
 
-- TypeScript strict
-- 컴포넌트 PascalCase, 함수/변수 camelCase
-- API 라우트: Next.js App Router (`route.ts`), 가능하면 `runtime = "nodejs"` 명시, 무거운 합성은 `maxDuration = 300`
-- 에러 처리: try/catch 필수, 사용자에게는 한국어 친절한 메시지. Gemini 에러는 `lib/gemini.ts`의 `friendlyErrorMessage`로 정규화
-- 주석: 한국어로 작성 가능
-- React 19 / Next 16: setState in effect 룰이 켜져 있음. 외부 시스템(localStorage, URL 등) 동기화는 의도적 disable 코멘트로
+- TypeScript strict. 컴포넌트 PascalCase, 함수/변수 camelCase
+- API 라우트: App Router(`route.ts`), `runtime = "nodejs"`, 무거운 합성은 `maxDuration = 300`
+- 에러 처리: try/catch 필수. Gemini 에러는 `friendlyErrorMessage(err, language)`로 정규화 후 사용자에게 한국어 친절 메시지
+- 주석: 한국어 OK. **WHY**가 비자명할 때만. WHAT은 식별자가 말한다
+- React 19 / Next 16: setState in effect 룰. 외부 시스템 동기화는 의도적 disable 코멘트로
 
 ---
 
-## Gemini 프롬프트 방향
+## 의사결정 기록 (변경 시 사용자 재합의)
 
-> 모델: 요약/추천이유/연관쿼리는 `gemini-2.5-flash`, TTS는 `gemini-2.5-flash-preview-tts`. SDK: `@google/genai`. 스트리밍은 `generateContentStream`, 구조화 응답은 `responseMimeType: "application/json"` + `responseSchema`.
-
-### 읽기용 요약 (`mode: read`)
-재활의학과 전문의를 위한 임상 중심 요약. 연구 질문/설계 → 대상 → 중재/프로토콜 수치 → 결과(효과 크기, CI, p값) → 임상 적용 포인트 → 한계. 영어 의학 용어 원어 보존.
-
-### 듣기 — 내레이션 (`mode: narration`)
-- 기본(`brief: false`): 의대 교수가 레지던트에게 강의하듯, 5~10분 자연스러운 구어체.
-- 짧은 모드(`brief: true`): 회진 다이제스트, 1~2분, 핵심 결과 + 가장 actionable 한 takeaway 1개.
-
-### 듣기 — 대화체 (`mode: dialogue`)
-두 명의 재활의학과 의사가 토론. `[A]: ` / `[B]: ` 라인 단위 고정 포맷. 5~10분.
-
-### 추천 이유 (`explainRecommendations`)
-이미 결정된 top 3에 대해서만 호출. dominant factor를 기반으로 한국어 한 문장(80자 이내).
-
-### 연관 검색식 (`generateRelatedQuery`)
-시드 논문 + 사용자 힌트 → PubMed 검색식 + 검색 방향 한국어 설명. 5~15 토큰의 PubMed 문법 사용.
+- **단일 AI 스택 (Gemini)**: 검색식 변환·요약·TTS 모두 Gemini. Claude / OpenAI SDK 도입 금지.
+- **검색식 = Gemini 2.5 Flash Lite, 요약·TTS = Gemini 2.5 Flash 계열**: 사용자 명시 분리. 검색식은 결정론적 변환이라 더 작고 빠른 lite 모델로 충분 (원래 `gemini-2.0-flash`로 잡았으나 신규 사용자 대상 retire되어 lite로 교체)
+- **Auth.js / Neon / Drizzle 전부 제거**: v1.1 기능 회귀. 추후 재도입 시 별 브랜치
+- **TTS는 narration only**: dialogue 모드 제거. multi-speaker config 코드 모두 정리
+- **TTS provider 인터페이스 추상화**: 새 provider는 `lib/tts/<name>.ts` 하나만 추가하면 끝. registry에 등록
+- **풀텍스트 체인 = Unpaywall → Europe PMC → PMC**: license 정보 명확한 Unpaywall 우선. EPMC/PMC는 fallback. PDF 업로드는 모두 실패 시의 마지막 수단
+- **TTS 변환은 자동재생 X, 트랙리스트 끝에 append만**: 출퇴근 시나리오 최적화. 변환 작업이 시청 흐름을 끊지 않는 것이 핵심
+- **인용수순은 페이지 내 정렬만**: PubMed esearch가 인용수 정렬을 직접 지원 못함. OpenAlex enrichment 후 페이지 안에서만 정렬. 글로벌 정렬은 v2 미지원
+- **TTS는 PCM → 수동 WAV 래핑**: Gemini가 24kHz mono 16-bit PCM 반환, 브라우저는 WAV를 바로 재생. 모든 DataView write에 `true`(little-endian) 보존
+- **카드 / 검색 상태는 URL이 source of truth**: SearchBar는 controlled가 아닌 prop 변경 시 useEffect로 동기화
+- **PDF 파서는 unpdf**: `pdf-parse`는 Turbopack worker 경로 이슈. `next.config.ts`의 `serverExternalPackages: ["unpdf", "pdfjs-dist"]` 유지
+- **한국어 우선 UI**: 영어 토글은 추후 가능, 기본 UI 문구·에러 메시지는 한국어
+- **로그인 없음**: anonymous ID는 `lib/anonymous-id.ts`의 localStorage UUID. 향후 동기화 도입 시 안정 식별자로 쓸 자리만 잡아둠
 
 ---
 
-## 의사결정 기록 (변경 금지 / 변경 시 사용자 재합의 필요)
+## 주의사항
 
-- **단일 AI 스택**: 요약+TTS 모두 Gemini. Claude / OpenAI SDK 도입 금지.
-- **추천은 결정론적 + Gemini 설명**: 픽킹은 `lib/scoring.ts`, Gemini는 이유만. 환각 PMID 방지 + 사용자 가중치 컨트롤.
-- **`[A]:` / `[B]:` 대화체 태그 포맷 고정**: 프롬프트와 TTS speaker config 양쪽이 묶여 있음.
-- **TTS는 PCM → 수동 WAV 래핑**: Gemini가 24kHz mono 16-bit PCM을 줌, 브라우저는 WAV를 바로 재생. 이 경로 유지.
-- **재생목록 = 트랙 분리 (단일 WAV X)**: 트랙 점프·"이 논문 보기"가 가능하려면 분리 필수.
-- **카드 상태 캐시는 pmid 키 모듈 Map**: 검색 결과·연관 학습·재생목록 모달 어디서 같은 논문을 열어도 같은 캐시 인스턴스 사용.
-- **URL이 검색 source of truth**: SearchBar는 controlled가 아닌 prop 변경 시 useEffect로 동기화.
-- **PDF 파서는 `unpdf`**: `pdf-parse`는 Turbopack worker 경로 이슈로 실패. `next.config.ts` `serverExternalPackages: ["unpdf", "pdfjs-dist"]` 유지.
-- **한국어 우선 UI**: 영어 토글은 있지만 기본 UI 문구·에러 메시지는 한국어.
-- **인증 = Auth.js v5 + Google + Neon Postgres**: 다른 provider/DB 도입은 사용자 재합의 후. session strategy는 `database`(JWT 아님), session 콜백에서 `user.id` 매핑 필수.
-- **카트 PUT은 멱등 upsert**: Neon HTTP는 statement-level이라 진짜 트랜잭션 X. delete + insert 패턴 race condition으로 unique 충돌 발생함. `onConflictDoUpdate` + `notInArray` delete만 사용.
-- **로그인 무관 동작 보존**: 비로그인 사용자도 모든 기능 그대로 동작. 서버 동기화는 부가 기능.
+- `.env.local` / `.vercel/` / `.claude/` 모두 gitignore. 절대 커밋 금지
+- PubMed API 초당 3회 제한 (API 키 없을 때)
+- 유료 논문 full text를 무단 수집하지 않음. 사용자가 합법적으로 보유한 PDF만 업로드 대상
+- 임상 의사결정 도구가 아님 — README 주의사항 참고
 
 ---
 
-## 주의사항 (사용자/법적)
-
-- `.env.local`/`.vercel/`/Claude 로컬 설정은 모두 gitignore. 절대 커밋 금지.
-- PubMed API 초당 3회 제한 (API 키 없을 때).
-- 유료 논문 full text를 무단으로 수집하지 않음. 사용자가 합법적으로 보유한 PDF만 업로드 대상.
-- 임상 의사결정 도구가 아님 — README 주의사항 참고.
-
----
-
-*Paperis CLAUDE.md — v1.1.0 시점 갱신, 2026.04*
+*Paperis v2 CLAUDE.md — v2 브랜치 마일스톤 1–8 완료 시점 정리*

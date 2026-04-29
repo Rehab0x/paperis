@@ -1,37 +1,20 @@
+// PubMed E-utilities 클라이언트.
+// 검색식은 lib/query-translator.ts에서 자연어로부터 미리 만들어져 들어온다.
+// 이 모듈은 esearch+efetch 두 단계 + XML 파싱만 담당.
+
 import { findAll, findFirst, getAttr, stripTagsAndDecode } from "@/lib/xml-utils";
-import type { NeedFilter, Paper } from "@/types";
+import type { Paper, SortMode } from "@/types";
 
 const EUTILS_BASE = "https://eutils.ncbi.nlm.nih.gov/entrez/eutils";
 const TOOL = "paperis";
 const EMAIL = "paperis@example.com";
 
-// 니즈 필터별 검색어 보강
-function buildFilterClause(filter: NeedFilter | undefined): string {
-  switch (filter) {
-    case "treatment":
-      return "(treatment[Title/Abstract] OR intervention[Title/Abstract] OR therapy[Title/Abstract] OR rehabilitation[Title/Abstract])";
-    case "diagnosis":
-      return "(diagnosis[Title/Abstract] OR assessment[Title/Abstract] OR evaluation[Title/Abstract] OR diagnostic[Title/Abstract])";
-    case "trend":
-      return '(review[Publication Type] OR meta-analysis[Publication Type] OR systematic review[Publication Type])';
-    case "balanced":
-    default:
-      return "";
-  }
+// SortMode → PubMed esearch sort 파라미터.
+// PubMed가 직접 인용수 정렬을 지원하지 않으므로 citations은 relevance로 받아 OpenAlex로 후정렬한다.
+function pubmedSortParam(sort: SortMode): "pub_date" | "relevance" {
+  return sort === "recency" ? "pub_date" : "relevance";
 }
 
-function buildSearchTerm(query: string, filter: NeedFilter | undefined): string {
-  const trimmed = query.trim();
-  const filterClause = buildFilterClause(filter);
-  const parts = [trimmed];
-  if (filterClause) parts.push(filterClause);
-  // 영어 논문 위주 + 사람 대상
-  parts.push("hasabstract[Filter]");
-  parts.push("english[Language]");
-  return parts.map((p) => `(${p})`).join(" AND ");
-}
-
-// esearch: 쿼리 → PMID 목록
 interface EsearchResult {
   idlist: string[];
   total: number;
@@ -39,8 +22,9 @@ interface EsearchResult {
 
 async function esearch(
   term: string,
+  sort: SortMode,
   retmax: number,
-  retstart = 0
+  retstart: number
 ): Promise<EsearchResult> {
   const params = new URLSearchParams({
     db: "pubmed",
@@ -48,7 +32,7 @@ async function esearch(
     retmax: String(retmax),
     retstart: String(retstart),
     retmode: "json",
-    sort: "relevance",
+    sort: pubmedSortParam(sort),
     tool: TOOL,
     email: EMAIL,
   });
@@ -69,7 +53,6 @@ async function esearch(
   return { idlist, total };
 }
 
-// efetch: PMID 목록 → 상세 XML
 async function efetchXml(pmids: string[]): Promise<string> {
   const params = new URLSearchParams({
     db: "pubmed",
@@ -89,8 +72,6 @@ async function efetchXml(pmids: string[]): Promise<string> {
   }
   return res.text();
 }
-
-// PubMed efetch 응답 파싱은 lib/xml-utils.ts의 헬퍼를 사용
 
 function parseAuthors(articleXml: string): string[] {
   const authorListXml = findFirst(articleXml, "AuthorList");
@@ -117,7 +98,7 @@ function parseAbstract(articleXml: string): string {
   const sections = findAll(abstractXml, "AbstractText");
   if (sections.length === 0) return "";
 
-  // AbstractText에 Label 속성이 있으면 섹션별로 구분
+  // Label 속성이 있으면 섹션별로 구분해서 합친다
   const re = /<AbstractText(\s[^>]*)?>([\s\S]*?)<\/AbstractText>/g;
   const parts: string[] = [];
   let match: RegExpExecArray | null;
@@ -151,8 +132,9 @@ function parsePubDate(articleXml: string): { year: string; pubDate: string } {
   return { year: stripTagsAndDecode(year), pubDate };
 }
 
-function parseArticleIds(articleXml: string): { doi: string | null; pmcId: string | null } {
-  const ids = findAll(articleXml, "ArticleId");
+function parseArticleIds(
+  articleXml: string
+): { doi: string | null; pmcId: string | null } {
   let doi: string | null = null;
   let pmcId: string | null = null;
 
@@ -165,7 +147,6 @@ function parseArticleIds(articleXml: string): { doi: string | null; pmcId: strin
     else if (type === "pmc") pmcId = value;
   }
 
-  // fallback: ELocationID type="doi"
   if (!doi) {
     const re2 = /<ELocationID(\s[^>]*)>([\s\S]*?)<\/ELocationID>/g;
     let m: RegExpExecArray | null;
@@ -177,9 +158,6 @@ function parseArticleIds(articleXml: string): { doi: string | null; pmcId: strin
       }
     }
   }
-
-  // ids 변수 사용 (미사용 경고 방지)
-  void ids;
 
   return { doi, pmcId };
 }
@@ -193,19 +171,26 @@ function parsePublicationTypes(articleXml: string): string[] {
 }
 
 function parsePubmedArticle(articleXml: string): Paper | null {
-  const pmid = findFirst(articleXml, "PMID");
+  // ReferenceList 안의 ArticleId/ELocationID는 article 본인의 ID가 아니라 인용된 논문들의 ID이다.
+  // 미리 잘라내지 않으면 parseArticleIds가 마지막 참조의 DOI/PMC로 덮어써 잘못된 paper 객체가 만들어진다.
+  const ownXml = articleXml.replace(
+    /<ReferenceList\b[\s\S]*?<\/ReferenceList>/gi,
+    ""
+  );
+
+  const pmid = findFirst(ownXml, "PMID");
   if (!pmid) return null;
   const pmidStr = stripTagsAndDecode(pmid);
 
-  const title = stripTagsAndDecode(findFirst(articleXml, "ArticleTitle") ?? "");
-  const abstract = parseAbstract(articleXml);
-  const authors = parseAuthors(articleXml);
+  const title = stripTagsAndDecode(findFirst(ownXml, "ArticleTitle") ?? "");
+  const abstract = parseAbstract(ownXml);
+  const authors = parseAuthors(ownXml);
   const journal = stripTagsAndDecode(
-    findFirst(articleXml, "Title") ?? findFirst(articleXml, "ISOAbbreviation") ?? ""
+    findFirst(ownXml, "Title") ?? findFirst(ownXml, "ISOAbbreviation") ?? ""
   );
-  const { year, pubDate } = parsePubDate(articleXml);
-  const { doi, pmcId } = parseArticleIds(articleXml);
-  const publicationTypes = parsePublicationTypes(articleXml);
+  const { year, pubDate } = parsePubDate(ownXml);
+  const { doi, pmcId } = parseArticleIds(ownXml);
+  const publicationTypes = parsePublicationTypes(ownXml);
 
   return {
     pmid: pmidStr,
@@ -224,26 +209,24 @@ function parsePubmedArticle(articleXml: string): Paper | null {
 }
 
 function parsePubmedArticles(xml: string): Paper[] {
-  // <PubmedArticle>...</PubmedArticle> 블록 단위로 분해
   const blocks = findAll(xml, "PubmedArticle");
   return blocks
     .map((block) => parsePubmedArticle(block))
     .filter((p): p is Paper => p !== null);
 }
 
-// 공개 API: 검색 → 상세까지 한 번에
-export async function searchPapers(
-  query: string,
-  filter: NeedFilter = "balanced",
+// 공개 API: 검색식(이미 PubMed 문법) → 상세 Paper[] (esearch 순서 보존)
+export async function searchPubMed(
+  term: string,
+  sort: SortMode,
   retmax = 20,
   retstart = 0
 ): Promise<{ count: number; total: number; papers: Paper[] }> {
-  if (!query.trim()) {
+  if (!term.trim()) {
     return { count: 0, total: 0, papers: [] };
   }
 
-  const term = buildSearchTerm(query, filter);
-  const { idlist: pmids, total } = await esearch(term, retmax, retstart);
+  const { idlist: pmids, total } = await esearch(term, sort, retmax, retstart);
   if (pmids.length === 0) {
     return { count: 0, total, papers: [] };
   }
@@ -254,7 +237,7 @@ export async function searchPapers(
     papersByPmid.set(paper.pmid, paper);
   }
 
-  // esearch 순서(관련도) 유지
+  // esearch 순서(관련도/날짜) 유지
   const papers = pmids
     .map((id) => papersByPmid.get(id))
     .filter((p): p is Paper => Boolean(p));

@@ -1,130 +1,107 @@
-import type { NextRequest } from "next/server";
-import { streamSummary } from "@/lib/gemini";
+// /api/tts — paper + (선택) full text를 받아 narration 텍스트를 만들고 provider로 합성.
+// 응답: audio/wav 바이너리 + 트랙 메타는 헤더로 동봉.
+
 import {
-  synthesizeDialogue,
-  synthesizeNarration,
-  type DialogueVoices,
-  type TtsVoice,
-} from "@/lib/tts";
-import type { Language, ListenStyle, Paper } from "@/types";
+  friendlyErrorMessage,
+  generateNarrationText,
+} from "@/lib/gemini";
+import { getTtsProvider } from "@/lib/tts";
+import type { ApiError, Language, Paper, TtsRequestBody } from "@/types";
 
 export const runtime = "nodejs";
-// 대화체 장문의 경우 수십 초 걸릴 수 있음
 export const maxDuration = 300;
 
-const ALLOWED_STYLES: ListenStyle[] = ["narration", "dialogue"];
-const ALLOWED_LANGS: Language[] = ["ko", "en"];
-
-interface RequestBody {
-  paper?: Partial<Paper>;
-  style?: ListenStyle;
-  language?: Language;
-  sourceLabel?: string;
-  /** true면 오디오 없이 스크립트만 JSON으로 반환 (디버깅용). */
-  scriptOnly?: boolean;
+function isPaper(value: unknown): value is Paper {
+  if (typeof value !== "object" || value === null) return false;
+  const v = value as Record<string, unknown>;
+  return (
+    typeof v.pmid === "string" &&
+    typeof v.title === "string" &&
+    typeof v.abstract === "string" &&
+    Array.isArray(v.publicationTypes)
+  );
 }
 
-const NARRATION_VOICE: TtsVoice = "Charon";
-const DIALOGUE_VOICES: DialogueVoices = { A: "Kore", B: "Puck" };
-
-function isPaper(obj: unknown): obj is Paper {
-  if (!obj || typeof obj !== "object") return false;
-  const p = obj as Record<string, unknown>;
-  return typeof p.pmid === "string" && typeof p.abstract === "string";
+function jsonError(error: string, status = 400) {
+  const body: ApiError = { error };
+  return new Response(JSON.stringify(body), {
+    status,
+    headers: { "content-type": "application/json; charset=utf-8" },
+  });
 }
 
-async function collectScript(
-  paper: Paper,
-  style: ListenStyle,
-  language: Language,
-  sourceLabel?: string
-): Promise<string> {
-  let acc = "";
-  for await (const chunk of streamSummary({
-    paper,
-    mode: style,
-    language,
-    sourceLabel,
-  })) {
-    acc += chunk;
-  }
-  return acc.trim();
-}
-
-export async function POST(request: NextRequest) {
-  let body: RequestBody;
+export async function POST(req: Request) {
+  let body: Partial<TtsRequestBody> & { fullText?: unknown };
   try {
-    body = (await request.json()) as RequestBody;
+    body = (await req.json()) as Partial<TtsRequestBody> & {
+      fullText?: unknown;
+    };
   } catch {
-    return Response.json({ error: "잘못된 요청 본문입니다." }, { status: 400 });
+    return jsonError("요청 본문이 올바른 JSON이 아닙니다.");
   }
-
   if (!isPaper(body.paper)) {
-    return Response.json(
-      { error: "paper 객체가 필요합니다 (pmid, abstract 필수)." },
-      { status: 400 }
+    return jsonError("paper 필드가 필요합니다.");
+  }
+  const language: Language = body.language === "en" ? "en" : "ko";
+  const providerName =
+    typeof body.providerName === "string" ? body.providerName : "gemini";
+  const voice = typeof body.voice === "string" ? body.voice : undefined;
+  const sourceLabel =
+    typeof body.sourceLabel === "string" ? body.sourceLabel : undefined;
+  const fullText =
+    typeof body.fullText === "string" ? body.fullText : null;
+
+  // narration 생성에 사용할 paper (full text가 있으면 abstract 자리에 주입)
+  const sourcePaper: Paper = fullText
+    ? { ...body.paper, abstract: fullText }
+    : body.paper;
+
+  let provider;
+  try {
+    provider = getTtsProvider(providerName);
+  } catch (err) {
+    return jsonError(
+      err instanceof Error ? err.message : "TTS provider 오류",
+      400
     );
   }
 
-  const style: ListenStyle =
-    body.style && (ALLOWED_STYLES as string[]).includes(body.style)
-      ? body.style
-      : "narration";
-  const language: Language =
-    body.language && (ALLOWED_LANGS as string[]).includes(body.language)
-      ? body.language
-      : "ko";
-
+  // 1) Gemini로 narration 텍스트 생성
+  let narration: string;
   try {
-    const sourceLabel =
-      typeof body.sourceLabel === "string" ? body.sourceLabel : undefined;
-    const script = await collectScript(
-      body.paper as Paper,
-      style,
+    narration = await generateNarrationText(sourcePaper, language, sourceLabel);
+  } catch (err) {
+    return jsonError(friendlyErrorMessage(err, language), 502);
+  }
+  if (!narration) {
+    return jsonError("narration 생성 결과가 비어 있습니다.", 502);
+  }
+
+  // 2) provider로 합성
+  try {
+    const result = await provider.synthesize({
+      text: narration,
       language,
-      sourceLabel
+      voice,
+    });
+    const arrayBuffer = result.audio.buffer.slice(
+      result.audio.byteOffset,
+      result.audio.byteOffset + result.audio.byteLength
     );
-    if (!script) {
-      return Response.json(
-        { error: "스크립트 생성 결과가 비어 있습니다." },
-        { status: 502 }
-      );
-    }
-
-    if (body.scriptOnly) {
-      return Response.json({ style, language, script });
-    }
-
-    const audio =
-      style === "dialogue"
-        ? await synthesizeDialogue(script, DIALOGUE_VOICES, language)
-        : await synthesizeNarration(script, NARRATION_VOICE, language);
-
-    if (audio.length === 0) {
-      return Response.json(
-        { error: "오디오 생성 결과가 비어 있습니다." },
-        { status: 502 }
-      );
-    }
-
-    const scriptHeader = encodeURIComponent(script.slice(0, 2000));
-
-    return new Response(audio as BodyInit, {
+    return new Response(arrayBuffer as ArrayBuffer, {
+      status: 200,
       headers: {
-        "Content-Type": "audio/wav",
-        "Content-Length": String(audio.length),
-        "Cache-Control": "no-store",
-        "X-Paperis-Style": style,
-        "X-Paperis-Language": language,
-        "X-Paperis-Script-Preview": scriptHeader,
+        "content-type": "audio/wav",
+        "content-length": String(result.audio.byteLength),
+        "x-tts-provider": result.providerName,
+        "x-tts-voice": result.voice,
+        "x-tts-language": language,
+        "x-audio-duration-ms": String(result.durationMs),
+        "x-audio-sample-rate": String(result.sampleRate),
+        "cache-control": "no-store",
       },
     });
   } catch (err) {
-    const message = err instanceof Error ? err.message : "알 수 없는 오류";
-    console.error("[api/tts]", err);
-    return Response.json(
-      { error: `음성 생성 중 오류가 발생했습니다: ${message}` },
-      { status: 502 }
-    );
+    return jsonError(friendlyErrorMessage(err, language), 502);
   }
 }

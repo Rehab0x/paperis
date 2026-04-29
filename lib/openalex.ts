@@ -1,11 +1,13 @@
-// OpenAlex API: PMID → 인용수 + 저널 영향력 지표 일괄 조회
+// OpenAlex Works API: PMID → 인용수 + 저널 영향력 지표 일괄 조회.
 // 무료, 키 불필요. Polite Pool을 위해 mailto 파라미터를 붙인다.
+// 네트워크/HTTP 에러는 throw 대신 빈 Map 반환 — enrichment는 부가 정보이므로 조용히 실패.
 
 import type { EnrichmentData, Paper } from "@/types";
 
 const OPENALEX_BASE = "https://api.openalex.org";
 const POLITE_MAILTO = "paperis@example.com";
-const SELECT_FIELDS = "id,doi,publication_year,cited_by_count,primary_location,ids";
+const SELECT_FIELDS =
+  "id,doi,publication_year,cited_by_count,primary_location,ids";
 
 interface OpenAlexSource {
   display_name?: string;
@@ -39,7 +41,6 @@ function pmidFromIdsUrl(url: string | undefined): string | null {
   return m ? m[1] : null;
 }
 
-// PMID 배열을 받아 OpenAlex 일괄 조회 → pmid 키 Map
 export async function enrichPapers(
   papers: Paper[]
 ): Promise<Map<string, EnrichmentData>> {
@@ -47,7 +48,7 @@ export async function enrichPapers(
   const pmids = papers.map((p) => p.pmid).filter(Boolean);
   if (pmids.length === 0) return result;
 
-  // OpenAlex bulk filter: ids.pmid:1|2|3
+  // OpenAlex bulk filter: ids.pmid:1|2|3, per-page 최대 200
   const params = new URLSearchParams({
     filter: `ids.pmid:${pmids.join("|")}`,
     "per-page": String(Math.min(pmids.length, 200)),
@@ -65,7 +66,9 @@ export async function enrichPapers(
     return result;
   }
   if (!res.ok) {
-    console.warn(`[openalex] non-ok ${res.status}, returning empty enrichment`);
+    console.warn(
+      `[openalex] non-ok ${res.status}, returning empty enrichment`
+    );
     return result;
   }
 
@@ -80,7 +83,9 @@ export async function enrichPapers(
       citedByCount:
         typeof work.cited_by_count === "number" ? work.cited_by_count : 0,
       publicationYear:
-        typeof work.publication_year === "number" ? work.publication_year : null,
+        typeof work.publication_year === "number"
+          ? work.publication_year
+          : null,
       journalName: source?.display_name ?? null,
       journalCitedness:
         typeof journalCitedness === "number" ? journalCitedness : null,

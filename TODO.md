@@ -1,11 +1,48 @@
 # Paperis — TODO / 진척 기록
 
-> 마지막 갱신: 2026-04-26 (v1.1.0 출시 — 로그인/계정 동기화)
+> 마지막 갱신: 2026-04-29 (v2 브랜치 — MVP 마일스톤 1–8 완료)
 > 외부 노출 문서는 [README.md](README.md), 컨텍스트는 [CLAUDE.md](CLAUDE.md). 이 파일은 작업 일지·기술부채 보관용.
 
 ---
 
-## 출시 버전
+## v2 브랜치 — 새 시작 라인
+
+v1.1.0 라이브 시점에 사용자가 v2 방향성을 새로 잡아 master에서 분기. 코드는 처음부터 새로 작성, master는 v1 시리즈로 그대로 유지.
+
+### v2 마일스톤 (모두 완료, 2026-04-29)
+
+- **M1 인프라 정리** — v2 브랜치 분기, app/components/lib/types 삭제 후 인프라(package.json, next.config, tsconfig, tailwind v4 CSS-first, manifest.ts, sw.js, 아이콘)만 보존. auth/db 의존성(next-auth, drizzle, neon, dotenv) 제거, idb 추가
+- **M2 검색 백엔드** — types/index.ts 재정의(SortMode·MiniSummary·FullTextSource·AudioTrack 등), [lib/pubmed.ts](lib/pubmed.ts)·[lib/openalex.ts](lib/openalex.ts)·[lib/xml-utils.ts](lib/xml-utils.ts) 포팅, [lib/gemini.ts](lib/gemini.ts) 유틸리티(callWithRetry/friendlyErrorMessage), [lib/query-translator.ts](lib/query-translator.ts) (Gemini 2.5 Flash Lite + responseSchema), [lib/query-cache.ts](lib/query-cache.ts) 서버 LRU, [app/api/search/route.ts](app/api/search/route.ts)
+- **M3 검색 UI** — [SearchBar](components/SearchBar.tsx) / [SortControl](components/SortControl.tsx) / [ResultsList](components/ResultsList.tsx) / [PaperCard](components/PaperCard.tsx), [lib/client-cache.ts](lib/client-cache.ts) localStorage TTL, [app/page.tsx](app/page.tsx) 마스터-디테일, URL이 source of truth (`?q&sort&pmid`)
+- **M4 미니 요약** — [lib/paper-type.ts](lib/paper-type.ts) classifyPaperType, [lib/summary.ts](lib/summary.ts) batch JSON 모드 (research vs review 분기), [app/api/summarize/route.ts](app/api/summarize/route.ts), [components/MiniSummary.tsx](components/MiniSummary.tsx). 상위 3개 자동 batch + 4번~ 클릭 시 단일
+- **M5 풀텍스트 체인** — [lib/fulltext/](lib/fulltext/) (unpaywall · europe-pmc · pmc · html-extract · index 오케스트레이터), [app/api/fulltext/route.ts](app/api/fulltext/route.ts), [app/api/pdf/route.ts](app/api/pdf/route.ts) (unpdf), [components/FullTextView.tsx](components/FullTextView.tsx) / [PdfUpload.tsx](components/PdfUpload.tsx) / [PaperDetailPanel.tsx](components/PaperDetailPanel.tsx). 긴 요약 스트리밍은 [lib/gemini.ts](lib/gemini.ts)의 `streamSummary` + [app/api/summarize/read/route.ts](app/api/summarize/read/route.ts)
+- **M6 TTS provider** — [lib/tts/types.ts](lib/tts/types.ts) 인터페이스, [lib/tts/gemini.ts](lib/tts/gemini.ts) GeminiTtsProvider (narration only, WAV LE 래핑 보존), [lib/tts/index.ts](lib/tts/index.ts) registry, [app/api/tts/route.ts](app/api/tts/route.ts), [components/TtsButton.tsx](components/TtsButton.tsx), [lib/audio-library.ts](lib/audio-library.ts) idb CRUD + BroadcastChannel, [lib/anonymous-id.ts](lib/anonymous-id.ts)
+- **M7 오디오 라이브러리 + 글로벌 플레이어** — [components/PlayerProvider.tsx](components/PlayerProvider.tsx) 컨텍스트 (단일 audio element ref, 자동 다음 트랙, 키보드 단축키), [components/PlayerBar.tsx](components/PlayerBar.tsx) 하단 고정, [components/AudioLibrary.tsx](components/AudioLibrary.tsx), [components/LibraryLink.tsx](components/LibraryLink.tsx) 카운트 배지, [app/library/page.tsx](app/library/page.tsx)
+- **M8 마무리** — README.md / CLAUDE.md / TODO.md를 v2 기준으로 갱신, .env.example 정리, `npm run build` 통과 확인
+
+### v1과 v2 차이 요지
+
+| | v1 | v2 |
+|---|---|---|
+| 검색 | 키워드 + 4 니즈 필터 | 자연어 + Gemini 검색식 변환 (캐싱) |
+| 정렬 | 4축 가중치 슬라이더 | 최신/인용수/적합도 라디오 |
+| 요약 | 한 모드 (긴 요약) | 미니(카드) + 긴(디테일) 분리, paperType 분기 |
+| 풀텍스트 | PMC만 | Unpaywall → EPMC → PMC → PDF |
+| TTS | narration + dialogue | narration only, provider 추상화 |
+| 오디오 | 장바구니 + 일회성 재생목록 | IndexedDB 라이브러리 (트랙 누적, 자동 재생 X) |
+| 인증/DB | Auth.js v5 + Neon Postgres | 없음 (anonymous ID만) |
+
+### v2 미진 / 후속 후보
+
+- 인용수 글로벌 정렬 (현재는 페이지 안에서만)
+- 영어 UI 토글 (현재 한국어 우선)
+- HTML 풀텍스트 추출 정확도 — 현재 직접 처리, 필요 시 `@mozilla/readability` 도입
+- TTS provider 추가 (OpenAI / Naver) — 인터페이스만 깔려 있음
+- 라이브러리 백업/내보내기 (현재 브라우저 로컬에만)
+
+---
+
+## 출시 버전 (v1 시리즈, master 브랜치)
 
 | 버전 | 날짜 | 핵심 |
 |---|---|---|
