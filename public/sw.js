@@ -2,7 +2,7 @@
 // 목적: Chrome의 PWA 설치 가능 판정용 fetch 핸들러 등록 + 새 SW가 있으면 즉시 활성화.
 // 스트리밍 요약(/api/summarize)과 오디오(/api/tts) 응답은 개입하면 깨지므로 그대로 통과.
 
-const VERSION = "paperis-v1";
+const VERSION = "paperis-v2";
 
 self.addEventListener("install", (event) => {
   event.waitUntil(self.skipWaiting());
