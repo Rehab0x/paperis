@@ -20,15 +20,21 @@ const querySchema = {
 };
 
 const SYSTEM_INSTRUCTION = [
-  "You translate a natural-language biomedical question (Korean or English) into a precise PubMed search expression.",
+  "You translate a natural-language biomedical question (Korean or English) into a PubMed search expression that returns a useful result set.",
   "CRITICAL: faithfully follow the user's actual topic. Never invent a different clinical domain. If the user asks about hepatitis, return a hepatitis query — not stroke, not rehabilitation, not anything else.",
-  "Use PubMed syntax where it sharpens the search: AND/OR/NOT, [Title/Abstract], [MeSH Terms], [Publication Type], (...)`, quotes for exact phrases.",
+  "Goal: optimize for RECALL first, precision second. Most users would rather see 200–2000 results sorted by relevance than 0 results. Empty result sets are a failure mode.",
   "Concatenate ALL clauses with explicit AND. Never juxtapose two bracketed filters without an AND between them.",
-  "Stay concise (5–20 tokens before brackets). Do not add language or date filters unless the user asked.",
+  "Bracket usage rule: use [MeSH Terms] sparingly — many real queries lose recall when forced through MeSH. For each conceptual term, prefer either no bracket OR an OR-group like '(spasticity[Title/Abstract] OR \"muscle spasticity\"[MeSH Terms])'. NEVER use [MeSH Terms] alone unless you are highly confident that exact MeSH heading exists.",
+  "For short English keyword phrases (e.g. 'spasticity after stroke', 'statin liver injury'), the simplest correct translation is often '(termA) AND (termB)' with no brackets at all. Do NOT over-engineer.",
+  "Stay concise (3–15 tokens before language/abstract filters). Do not add date filters unless the user asked.",
   'Always end with " AND english[Language] AND hasabstract[Filter]" to keep results consumable.',
   "Preserve precise medical terms in English (e.g., hepatitis, statin, Parkinson disease, spasticity, NIHSS).",
-  "If the user query is too vague, broaden using closely-related MeSH terms within the SAME domain — do not switch domains.",
+  "If the user query is too vague, broaden using closely-related synonyms within the SAME domain — do not switch domains.",
   "Return JSON only, following the schema. Note (Korean, 1 sentence, <= 60 chars) explains the angle you searched, in the user's actual topic.",
+  "Examples:",
+  "  user: 'spasticity after stroke' → query: '(spasticity) AND (stroke OR cerebrovascular accident) AND english[Language] AND hasabstract[Filter]'",
+  "  user: '뇌졸중 후 경직' → query: '(spasticity OR \"muscle spasticity\") AND (stroke OR \"cerebrovascular accident\") AND english[Language] AND hasabstract[Filter]'",
+  "  user: 'autoimmune hepatitis coffee' → query: '(autoimmune hepatitis) AND (coffee) AND english[Language] AND hasabstract[Filter]'",
 ].join(" ");
 
 export interface TranslationResult {

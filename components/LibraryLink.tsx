@@ -1,11 +1,12 @@
 "use client";
 
-import Link from "next/link";
 import { useEffect, useState } from "react";
+import LibraryDrawer from "@/components/LibraryDrawer";
 import { countTracks, subscribeAudioLibrary } from "@/lib/audio-library";
 
 export default function LibraryLink({ className }: { className?: string }) {
   const [count, setCount] = useState<number | null>(null);
+  const [open, setOpen] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -28,19 +29,23 @@ export default function LibraryLink({ className }: { className?: string }) {
   }, []);
 
   return (
-    <Link
-      href="/library"
-      className={
-        className ??
-        "rounded-md px-2.5 py-1 text-sm text-zinc-600 hover:bg-zinc-100 dark:text-zinc-300 dark:hover:bg-zinc-800"
-      }
-    >
-      🎧 라이브러리
-      {typeof count === "number" && count > 0 ? (
-        <span className="ml-1 rounded-full bg-zinc-900 px-1.5 py-0.5 text-[10px] font-medium text-white dark:bg-zinc-100 dark:text-zinc-900">
-          {count}
-        </span>
-      ) : null}
-    </Link>
+    <>
+      <button
+        type="button"
+        onClick={() => setOpen(true)}
+        className={
+          className ??
+          "rounded-md px-2.5 py-1 text-sm text-zinc-600 hover:bg-zinc-100 dark:text-zinc-300 dark:hover:bg-zinc-800"
+        }
+      >
+        🎧 라이브러리
+        {typeof count === "number" && count > 0 ? (
+          <span className="ml-1 rounded-full bg-zinc-900 px-1.5 py-0.5 text-[10px] font-medium text-white dark:bg-zinc-100 dark:text-zinc-900">
+            {count}
+          </span>
+        ) : null}
+      </button>
+      <LibraryDrawer open={open} onClose={() => setOpen(false)} />
+    </>
   );
 }

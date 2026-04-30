@@ -114,7 +114,10 @@ export interface TtsRequestBody {
   sourceLabel?: string;   // 풀텍스트 첨부 시 narration 생성에 반영
 }
 
-// Audio library (IndexedDB 레코드)
+// Audio library (IndexedDB 레코드).
+// position: 라이브러리 표시 순서. 사용자가 위/아래로 이동시키면 swap된다.
+//   DB version 2에서 도입. 새로 append되는 트랙은 max(position) + 1로 자동 부여.
+//   기존 트랙은 v1→v2 마이그레이션 시 createdAt asc 기준으로 0부터 채워진다.
 export interface AudioTrack {
   id: string;
   pmid: string;
@@ -128,5 +131,6 @@ export interface AudioTrack {
   audioBlob: Blob;
   durationMs: number;
   createdAt: number;
+  position: number;
   paperSnapshot: Paper;
 }

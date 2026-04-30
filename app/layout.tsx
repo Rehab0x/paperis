@@ -4,6 +4,7 @@ import "./globals.css";
 import PlayerBar from "@/components/PlayerBar";
 import PlayerProvider from "@/components/PlayerProvider";
 import RegisterSW from "@/components/RegisterSW";
+import TtsCompletionToast from "@/components/TtsCompletionToast";
 import TtsQueueProvider from "@/components/TtsQueueProvider";
 
 const geistSans = Geist({
@@ -61,6 +62,7 @@ export default function RootLayout({
           <PlayerProvider>
             {children}
             <PlayerBar />
+            <TtsCompletionToast />
           </PlayerProvider>
         </TtsQueueProvider>
         <RegisterSW />

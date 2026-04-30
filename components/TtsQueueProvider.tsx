@@ -45,6 +45,9 @@ interface TtsQueueValue {
   enqueue: (input: EnqueueInput) => string;
   clearCompleted: () => void;
   cancel: (jobId: string) => void;
+  /** 큐가 막 비었을 때 한 번 뜨는 토스트 메시지 (사라지면 null) */
+  completionToast: string | null;
+  dismissCompletionToast: () => void;
 }
 
 const Ctx = createContext<TtsQueueValue | null>(null);
@@ -86,6 +89,61 @@ export default function TtsQueueProvider({
     []
   );
 
+  // 큐가 비는 순간(active=0) 직전에 active>0이었으면 "모든 변환 끝났다"는 시그널.
+  // 페이지 내 토스트 + Notification API(권한 있을 때).
+  const prevActiveCountRef = useRef(0);
+  const [completionToast, setCompletionToast] = useState<string | null>(null);
+  const completionToastTimerRef = useRef<ReturnType<typeof setTimeout> | null>(
+    null
+  );
+
+  useEffect(() => {
+    const activeCount = jobs.filter(
+      (j) => j.status === "queued" || j.status === "running"
+    ).length;
+    if (prevActiveCountRef.current > 0 && activeCount === 0) {
+      // 직전 일괄 작업 결과 집계 — 가장 최근 finishedAt 이후 jobs만 보면 충분
+      const done = jobs.filter((j) => j.status === "done").length;
+      const failed = jobs.filter((j) => j.status === "failed").length;
+      const message =
+        failed > 0
+          ? `TTS 변환 끝 — 성공 ${done}편, 실패 ${failed}편`
+          : `TTS 변환 끝 — ${done}편 라이브러리에 추가됨`;
+
+      // 1) 페이지 내 토스트 (항상)
+      setCompletionToast(message);
+      if (completionToastTimerRef.current) {
+        clearTimeout(completionToastTimerRef.current);
+      }
+      completionToastTimerRef.current = setTimeout(() => {
+        setCompletionToast(null);
+      }, 6000);
+
+      // 2) 브라우저 Notification (백그라운드 탭에서도 보임). 권한 있을 때만.
+      if (
+        typeof window !== "undefined" &&
+        "Notification" in window &&
+        Notification.permission === "granted"
+      ) {
+        try {
+          const n = new Notification("Paperis", {
+            body: message,
+            icon: "/icons/icon-192.png",
+            tag: "paperis-tts-complete",
+            silent: false,
+          });
+          n.onclick = () => {
+            window.focus();
+            n.close();
+          };
+        } catch {
+          // 일부 환경(iOS PWA 등)에서 Notification 생성 실패 — 토스트로 충분
+        }
+      }
+    }
+    prevActiveCountRef.current = activeCount;
+  }, [jobs]);
+
   const processNext = useCallback(async () => {
     if (runningRef.current) return;
     const next = jobsRef.current.find((j) => j.status === "queued");
@@ -93,6 +151,7 @@ export default function TtsQueueProvider({
     runningRef.current = true;
     updateJob(next.id, { status: "running" });
 
+    const startedAt = Date.now();
     try {
       const res = await fetch("/api/tts", {
         method: "POST",
@@ -107,12 +166,23 @@ export default function TtsQueueProvider({
       });
 
       if (!res.ok) {
-        let msg = `TTS 실패 (${res.status})`;
+        const elapsedSec = Math.round((Date.now() - startedAt) / 1000);
+        let msg = `TTS 실패 (HTTP ${res.status})`;
         try {
-          const j = await res.json();
-          if (j && typeof j.error === "string") msg = j.error;
+          const ctype = res.headers.get("content-type") ?? "";
+          if (ctype.includes("json")) {
+            const j = await res.json();
+            if (j && typeof j.error === "string") msg = j.error;
+          } else {
+            // Vercel function timeout 등은 종종 text/plain 504
+            const txt = (await res.text()).slice(0, 200);
+            if (txt) msg = `TTS 실패 (${res.status}): ${txt}`;
+          }
         } catch {
           // ignore
+        }
+        if (res.status === 504 || res.status === 502) {
+          msg = `${msg}\n서버 응답이 ${elapsedSec}초 만에 끊김 — Vercel function 시간 제한 가능성 (현재 maxDuration 5분, hobby plan은 60초). narration이 너무 길면 분할 호출이 필요합니다.`;
         }
         updateJob(next.id, {
           status: "failed",
@@ -153,9 +223,24 @@ export default function TtsQueueProvider({
         }
       }
     } catch (err) {
+      const elapsedSec = Math.round((Date.now() - startedAt) / 1000);
+      let msg = "TTS 실패";
+      if (err instanceof TypeError) {
+        // 브라우저 fetch가 reject하는 가장 흔한 케이스 — 네트워크/서버 미응답.
+        // "Failed to fetch"로만 보이는 그것.
+        msg =
+          `네트워크/서버 응답 실패 (${elapsedSec}초 경과): ${err.message}\n` +
+          "원인 후보:\n" +
+          "  • Vercel function timeout (Production hobby plan 60초, 현재 코드 maxDuration 5분)\n" +
+          "  • Gemini TTS API 가 비정상 종료\n" +
+          "  • 네트워크 끊김 / 슬립 / 탭 백그라운드 throttling\n" +
+          "Vercel 대시보드 → Functions → Logs 에서 /api/tts 의 실제 종료 사유를 확인해 주세요.";
+      } else if (err instanceof Error) {
+        msg = `${err.message} (${elapsedSec}초 경과)`;
+      }
       updateJob(next.id, {
         status: "failed",
-        error: err instanceof Error ? err.message : "TTS 실패",
+        error: msg,
         finishedAt: Date.now(),
       });
     } finally {
@@ -169,6 +254,18 @@ export default function TtsQueueProvider({
 
   const enqueue = useCallback(
     (input: EnqueueInput): string => {
+      // user gesture 안에서 알림 권한 한 번 요청 (이미 결정됐으면 noop)
+      if (
+        typeof window !== "undefined" &&
+        "Notification" in window &&
+        Notification.permission === "default"
+      ) {
+        try {
+          void Notification.requestPermission();
+        } catch {
+          // safari 구버전 등 — 무시
+        }
+      }
       const id = newJobId();
       const job: TtsJob = {
         id,
@@ -181,7 +278,6 @@ export default function TtsQueueProvider({
         enqueuedAt: Date.now(),
       };
       setJobs((prev) => [...prev, job]);
-      // setJobs 직후엔 jobsRef가 아직 안 갱신됐을 수 있어 setTimeout 0
       setTimeout(() => {
         void processNext();
       }, 0);
@@ -202,8 +298,25 @@ export default function TtsQueueProvider({
     setJobs((prev) => prev.filter((j) => !(j.id === jobId && j.status === "queued")));
   }, []);
 
+  const dismissCompletionToast = useCallback(() => {
+    setCompletionToast(null);
+    if (completionToastTimerRef.current) {
+      clearTimeout(completionToastTimerRef.current);
+      completionToastTimerRef.current = null;
+    }
+  }, []);
+
   return (
-    <Ctx.Provider value={{ jobs, enqueue, clearCompleted, cancel }}>
+    <Ctx.Provider
+      value={{
+        jobs,
+        enqueue,
+        clearCompleted,
+        cancel,
+        completionToast,
+        dismissCompletionToast,
+      }}
+    >
       {children}
     </Ctx.Provider>
   );

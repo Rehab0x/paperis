@@ -9,6 +9,7 @@ import ResultsList from "@/components/ResultsList";
 import SearchBar from "@/components/SearchBar";
 import SortControl from "@/components/SortControl";
 import TtsQueueBadge from "@/components/TtsQueueBadge";
+import { getTrackByPmid } from "@/lib/audio-library";
 import {
   getClientCachedQuery,
   setClientCachedQuery,
@@ -53,6 +54,10 @@ function HomeInner() {
     () => new Map()
   );
   const [miniLoading, setMiniLoading] = useState<Set<string>>(() => new Set());
+
+  // 라이브러리에서 트랙 → 📄 논문 클릭으로 들어왔을 때 papers에 없는 pmid를
+  // IndexedDB의 paperSnapshot으로 복원해 디테일 패널을 띄운다.
+  const [librarySnapshot, setLibrarySnapshot] = useState<Paper | null>(null);
 
   // 같은 (q, sort) 조합을 중복 호출하지 않도록 마지막 키를 기억
   const lastFetchedRef = useRef<string>("");
@@ -245,8 +250,36 @@ function HomeInner() {
     void requestMiniSummary(papers.slice(0, 3));
   }, [loading, papers, requestMiniSummary]);
 
-  const selectedPaper =
-    selectedPmid != null ? papers.find((p) => p.pmid === selectedPmid) : null;
+  // selectedPmid가 papers에 없는데 라이브러리에는 있을 수 있다 (트랙 → 📄)
+  useEffect(() => {
+    if (!selectedPmid) {
+      setLibrarySnapshot(null);
+      return;
+    }
+    if (papers.find((p) => p.pmid === selectedPmid)) {
+      setLibrarySnapshot(null);
+      return;
+    }
+    let cancelled = false;
+    (async () => {
+      try {
+        const t = await getTrackByPmid(selectedPmid);
+        if (!cancelled && t) {
+          setLibrarySnapshot(t.paperSnapshot);
+        }
+      } catch {
+        // 무시 — 디테일 패널 placeholder가 뜸
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [selectedPmid, papers]);
+
+  const selectedPaper: Paper | null =
+    selectedPmid != null
+      ? papers.find((p) => p.pmid === selectedPmid) ?? librarySnapshot
+      : null;
 
   return (
     <div className="flex w-full flex-1 flex-col">

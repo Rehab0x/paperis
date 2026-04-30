@@ -82,9 +82,9 @@ export default function TtsButton({
         </p>
       ) : null}
       {myJob?.status === "failed" ? (
-        <p className="rounded-md border border-red-200 bg-red-50 px-2.5 py-1.5 text-xs text-red-700 dark:border-red-900 dark:bg-red-950 dark:text-red-300">
+        <pre className="whitespace-pre-wrap break-words rounded-md border border-red-200 bg-red-50 px-2.5 py-1.5 font-sans text-xs leading-relaxed text-red-700 dark:border-red-900 dark:bg-red-950 dark:text-red-300">
           {myJob.error ?? "TTS 실패"}
-        </p>
+        </pre>
       ) : null}
       {myJob?.status === "running" ? (
         <p className="text-xs text-zinc-500">
