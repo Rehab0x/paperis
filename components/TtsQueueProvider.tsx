@@ -182,7 +182,7 @@ export default function TtsQueueProvider({
           // ignore
         }
         if (res.status === 504 || res.status === 502) {
-          msg = `${msg}\n서버 응답이 ${elapsedSec}초 만에 끊김 — Vercel function 시간 제한 가능성 (현재 maxDuration 5분, hobby plan은 60초). narration이 너무 길면 분할 호출이 필요합니다.`;
+          msg = `${msg}\n서버 응답이 ${elapsedSec}초 만에 끊김 — Vercel function 시간 제한(최대 300초) 도달 가능성. narration이 매우 길면 분할 호출이 필요합니다.`;
         }
         updateJob(next.id, {
           status: "failed",
@@ -190,13 +190,37 @@ export default function TtsQueueProvider({
           finishedAt: Date.now(),
         });
       } else {
-        const blob = await res.blob();
+        const rawBlob = await res.blob();
+        const usedFormat =
+          res.headers.get("x-tts-format") ?? rawBlob.type ?? "audio/wav";
+        // 응답 본문 Blob의 type이 비어 있을 수 있으니 명시적으로 다시 만든다 —
+        // 다운로드/재생 시 mime이 정확해야 한다.
+        const blob = new Blob([rawBlob], { type: usedFormat });
         const durationMsHeader = res.headers.get("x-audio-duration-ms");
         const durationMs = durationMsHeader ? Number(durationMsHeader) || 0 : 0;
         const usedVoice =
           res.headers.get("x-tts-voice") ?? next.voice ?? "Kore";
         const usedProvider =
           res.headers.get("x-tts-provider") ?? "gemini";
+        // narration 원문 (재생 중 스크립트 보기용). 헤더 없거나 디코딩 실패해도 트랙은 정상 저장.
+        let narrationText: string | undefined;
+        const narrationB64 = res.headers.get("x-tts-narration-b64");
+        if (narrationB64) {
+          try {
+            narrationText = atob(narrationB64);
+            // base64 → utf-8 텍스트 (atob은 Latin-1 바이트 문자열이라 다중바이트 복원 필요)
+            try {
+              const bytes = Uint8Array.from(narrationText, (c) =>
+                c.charCodeAt(0)
+              );
+              narrationText = new TextDecoder("utf-8").decode(bytes);
+            } catch {
+              // 환경별 fallback — 그냥 atob 결과 유지
+            }
+          } catch {
+            narrationText = undefined;
+          }
+        }
 
         try {
           await appendTrack({
@@ -206,6 +230,7 @@ export default function TtsQueueProvider({
             providerName: usedProvider,
             audioBlob: blob,
             durationMs,
+            narrationText,
           });
           updateJob(next.id, {
             status: "done",
@@ -231,7 +256,7 @@ export default function TtsQueueProvider({
         msg =
           `네트워크/서버 응답 실패 (${elapsedSec}초 경과): ${err.message}\n` +
           "원인 후보:\n" +
-          "  • Vercel function timeout (Production hobby plan 60초, 현재 코드 maxDuration 5분)\n" +
+          "  • Vercel function timeout (현재 maxDuration 5분)\n" +
           "  • Gemini TTS API 가 비정상 종료\n" +
           "  • 네트워크 끊김 / 슬립 / 탭 백그라운드 throttling\n" +
           "Vercel 대시보드 → Functions → Logs 에서 /api/tts 의 실제 종료 사유를 확인해 주세요.";

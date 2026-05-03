@@ -4,20 +4,21 @@ import { useEffect, useState } from "react";
 import { usePlayer } from "@/components/PlayerProvider";
 import {
   clearTracks,
-  listTracks,
+  getTrackAudio,
+  listTrackMetas,
   moveTrackDown,
   moveTrackUp,
   removeTrack,
   subscribeAudioLibrary,
 } from "@/lib/audio-library";
-import type { AudioTrack } from "@/types";
+import type { AudioTrackMeta } from "@/types";
 
 interface Props {
   /**
-   * 사용자가 트랙의 "📄 논문" 버튼을 누를 때 호출.
-   * 부모(드로어 또는 페이지)가 URL을 ?pmid=… 로 바꾸고 디테일 패널을 띄운다.
+   * 사용자가 트랙의 "🔎논문" 버튼을 누를 때 호출.
+   * 부모(드로어)가 URL을 ?pmid=… 로 바꾸고 디테일 패널을 띄운다.
    */
-  onOpenPaper?: (track: AudioTrack) => void;
+  onOpenPaper?: (track: AudioTrackMeta) => void;
 }
 
 function formatDuration(ms: number): string {
@@ -48,11 +49,25 @@ function safeFilename(s: string): string {
   return s.replace(/[\\/:*?"<>|]/g, "_").slice(0, 80);
 }
 
-function downloadTrack(track: AudioTrack): void {
-  const url = URL.createObjectURL(track.audioBlob);
+function extensionForMime(mime: string): string {
+  if (mime === "audio/mpeg") return "mp3";
+  if (mime === "audio/wav" || mime === "audio/x-wav") return "wav";
+  if (mime === "audio/ogg") return "ogg";
+  return "audio";
+}
+
+async function downloadTrack(track: AudioTrackMeta): Promise<void> {
+  // 메타에는 audioBlob이 없으므로 다운로드 시점에만 IndexedDB에서 로드.
+  const blob = await getTrackAudio(track.id);
+  if (!blob) {
+    window.alert("이 트랙의 음원 파일을 불러올 수 없습니다.");
+    return;
+  }
+  const ext = extensionForMime(blob.type || "audio/wav");
+  const url = URL.createObjectURL(blob);
   const a = document.createElement("a");
   a.href = url;
-  a.download = `paperis-${track.pmid}-${safeFilename(track.title)}.wav`;
+  a.download = `paperis-${track.pmid}-${safeFilename(track.title)}.${ext}`;
   document.body.appendChild(a);
   a.click();
   document.body.removeChild(a);
@@ -61,14 +76,16 @@ function downloadTrack(track: AudioTrack): void {
 
 export default function AudioLibrary({ onOpenPaper }: Props) {
   const player = usePlayer();
-  const [tracks, setTracks] = useState<AudioTrack[]>([]);
+  const [tracks, setTracks] = useState<AudioTrackMeta[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  // 한 번에 한 트랙의 스크립트만 펼침 (위로 길게 늘어지는 걸 막기 위해)
+  const [scriptOpenId, setScriptOpenId] = useState<string | null>(null);
 
   async function refresh() {
     setError(null);
     try {
-      const list = await listTracks();
+      const list = await listTrackMetas();
       setTracks(list);
     } catch (err) {
       setError(err instanceof Error ? err.message : "라이브러리 로드 실패");
@@ -85,7 +102,7 @@ export default function AudioLibrary({ onOpenPaper }: Props) {
     return unsub;
   }, []);
 
-  async function handleRemove(track: AudioTrack) {
+  async function handleRemove(track: AudioTrackMeta) {
     const ok = window.confirm(
       `이 트랙을 라이브러리에서 삭제할까요?\n\n${track.title}`
     );
@@ -103,7 +120,7 @@ export default function AudioLibrary({ onOpenPaper }: Props) {
     await clearTracks();
   }
 
-  function handlePlay(track: AudioTrack, idx: number) {
+  function handlePlay(track: AudioTrackMeta, idx: number) {
     // 같은 트랙을 다시 누르면 toggle (재생 중이면 일시정지)
     const playingThis =
       player.currentIndex >= 0 &&
@@ -136,7 +153,7 @@ export default function AudioLibrary({ onOpenPaper }: Props) {
   }
 
   const totalMs = tracks.reduce((acc, t) => acc + (t.durationMs || 0), 0);
-  const totalBytes = tracks.reduce((acc, t) => acc + (t.audioBlob?.size ?? 0), 0);
+  const totalBytes = tracks.reduce((acc, t) => acc + (t.audioByteSize ?? 0), 0);
 
   return (
     <div className="space-y-3">
@@ -153,22 +170,24 @@ export default function AudioLibrary({ onOpenPaper }: Props) {
           전체 비우기
         </button>
       </div>
-      <ol className="overflow-hidden rounded-2xl border border-zinc-200 bg-white dark:border-zinc-800 dark:bg-zinc-950">
+      <ol className="overflow-hidden rounded-xl border border-zinc-200 bg-white dark:border-zinc-800 dark:bg-zinc-950">
         {tracks.map((track, idx) => {
           const playingThis =
             player.currentIndex >= 0 &&
             player.queue[player.currentIndex]?.id === track.id;
           const isFirst = idx === 0;
           const isLast = idx === tracks.length - 1;
+          const scriptOpen = scriptOpenId === track.id;
           return (
             <li
               key={track.id}
               className={[
-                "group relative flex items-center gap-2 border-b border-zinc-100 px-3 py-3 last:border-b-0 dark:border-zinc-900",
+                "border-b border-zinc-100 last:border-b-0 dark:border-zinc-900",
                 playingThis ? "bg-emerald-50 dark:bg-emerald-950/40" : "",
               ].join(" ")}
             >
-              <span className="w-8 shrink-0 text-center font-mono text-xs text-zinc-400">
+            <div className="group flex items-center gap-2 px-3 py-1.5">
+              <span className="w-7 shrink-0 text-center font-mono text-[11px] text-zinc-400">
                 {String(idx + 1).padStart(2, "0")}
               </span>
               <button
@@ -178,25 +197,27 @@ export default function AudioLibrary({ onOpenPaper }: Props) {
                 aria-label={`${track.title} 재생`}
                 title="클릭해서 여기부터 재생 (이미 재생 중이면 일시정지)"
               >
-                <p className="truncate text-sm font-medium text-zinc-900 dark:text-zinc-100">
-                  {playingThis ? (player.isPlaying ? "▶ " : "⏸ ") : ""}
+                <p className="truncate text-sm font-medium leading-tight text-zinc-900 dark:text-zinc-100">
+                  {playingThis ? (
+                    <span className="mr-1 text-emerald-600">
+                      {player.isPlaying ? "▶" : "⏸"}
+                    </span>
+                  ) : null}
                   {track.title}
                 </p>
-                <p className="truncate text-xs text-zinc-500">
-                  {track.journal} · {track.year} · {track.providerName}/
-                  {track.voice} · {formatDate(track.createdAt)}
+                <p className="mt-0.5 truncate text-[11px] leading-tight text-zinc-500">
+                  {track.journal} · {track.year} ·{" "}
+                  {formatDuration(track.durationMs)} · {track.voice} ·{" "}
+                  {formatDate(track.createdAt)}
                 </p>
               </button>
-              <span className="hidden shrink-0 font-mono text-xs text-zinc-500 sm:inline">
-                {formatDuration(track.durationMs)}
-              </span>
 
-              <div className="flex shrink-0 items-center gap-0.5">
+              <div className="flex shrink-0 items-center gap-0">
                 <button
                   type="button"
                   onClick={() => moveTrackUp(track.id)}
                   disabled={isFirst}
-                  className="rounded-md px-1.5 py-1 text-xs text-zinc-400 hover:bg-zinc-100 hover:text-zinc-700 disabled:opacity-20 dark:hover:bg-zinc-800 dark:hover:text-zinc-200"
+                  className="rounded px-1 py-0.5 text-xs text-zinc-400 hover:bg-zinc-100 hover:text-zinc-700 disabled:opacity-20 dark:hover:bg-zinc-800 dark:hover:text-zinc-200"
                   aria-label="위로 이동"
                   title="위로 이동"
                 >
@@ -206,7 +227,7 @@ export default function AudioLibrary({ onOpenPaper }: Props) {
                   type="button"
                   onClick={() => moveTrackDown(track.id)}
                   disabled={isLast}
-                  className="rounded-md px-1.5 py-1 text-xs text-zinc-400 hover:bg-zinc-100 hover:text-zinc-700 disabled:opacity-20 dark:hover:bg-zinc-800 dark:hover:text-zinc-200"
+                  className="rounded px-1 py-0.5 text-xs text-zinc-400 hover:bg-zinc-100 hover:text-zinc-700 disabled:opacity-20 dark:hover:bg-zinc-800 dark:hover:text-zinc-200"
                   aria-label="아래로 이동"
                   title="아래로 이동"
                 >
@@ -216,17 +237,41 @@ export default function AudioLibrary({ onOpenPaper }: Props) {
                   <button
                     type="button"
                     onClick={() => onOpenPaper(track)}
-                    className="rounded-md px-1.5 py-1 text-xs text-zinc-400 hover:bg-zinc-100 hover:text-zinc-700 dark:hover:bg-zinc-800 dark:hover:text-zinc-200"
-                    aria-label="논문 디테일 열기"
-                    title="이 논문의 디테일 패널 열기"
+                    className="rounded px-1.5 py-0.5 text-xs text-zinc-500 hover:bg-zinc-100 hover:text-zinc-800 dark:hover:bg-zinc-800 dark:hover:text-zinc-100"
+                    aria-label="논문 디테일 패널 열기"
+                    title="이 논문의 검색 디테일 패널 열기"
                   >
-                    📄
+                    🔎
                   </button>
                 ) : null}
                 <button
                   type="button"
-                  onClick={() => downloadTrack(track)}
-                  className="rounded-md px-1.5 py-1 text-xs text-zinc-400 hover:bg-zinc-100 hover:text-zinc-700 dark:hover:bg-zinc-800 dark:hover:text-zinc-200"
+                  onClick={() =>
+                    setScriptOpenId((prev) => (prev === track.id ? null : track.id))
+                  }
+                  disabled={!track.narrationText}
+                  className={[
+                    "rounded px-1.5 py-0.5 text-xs",
+                    scriptOpen
+                      ? "bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900"
+                      : "text-zinc-500 hover:bg-zinc-100 hover:text-zinc-800 dark:hover:bg-zinc-800 dark:hover:text-zinc-100",
+                    !track.narrationText ? "opacity-30 cursor-not-allowed" : "",
+                  ].join(" ")}
+                  aria-label="narration 스크립트 펼치기/접기"
+                  title={
+                    track.narrationText
+                      ? scriptOpen
+                        ? "스크립트 접기"
+                        : "narration 스크립트 펼치기"
+                      : "이 트랙엔 스크립트가 저장되어 있지 않습니다 (v2.0.1 이전 변환)"
+                  }
+                >
+                  📜
+                </button>
+                <button
+                  type="button"
+                  onClick={() => void downloadTrack(track)}
+                  className="rounded px-1.5 py-0.5 text-xs text-zinc-400 hover:bg-zinc-100 hover:text-zinc-700 dark:hover:bg-zinc-800 dark:hover:text-zinc-200"
                   aria-label="WAV 다운로드"
                   title="WAV 파일로 다운로드"
                 >
@@ -235,13 +280,21 @@ export default function AudioLibrary({ onOpenPaper }: Props) {
                 <button
                   type="button"
                   onClick={() => handleRemove(track)}
-                  className="rounded-md px-1.5 py-1 text-xs text-zinc-400 hover:bg-zinc-100 hover:text-red-600 dark:hover:bg-zinc-800"
+                  className="rounded px-1.5 py-0.5 text-xs text-zinc-400 hover:bg-zinc-100 hover:text-red-600 dark:hover:bg-zinc-800"
                   aria-label="트랙 삭제"
                   title="트랙 삭제 (확인 후)"
                 >
                   🗑
                 </button>
               </div>
+            </div>
+            {scriptOpen && track.narrationText ? (
+              <div className="border-t border-zinc-100 bg-zinc-50 px-4 py-3 dark:border-zinc-900 dark:bg-zinc-900">
+                <p className="whitespace-pre-wrap break-words text-[13px] leading-relaxed text-zinc-700 dark:text-zinc-200">
+                  {track.narrationText}
+                </p>
+              </div>
+            ) : null}
             </li>
           );
         })}

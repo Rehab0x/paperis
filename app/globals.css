@@ -19,6 +19,20 @@
   }
 }
 
+html,
+body {
+  /* fixed로 띄운 드로어/모달이 transform으로 viewport 밖에 있을 때
+     페이지에 가로 스크롤이 생기지 않도록. v2는 가로 스크롤 의도가 없음. */
+  overflow-x: hidden;
+}
+
+button,
+[role="button"] {
+  /* 모바일 Chrome/Safari가 누른 element에 띄우는 반투명 파란 박스 제거.
+     focus-visible 스타일은 그대로 유지되어 키보드 접근성에는 영향 없음. */
+  -webkit-tap-highlight-color: transparent;
+}
+
 body {
   background: var(--background);
   color: var(--foreground);

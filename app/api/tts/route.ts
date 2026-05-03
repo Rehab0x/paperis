@@ -88,16 +88,25 @@ export async function POST(req: Request) {
       result.audio.byteOffset,
       result.audio.byteOffset + result.audio.byteLength
     );
+    // narration 원문을 응답 헤더에 base64로 동봉 → 클라가 트랙에 함께 저장.
+    // 재생 중 "스크립트 보기"에서 사용. 한국어 narration ~1500자면 base64 ~6KB로
+    // Vercel/Node 헤더 제한(보통 32KB+) 안에 충분히 들어간다.
+    const narrationB64 = Buffer.from(narration, "utf-8").toString("base64");
+
     return new Response(arrayBuffer as ArrayBuffer, {
       status: 200,
       headers: {
-        "content-type": "audio/wav",
+        "content-type": result.format,
         "content-length": String(result.audio.byteLength),
         "x-tts-provider": result.providerName,
         "x-tts-voice": result.voice,
         "x-tts-language": language,
+        "x-tts-format": result.format,
         "x-audio-duration-ms": String(result.durationMs),
         "x-audio-sample-rate": String(result.sampleRate),
+        "x-tts-narration-b64": narrationB64,
+        "access-control-expose-headers":
+          "x-tts-provider, x-tts-voice, x-tts-language, x-tts-format, x-audio-duration-ms, x-audio-sample-rate, x-tts-narration-b64",
         "cache-control": "no-store",
       },
     });

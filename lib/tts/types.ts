@@ -9,10 +9,12 @@ export interface TtsSynthesizeInput {
   voice?: string;
 }
 
+export type TtsAudioFormat = "audio/wav" | "audio/mpeg";
+
 export interface TtsSynthesizeResult {
-  /** WAV 바이트 (24kHz 16-bit mono PCM을 RIFF 헤더로 감싼 형태) */
   audio: Uint8Array;
-  format: "audio/wav";
+  /** MIME type — provider별로 다름. Gemini=wav, Clova=mp3 */
+  format: TtsAudioFormat;
   sampleRate: number;
   durationMs: number;
   providerName: string;

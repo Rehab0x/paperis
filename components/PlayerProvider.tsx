@@ -8,10 +8,11 @@ import {
   useRef,
   useState,
 } from "react";
-import type { AudioTrack } from "@/types";
+import { getTrackAudio } from "@/lib/audio-library";
+import type { AudioTrackMeta } from "@/types";
 
 interface PlayerState {
-  queue: AudioTrack[];
+  queue: AudioTrackMeta[];
   currentIndex: number; // -1 if no track loaded
   isPlaying: boolean;
   currentTimeMs: number;
@@ -19,7 +20,7 @@ interface PlayerState {
 }
 
 interface PlayerControls {
-  playFromIndex: (queue: AudioTrack[], index: number) => void;
+  playFromIndex: (queue: AudioTrackMeta[], index: number) => void;
   togglePlay: () => void;
   next: () => void;
   prev: () => void;
@@ -47,10 +48,10 @@ export default function PlayerProvider({
 }) {
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const objectUrlRef = useRef<string | null>(null);
-  const queueRef = useRef<AudioTrack[]>([]);
+  const queueRef = useRef<AudioTrackMeta[]>([]);
   const indexRef = useRef(-1);
 
-  const [queue, setQueue] = useState<AudioTrack[]>([]);
+  const [queue, setQueue] = useState<AudioTrackMeta[]>([]);
   const [currentIndex, setCurrentIndex] = useState(-1);
   const [isPlaying, setIsPlaying] = useState(false);
   const [currentTimeMs, setCurrentTimeMs] = useState(0);
@@ -74,14 +75,13 @@ export default function PlayerProvider({
     const onTimeUpdate = () => setCurrentTimeMs(a.currentTime * 1000);
     const onLoaded = () => setDurationMs(a.duration * 1000);
     const onEnded = () => {
-      // 자동 다음 트랙
       const q = queueRef.current;
       const i = indexRef.current;
       if (i < 0 || i + 1 >= q.length) {
         setIsPlaying(false);
         return;
       }
-      loadAndPlay(i + 1);
+      void loadAndPlay(i + 1);
     };
     const onPlay = () => setIsPlaying(true);
     const onPause = () => setIsPlaying(false);
@@ -105,33 +105,41 @@ export default function PlayerProvider({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const loadAndPlay = useCallback((newIndex: number) => {
+  const loadAndPlay = useCallback(async (newIndex: number) => {
     const q = queueRef.current;
-    const track = q[newIndex];
+    const meta = q[newIndex];
     const a = audioRef.current;
-    if (!track || !a) return;
+    if (!meta || !a) return;
+
+    // 메타에는 audioBlob이 없으므로 재생 직전에 IndexedDB에서 따로 로드.
+    // 이 시점에만 Blob이 메모리에 올라옴 → 라이브러리 목록은 가벼움.
+    let blob: Blob | null = null;
+    try {
+      blob = await getTrackAudio(meta.id);
+    } catch (err) {
+      console.warn("[player] 트랙 audio 로드 실패", err);
+    }
+    if (!blob) return;
 
     if (objectUrlRef.current) URL.revokeObjectURL(objectUrlRef.current);
-    const url = URL.createObjectURL(track.audioBlob);
+    const url = URL.createObjectURL(blob);
     objectUrlRef.current = url;
 
     setCurrentIndex(newIndex);
     setCurrentTimeMs(0);
-    setDurationMs(track.durationMs || 0);
+    setDurationMs(meta.durationMs || 0);
     a.src = url;
     void a.play().catch((err) => {
-      // 자동재생 차단 — UI에선 isPlaying=false로 노출
       console.warn("[player] play 실패", err);
     });
   }, []);
 
   const playFromIndex = useCallback(
-    (newQueue: AudioTrack[], index: number) => {
+    (newQueue: AudioTrackMeta[], index: number) => {
       if (newQueue.length === 0 || index < 0 || index >= newQueue.length) return;
-      // queue 갱신
       setQueue(newQueue);
       queueRef.current = newQueue;
-      loadAndPlay(index);
+      void loadAndPlay(index);
     },
     [loadAndPlay]
   );
@@ -150,7 +158,7 @@ export default function PlayerProvider({
     const i = indexRef.current;
     const q = queueRef.current;
     if (i < 0 || i + 1 >= q.length) return;
-    loadAndPlay(i + 1);
+    void loadAndPlay(i + 1);
   }, [loadAndPlay]);
 
   const prev = useCallback(() => {
@@ -162,7 +170,7 @@ export default function PlayerProvider({
       return;
     }
     if (i <= 0) return;
-    loadAndPlay(i - 1);
+    void loadAndPlay(i - 1);
   }, [loadAndPlay]);
 
   const seekBy = useCallback((deltaMs: number) => {

@@ -283,7 +283,7 @@ function HomeInner() {
 
   return (
     <div className="flex w-full flex-1 flex-col">
-      <header className="sticky top-0 z-10 border-b border-zinc-200 bg-white/85 backdrop-blur dark:border-zinc-800 dark:bg-zinc-950/85">
+      <header className="sticky top-0 z-10 border-b border-zinc-200 bg-white dark:border-zinc-800 dark:bg-zinc-950">
         <div className="mx-auto flex max-w-6xl flex-col gap-3 px-4 py-3 sm:py-4">
           <div className="flex items-center justify-between gap-4">
             <Link

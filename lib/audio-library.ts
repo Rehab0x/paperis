@@ -10,7 +10,7 @@
 "use client";
 
 import { openDB, type IDBPDatabase } from "idb";
-import type { AudioTrack, Language, Paper } from "@/types";
+import type { AudioTrack, AudioTrackMeta, Language, Paper } from "@/types";
 
 const DB_NAME = "paperis-audio";
 const DB_VERSION = 2;
@@ -92,6 +92,7 @@ export interface AppendTrackInput {
   providerName: string;
   audioBlob: Blob;
   durationMs: number;
+  narrationText?: string;
 }
 
 function newId(): string {
@@ -131,16 +132,54 @@ export async function appendTrack(input: AppendTrackInput): Promise<AudioTrack> 
     createdAt: Date.now(),
     position,
     paperSnapshot: input.paper,
+    narrationText: input.narrationText,
   };
   await db.add(STORE, track);
   notifyChange();
   return track;
 }
 
-export async function listTracks(): Promise<AudioTrack[]> {
+/**
+ * 라이브러리 목록 조회 — audioBlob을 제외한 메타만 반환.
+ * cursor로 record를 순회하면서 메타 객체를 새로 만들어 audioBlob 참조를 끊는다.
+ * 모든 트랙의 큰 Blob을 동시에 메모리에 들고 있지 않아 STATUS_ACCESS_VIOLATION 회피.
+ */
+export async function listTrackMetas(): Promise<AudioTrackMeta[]> {
   const db = await getDb();
-  // by-position asc → 사용자가 보고 싶어 하는 순서
-  return db.getAllFromIndex(STORE, "by-position");
+  const out: AudioTrackMeta[] = [];
+  const tx = db.transaction(STORE, "readonly");
+  const index = tx.store.index("by-position");
+  let cursor = await index.openCursor();
+  while (cursor) {
+    const v = cursor.value as AudioTrack;
+    out.push({
+      id: v.id,
+      pmid: v.pmid,
+      title: v.title,
+      authors: v.authors,
+      journal: v.journal,
+      year: v.year,
+      language: v.language,
+      voice: v.voice,
+      providerName: v.providerName,
+      durationMs: v.durationMs,
+      createdAt: v.createdAt,
+      position: v.position,
+      paperSnapshot: v.paperSnapshot,
+      narrationText: v.narrationText,
+      audioByteSize: v.audioBlob?.size ?? 0,
+    });
+    cursor = await cursor.continue();
+  }
+  await tx.done;
+  return out;
+}
+
+/** 재생 직전 호출 — 해당 트랙의 audioBlob만 가져온다. */
+export async function getTrackAudio(id: string): Promise<Blob | null> {
+  const db = await getDb();
+  const t = await db.get(STORE, id);
+  return t?.audioBlob ?? null;
 }
 
 export async function getTrack(id: string): Promise<AudioTrack | undefined> {
