@@ -26,6 +26,7 @@ export interface TtsJob {
   voice?: string;
   fullText?: string | null;
   sourceLabel?: string;
+  providerName?: string;
   status: TtsJobStatus;
   error?: string;
   enqueuedAt: number;
@@ -38,6 +39,7 @@ interface EnqueueInput {
   voice?: string;
   fullText?: string | null;
   sourceLabel?: string;
+  providerName?: string;
 }
 
 interface TtsQueueValue {
@@ -91,7 +93,9 @@ export default function TtsQueueProvider({
 
   // 큐가 비는 순간(active=0) 직전에 active>0이었으면 "모든 변환 끝났다"는 시그널.
   // 페이지 내 토스트 + Notification API(권한 있을 때).
+  // 이번 batch에서 완료된 job만 카운트해야 함 — 직전 알림 시점 이후 finishedAt 만 셈.
   const prevActiveCountRef = useRef(0);
+  const lastNotifyAtRef = useRef(0);
   const [completionToast, setCompletionToast] = useState<string | null>(null);
   const completionToastTimerRef = useRef<ReturnType<typeof setTimeout> | null>(
     null
@@ -102,13 +106,19 @@ export default function TtsQueueProvider({
       (j) => j.status === "queued" || j.status === "running"
     ).length;
     if (prevActiveCountRef.current > 0 && activeCount === 0) {
-      // 직전 일괄 작업 결과 집계 — 가장 최근 finishedAt 이후 jobs만 보면 충분
-      const done = jobs.filter((j) => j.status === "done").length;
-      const failed = jobs.filter((j) => j.status === "failed").length;
+      const since = lastNotifyAtRef.current;
+      const recent = jobs.filter(
+        (j) =>
+          (j.status === "done" || j.status === "failed") &&
+          (j.finishedAt ?? 0) > since
+      );
+      const done = recent.filter((j) => j.status === "done").length;
+      const failed = recent.filter((j) => j.status === "failed").length;
       const message =
         failed > 0
           ? `TTS 변환 끝 — 성공 ${done}편, 실패 ${failed}편`
           : `TTS 변환 끝 — ${done}편 라이브러리에 추가됨`;
+      lastNotifyAtRef.current = Date.now();
 
       // 1) 페이지 내 토스트 (항상)
       setCompletionToast(message);
@@ -162,6 +172,7 @@ export default function TtsQueueProvider({
           voice: next.voice,
           sourceLabel: next.sourceLabel,
           fullText: next.fullText ?? undefined,
+          providerName: next.providerName,
         }),
       });
 
@@ -299,6 +310,7 @@ export default function TtsQueueProvider({
         voice: input.voice,
         fullText: input.fullText,
         sourceLabel: input.sourceLabel,
+        providerName: input.providerName,
         status: "queued",
         enqueuedAt: Date.now(),
       };

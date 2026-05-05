@@ -72,8 +72,13 @@ export async function translateNaturalLanguage(
     throw new Error("Gemini 검색식 응답을 JSON으로 파싱하지 못했습니다.");
   }
 
-  const query = typeof parsed.query === "string" ? parsed.query.trim() : "";
-  const note = typeof parsed.note === "string" ? parsed.note.trim() : "";
+  // Gemini가 가끔 query에 raw 제어문자(\n, \r, \t 등)를 섞어 반환한다 — 그대로
+  // PubMed esearch URL에 넣으면 NCBI가 HTML 에러 페이지를 돌려주고 res.json()이
+  // "Bad control character ..."로 throw한다. 여기서 제거.
+  const sanitize = (s: string) =>
+    s.replace(/[\x00-\x1f\x7f]/g, " ").replace(/\s+/g, " ").trim();
+  const query = typeof parsed.query === "string" ? sanitize(parsed.query) : "";
+  const note = typeof parsed.note === "string" ? sanitize(parsed.note) : "";
   if (!query) {
     throw new Error("Gemini가 빈 검색식을 반환했습니다.");
   }

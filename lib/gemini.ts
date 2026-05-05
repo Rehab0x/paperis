@@ -33,18 +33,39 @@ export function extractApiErrorMessage(err: unknown): string {
   return m?.[1] ?? raw;
 }
 
+// JSON parse 에러도 retryable로 — Gemini 응답에 raw control char가 포함된 invalid JSON이
+// 가끔 오는데 (특히 검색식 변환 같은 짧은 응답), 다시 호출하면 거의 항상 정상 응답이 옴.
+const JSON_PARSE_ERROR_PATTERN =
+  /Bad control character|Unexpected token|Unexpected end of JSON|in JSON at position/i;
+
 export function isRetryableApiError(err: unknown): boolean {
   const raw = err instanceof Error ? err.message : String(err);
-  return /\b(503|429|UNAVAILABLE|RESOURCE_EXHAUSTED)\b|overloaded|high demand|temporarily|try again later/i.test(
-    raw
-  );
+  if (
+    /\b(503|429|UNAVAILABLE|RESOURCE_EXHAUSTED)\b|overloaded|high demand|temporarily|try again later/i.test(
+      raw
+    )
+  ) {
+    return true;
+  }
+  if (JSON_PARSE_ERROR_PATTERN.test(raw)) return true;
+  return false;
 }
 
 export function friendlyErrorMessage(err: unknown, language: Language): string {
-  if (isRetryableApiError(err)) {
+  const raw = err instanceof Error ? err.message : String(err);
+  if (
+    /\b(503|429|UNAVAILABLE|RESOURCE_EXHAUSTED)\b|overloaded|high demand|temporarily|try again later/i.test(
+      raw
+    )
+  ) {
     return language === "ko"
       ? "Gemini 서비스가 일시적으로 혼잡합니다. 잠시 후 다시 시도해 주세요."
       : "Gemini is temporarily busy. Please try again shortly.";
+  }
+  if (JSON_PARSE_ERROR_PATTERN.test(raw)) {
+    return language === "ko"
+      ? "Gemini 응답이 일시적으로 깨져서 받지 못했습니다. 다시 시도해 주세요."
+      : "Gemini returned a malformed response. Please try again.";
   }
   return extractApiErrorMessage(err);
 }

@@ -1,13 +1,14 @@
 // TTS provider registry.
-// 새 provider 추가 시 여기 등록만 하면 /api/tts에서 ?providerName=... 으로 라우팅된다.
-// (TtsSynthesizeResult.format이 union이라 wav/mp3 둘 다 지원 — 새 provider가 다른
-//  포맷을 반환해도 클라/다운로드가 mime에 맞춰 처리.)
+// 사용자가 클라이언트 settings에서 선호 provider를 선택 → /api/tts 호출 시 그 값을 보냄.
+// 서버 default는 안전한 Gemini (모든 사용자가 GEMINI_API_KEY 보유 가정).
 
+import { ClovaTtsProvider } from "@/lib/tts/clova";
 import { GeminiTtsProvider } from "@/lib/tts/gemini";
 import type { TtsProvider } from "@/lib/tts/types";
 
 const providers = new Map<string, TtsProvider>();
 providers.set("gemini", new GeminiTtsProvider());
+providers.set("clova", new ClovaTtsProvider());
 
 const DEFAULT_PROVIDER = "gemini";
 

@@ -45,9 +45,17 @@ async function esearch(
   if (!res.ok) {
     throw new Error(`PubMed esearch 실패 (${res.status})`);
   }
-  const data: {
-    esearchresult?: { idlist?: string[]; count?: string };
-  } = await res.json();
+  // 종종 NCBI가 점검·요청 오류 시 HTML/플레인 텍스트로 응답해 res.json()이
+  // "Bad control character ..."로 throw 한다. text로 받아서 안전하게 parse.
+  const rawText = await res.text();
+  let data: { esearchresult?: { idlist?: string[]; count?: string } };
+  try {
+    data = JSON.parse(rawText);
+  } catch {
+    throw new Error(
+      `PubMed esearch 응답이 JSON이 아닙니다: ${rawText.slice(0, 160)}`
+    );
+  }
   const idlist = data.esearchresult?.idlist ?? [];
   const total = Number(data.esearchresult?.count ?? "0") || 0;
   return { idlist, total };

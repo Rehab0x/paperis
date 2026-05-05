@@ -1,5 +1,6 @@
 "use client";
 
+import { useTtsProviderPreference } from "@/components/TtsProviderPreferenceProvider";
 import { useTtsQueue } from "@/components/TtsQueueProvider";
 import type { Language, Paper } from "@/types";
 
@@ -9,6 +10,7 @@ interface Props {
   fullText?: string | null;
   sourceLabel?: string;
   voice?: string;
+  /** 명시 시 사용자 선호를 무시하고 이 provider로 강제 (보통 미지정) */
   providerName?: string;
 }
 
@@ -18,8 +20,11 @@ export default function TtsButton({
   fullText,
   sourceLabel,
   voice,
+  providerName,
 }: Props) {
   const { jobs, enqueue, cancel } = useTtsQueue();
+  const { provider: preferredProvider } = useTtsProviderPreference();
+  const effectiveProvider = providerName ?? preferredProvider;
 
   // 이 논문+언어에 대한 가장 최근 job
   const myJob = [...jobs]
@@ -47,6 +52,7 @@ export default function TtsButton({
       voice,
       fullText,
       sourceLabel,
+      providerName: effectiveProvider,
     });
   }
 

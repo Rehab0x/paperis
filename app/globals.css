@@ -1,5 +1,12 @@
 @import "tailwindcss";
 
+/*
+  v2.0.3: Tailwind v4의 dark variant를 클래스 기반으로 재정의.
+  사용자가 Settings에서 light/dark/system을 선택할 수 있게 한다.
+  ThemeProvider가 html.classList.toggle("dark", ...)로 적용한다.
+*/
+@variant dark (&:where(.dark, .dark *));
+
 :root {
   --background: #ffffff;
   --foreground: #171717;
@@ -12,11 +19,9 @@
   --font-mono: var(--font-geist-mono);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+html.dark {
+  --background: #0a0a0a;
+  --foreground: #ededed;
 }
 
 html,

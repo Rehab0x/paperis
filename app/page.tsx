@@ -7,6 +7,7 @@ import LibraryLink from "@/components/LibraryLink";
 import PaperDetailPanel from "@/components/PaperDetailPanel";
 import ResultsList from "@/components/ResultsList";
 import SearchBar from "@/components/SearchBar";
+import SettingsLink from "@/components/SettingsLink";
 import SortControl from "@/components/SortControl";
 import TtsQueueBadge from "@/components/TtsQueueBadge";
 import { getTrackByPmid } from "@/lib/audio-library";
@@ -33,11 +34,20 @@ function parseSort(value: string | null): SortMode {
   return "relevance";
 }
 
+const PAGE_SIZE = 20;
+
+function parsePage(value: string | null): number {
+  const n = value ? Number(value) : 1;
+  if (!Number.isFinite(n) || n < 1) return 1;
+  return Math.floor(n);
+}
+
 function HomeInner() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const q = searchParams.get("q") ?? "";
   const sort = parseSort(searchParams.get("sort"));
+  const page = parsePage(searchParams.get("page"));
   const selectedPmid = searchParams.get("pmid");
 
   const [papers, setPapers] = useState<Paper[]>([]);
@@ -65,7 +75,12 @@ function HomeInner() {
   const autoMiniKeyRef = useRef<string>("");
 
   const updateUrl = useCallback(
-    (next: { q?: string; sort?: SortMode; pmid?: string | null }) => {
+    (next: {
+      q?: string;
+      sort?: SortMode;
+      pmid?: string | null;
+      page?: number | null;
+    }) => {
       const params = new URLSearchParams(searchParams.toString());
       if (next.q !== undefined) {
         if (next.q) params.set("q", next.q);
@@ -76,6 +91,10 @@ function HomeInner() {
         if (next.pmid) params.set("pmid", next.pmid);
         else params.delete("pmid");
       }
+      if (next.page !== undefined) {
+        if (next.page && next.page > 1) params.set("page", String(next.page));
+        else params.delete("page");
+      }
       router.push(`/?${params.toString()}`, { scroll: false });
     },
     [router, searchParams]
@@ -83,8 +102,8 @@ function HomeInner() {
 
   const handleSearchSubmit = useCallback(
     (value: string) => {
-      // 새 검색을 시작하면 기존 선택은 풀어줌
-      updateUrl({ q: value, sort, pmid: null });
+      // 새 검색을 시작하면 기존 선택과 페이지는 리셋
+      updateUrl({ q: value, sort, pmid: null, page: 1 });
     },
     [updateUrl, sort]
   );
@@ -92,9 +111,19 @@ function HomeInner() {
   const handleSortChange = useCallback(
     (next: SortMode) => {
       if (next === sort) return;
-      updateUrl({ sort: next });
+      // 정렬 바뀌면 첫 페이지부터
+      updateUrl({ sort: next, page: 1, pmid: null });
     },
     [updateUrl, sort]
+  );
+
+  const handlePageChange = useCallback(
+    (next: number) => {
+      if (next < 1) return;
+      // 페이지 이동 시 카드 선택은 풀어줌 (해당 pmid가 새 페이지에 없을 수 있음)
+      updateUrl({ page: next, pmid: null });
+    },
+    [updateUrl]
   );
 
   const handleSelect = useCallback(
@@ -124,18 +153,29 @@ function HomeInner() {
           headers: { "content-type": "application/json" },
           body: JSON.stringify(body),
         });
-        const json: SummarizeMiniResponse | { error?: string } = await res.json();
-        if (res.ok && "summaries" in json) {
+        const rawText = await res.text();
+        let json: SummarizeMiniResponse | { error?: string } | null = null;
+        try {
+          json = JSON.parse(rawText);
+        } catch (parseErr) {
+          console.warn(
+            "[paperis] mini summary 응답 JSON parse 실패",
+            res.status,
+            rawText.slice(0, 200),
+            parseErr
+          );
+        }
+        if (res.ok && json && "summaries" in json) {
           setMiniSummaries((prev) => {
             const next = new Map(prev);
             for (const s of json.summaries) next.set(s.pmid, s);
             return next;
           });
         } else {
-          // 실패는 조용히 무시 — 한눈에 요약은 부가 정보
           console.warn(
             "[paperis] mini summary 실패",
-            "error" in json ? json.error : res.status
+            res.status,
+            json && "error" in json ? json.error : rawText.slice(0, 200)
           );
         }
       } catch (err) {
@@ -160,10 +200,10 @@ function HomeInner() {
     [papers, requestMiniSummary]
   );
 
-  // q + sort 변화에 따라 /api/search 호출
+  // q + sort + page 변화에 따라 /api/search 호출
   useEffect(() => {
     const trimmed = q.trim();
-    const fetchKey = `${trimmed}::${sort}`;
+    const fetchKey = `${trimmed}::${sort}::${page}`;
     if (!trimmed) {
       setPapers([]);
       setTranslated(null);
@@ -177,7 +217,7 @@ function HomeInner() {
     }
     if (lastFetchedRef.current === fetchKey) return;
     lastFetchedRef.current = fetchKey;
-    // 새 검색 → 이전 미니 요약 비움
+    // 새 검색 또는 새 페이지 → 이전 미니 요약 비움
     setMiniSummaries(new Map());
     setMiniLoading(new Set());
     autoMiniKeyRef.current = "";
@@ -189,20 +229,36 @@ function HomeInner() {
       setLoading(true);
       setError(null);
       try {
-        const body: SearchRequest = { q: trimmed, sort };
+        const body: SearchRequest = {
+          q: trimmed,
+          sort,
+          retmax: PAGE_SIZE,
+          retstart: (page - 1) * PAGE_SIZE,
+        };
         const res = await fetch("/api/search", {
           method: "POST",
           headers: { "content-type": "application/json" },
           body: JSON.stringify(body),
           signal: controller.signal,
         });
-        const json: SearchResponse | { error?: string } = await res.json();
         if (cancelled) return;
-        if (!res.ok || !("papers" in json)) {
+        // 응답 본문은 한 번만 소비 가능. 먼저 텍스트로 받아 안전하게 처리한 뒤
+        // 별도로 JSON.parse 시도 — 502/500의 본문이 JSON이 아닌 경우(예: HTML
+        // 에러 페이지, 또는 raw 텍스트)에도 사용자에게 진짜 메시지를 보여준다.
+        const rawText = await res.text();
+        let json: SearchResponse | { error?: string } | null = null;
+        try {
+          json = JSON.parse(rawText);
+        } catch {
+          // JSON 파싱 실패 — rawText로 fallback
+        }
+        if (!res.ok || !json || !("papers" in json)) {
           const msg =
-            "error" in json && json.error
+            json && "error" in json && json.error
               ? json.error
-              : `검색 실패 (${res.status})`;
+              : rawText
+                ? `검색 실패 (${res.status}): ${rawText.slice(0, 240)}`
+                : `검색 실패 (${res.status})`;
           setError(msg);
           setPapers([]);
           setTranslated(null);
@@ -227,7 +283,7 @@ function HomeInner() {
       cancelled = true;
       controller.abort();
     };
-  }, [q, sort]);
+  }, [q, sort, page]);
 
   // 입력 중 캐시된 변환식이 있으면 미리 보여준다 (선택, 시각적 힌트만)
   useEffect(() => {
@@ -295,9 +351,10 @@ function HomeInner() {
                 v2
               </span>
             </Link>
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-1">
               <TtsQueueBadge />
               <LibraryLink />
+              <SettingsLink />
             </div>
           </div>
           <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
@@ -372,8 +429,9 @@ function HomeInner() {
             <>
               {!loading && total > 0 ? (
                 <p className="mb-3 text-xs text-zinc-500">
-                  PubMed 전체 결과 {total.toLocaleString()}건 중 상위{" "}
-                  {papers.length}건 표시
+                  PubMed 전체 결과 {total.toLocaleString()}건 중{" "}
+                  {(page - 1) * PAGE_SIZE + 1}–
+                  {(page - 1) * PAGE_SIZE + papers.length}건 표시
                 </p>
               ) : null}
               <ResultsList
@@ -385,6 +443,13 @@ function HomeInner() {
                 onSelect={handleSelect}
                 onLoadMini={handleLoadMini}
               />
+              {!loading && papers.length > 0 && total > PAGE_SIZE ? (
+                <Pagination
+                  page={page}
+                  totalPages={Math.ceil(total / PAGE_SIZE)}
+                  onChange={handlePageChange}
+                />
+              ) : null}
             </>
           )}
         </section>
@@ -412,6 +477,46 @@ function HomeInner() {
         </aside>
       </main>
     </div>
+  );
+}
+
+function Pagination({
+  page,
+  totalPages,
+  onChange,
+}: {
+  page: number;
+  totalPages: number;
+  onChange: (next: number) => void;
+}) {
+  const safeTotal = Math.max(1, Math.min(totalPages, 9999));
+  const isFirst = page <= 1;
+  const isLast = page >= safeTotal;
+  return (
+    <nav
+      aria-label="페이지 이동"
+      className="mt-6 flex items-center justify-between gap-3 border-t border-zinc-200 pt-4 dark:border-zinc-800"
+    >
+      <button
+        type="button"
+        onClick={() => onChange(page - 1)}
+        disabled={isFirst}
+        className="rounded-md border border-zinc-200 px-3 py-1.5 text-sm text-zinc-700 hover:bg-zinc-100 disabled:cursor-not-allowed disabled:opacity-30 dark:border-zinc-800 dark:text-zinc-300 dark:hover:bg-zinc-800"
+      >
+        ← 이전 20건
+      </button>
+      <span className="text-xs text-zinc-500">
+        {page.toLocaleString()} / {safeTotal.toLocaleString()} 페이지
+      </span>
+      <button
+        type="button"
+        onClick={() => onChange(page + 1)}
+        disabled={isLast}
+        className="rounded-md border border-zinc-200 px-3 py-1.5 text-sm text-zinc-700 hover:bg-zinc-100 disabled:cursor-not-allowed disabled:opacity-30 dark:border-zinc-800 dark:text-zinc-300 dark:hover:bg-zinc-800"
+      >
+        다음 20건 →
+      </button>
+    </nav>
   );
 }
 

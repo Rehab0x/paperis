@@ -33,14 +33,16 @@ export default function LibraryLink({ className }: { className?: string }) {
       <button
         type="button"
         onClick={() => setOpen(true)}
+        aria-label="오디오 라이브러리 열기"
+        title="오디오 라이브러리"
         className={
           className ??
-          "rounded-md px-2.5 py-1 text-sm text-zinc-600 hover:bg-zinc-100 dark:text-zinc-300 dark:hover:bg-zinc-800"
+          "relative inline-flex items-center justify-center rounded-md p-1.5 text-lg text-zinc-700 hover:bg-zinc-100 dark:text-zinc-200 dark:hover:bg-zinc-800"
         }
       >
-        🎧 라이브러리
+        🎧
         {typeof count === "number" && count > 0 ? (
-          <span className="ml-1 rounded-full bg-zinc-900 px-1.5 py-0.5 text-[10px] font-medium text-white dark:bg-zinc-100 dark:text-zinc-900">
+          <span className="absolute -right-1 -top-1 rounded-full bg-zinc-900 px-1 py-0.5 text-[9px] font-medium leading-none text-white dark:bg-zinc-100 dark:text-zinc-900">
             {count}
           </span>
         ) : null}

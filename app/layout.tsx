@@ -4,8 +4,20 @@ import "./globals.css";
 import PlayerBar from "@/components/PlayerBar";
 import PlayerProvider from "@/components/PlayerProvider";
 import RegisterSW from "@/components/RegisterSW";
+import ThemeProvider from "@/components/ThemeProvider";
 import TtsCompletionToast from "@/components/TtsCompletionToast";
+import TtsProviderPreferenceProvider from "@/components/TtsProviderPreferenceProvider";
 import TtsQueueProvider from "@/components/TtsQueueProvider";
+
+// React hydration 전에 실행되어 dark/light 클래스를 미리 적용 → 첫 페인트 깜박임(FOUC) 방지.
+const themeBootScript = `
+try {
+  var s = localStorage.getItem('paperis.theme');
+  var prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+  var dark = s === 'dark' || (s !== 'light' && prefersDark);
+  if (dark) document.documentElement.classList.add('dark');
+} catch (e) {}
+`;
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -55,16 +67,24 @@ export default function RootLayout({
   return (
     <html
       lang="ko"
+      suppressHydrationWarning
       className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
     >
+      <head>
+        <script dangerouslySetInnerHTML={{ __html: themeBootScript }} />
+      </head>
       <body className="min-h-full flex flex-col">
-        <TtsQueueProvider>
-          <PlayerProvider>
-            {children}
-            <PlayerBar />
-            <TtsCompletionToast />
-          </PlayerProvider>
-        </TtsQueueProvider>
+        <ThemeProvider>
+          <TtsProviderPreferenceProvider>
+            <TtsQueueProvider>
+              <PlayerProvider>
+                {children}
+                <PlayerBar />
+                <TtsCompletionToast />
+              </PlayerProvider>
+            </TtsQueueProvider>
+          </TtsProviderPreferenceProvider>
+        </ThemeProvider>
         <RegisterSW />
       </body>
     </html>
