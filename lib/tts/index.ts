@@ -4,11 +4,13 @@
 
 import { ClovaTtsProvider } from "@/lib/tts/clova";
 import { GeminiTtsProvider } from "@/lib/tts/gemini";
+import { GoogleCloudTtsProvider } from "@/lib/tts/google-cloud";
 import type { TtsProvider } from "@/lib/tts/types";
 
 const providers = new Map<string, TtsProvider>();
 providers.set("gemini", new GeminiTtsProvider());
 providers.set("clova", new ClovaTtsProvider());
+providers.set("google-cloud", new GoogleCloudTtsProvider());
 
 const DEFAULT_PROVIDER = "gemini";
 

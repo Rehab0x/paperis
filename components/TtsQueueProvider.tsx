@@ -8,6 +8,7 @@ import {
   useRef,
   useState,
 } from "react";
+import { useFetchWithKeys } from "@/components/useFetchWithKeys";
 import { appendTrack } from "@/lib/audio-library";
 import type { Language, Paper } from "@/types";
 
@@ -27,6 +28,7 @@ export interface TtsJob {
   fullText?: string | null;
   sourceLabel?: string;
   providerName?: string;
+  speakingRate?: -1 | 0 | 1;
   status: TtsJobStatus;
   error?: string;
   enqueuedAt: number;
@@ -40,6 +42,7 @@ interface EnqueueInput {
   fullText?: string | null;
   sourceLabel?: string;
   providerName?: string;
+  speakingRate?: -1 | 0 | 1;
 }
 
 interface TtsQueueValue {
@@ -77,6 +80,7 @@ export default function TtsQueueProvider({
   const [jobs, setJobs] = useState<TtsJob[]>([]);
   const jobsRef = useRef<TtsJob[]>([]);
   const runningRef = useRef(false);
+  const fetchWithKeys = useFetchWithKeys();
 
   useEffect(() => {
     jobsRef.current = jobs;
@@ -163,7 +167,7 @@ export default function TtsQueueProvider({
 
     const startedAt = Date.now();
     try {
-      const res = await fetch("/api/tts", {
+      const res = await fetchWithKeys("/api/tts", {
         method: "POST",
         headers: { "content-type": "application/json" },
         body: JSON.stringify({
@@ -173,6 +177,7 @@ export default function TtsQueueProvider({
           sourceLabel: next.sourceLabel,
           fullText: next.fullText ?? undefined,
           providerName: next.providerName,
+          speakingRate: next.speakingRate,
         }),
       });
 
@@ -286,7 +291,7 @@ export default function TtsQueueProvider({
         void processNext();
       }, 0);
     }
-  }, [updateJob]);
+  }, [updateJob, fetchWithKeys]);
 
   const enqueue = useCallback(
     (input: EnqueueInput): string => {
@@ -311,6 +316,7 @@ export default function TtsQueueProvider({
         fullText: input.fullText,
         sourceLabel: input.sourceLabel,
         providerName: input.providerName,
+        speakingRate: input.speakingRate,
         status: "queued",
         enqueuedAt: Date.now(),
       };

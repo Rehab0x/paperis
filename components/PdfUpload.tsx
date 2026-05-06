@@ -1,6 +1,7 @@
 "use client";
 
 import { useRef, useState } from "react";
+import { useFetchWithKeys } from "@/components/useFetchWithKeys";
 
 interface Props {
   onExtracted: (text: string) => void;
@@ -17,6 +18,7 @@ export default function PdfUpload({ onExtracted }: Props) {
   const inputRef = useRef<HTMLInputElement | null>(null);
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const fetchWithKeys = useFetchWithKeys();
 
   async function handleFile(file: File) {
     setError(null);
@@ -24,7 +26,10 @@ export default function PdfUpload({ onExtracted }: Props) {
     try {
       const form = new FormData();
       form.append("file", file);
-      const res = await fetch("/api/pdf", { method: "POST", body: form });
+      const res = await fetchWithKeys("/api/pdf", {
+        method: "POST",
+        body: form,
+      });
       const json = (await res.json()) as UploadResponse;
       if (!res.ok || !json.text) {
         setError(json.error ?? `업로드 실패 (${res.status})`);

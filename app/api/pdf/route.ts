@@ -4,6 +4,7 @@
 import "@/lib/promise-polyfill";
 import { NextResponse } from "next/server";
 import { extractText } from "unpdf";
+import { applyUserKeysToEnv } from "@/lib/user-keys";
 import type { ApiError } from "@/types";
 
 export const runtime = "nodejs";
@@ -12,6 +13,7 @@ export const maxDuration = 120;
 const MAX_BYTES = 30 * 1024 * 1024; // 30MB
 
 export async function POST(req: Request) {
+  applyUserKeysToEnv(req);
   let form: FormData;
   try {
     form = await req.formData();

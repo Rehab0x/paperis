@@ -115,13 +115,14 @@ function getCreds(): ClovaCreds {
 async function synthesizeChunk(
   text: string,
   voice: ClovaVoice,
+  speed: number,
   creds: ClovaCreds
 ): Promise<Uint8Array> {
   const params = new URLSearchParams();
   params.set("speaker", voice);
   params.set("text", text);
   params.set("volume", "0");
-  params.set("speed", "0");
+  params.set("speed", String(speed));
   params.set("pitch", "0");
   params.set("format", "mp3");
 
@@ -168,10 +169,14 @@ export class ClovaTtsProvider implements TtsProvider {
     if (chunks.length === 0) {
       throw new Error("텍스트 분할 결과가 비어 있습니다.");
     }
+    // -1(느림) → 2(Clova는 음수가 빠름이라 반전 매핑 — Clova 0 = 보통),
+    // 0 → 0, 1 → -2 (한 단계 빠름). Clova range -5..5.
+    const clovaSpeed =
+      input.speakingRate === -1 ? 2 : input.speakingRate === 1 ? -2 : 0;
 
     const audioChunks: Uint8Array[] = [];
     for (const chunk of chunks) {
-      const buf = await synthesizeChunk(chunk, voice, creds);
+      const buf = await synthesizeChunk(chunk, voice, clovaSpeed, creds);
       audioChunks.push(buf);
     }
     const audio = concatMp3(audioChunks);

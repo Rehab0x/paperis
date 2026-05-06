@@ -6,6 +6,7 @@ import {
   generateNarrationText,
 } from "@/lib/gemini";
 import { getTtsProvider } from "@/lib/tts";
+import { applyUserKeysToEnv } from "@/lib/user-keys";
 import type { ApiError, Language, Paper, TtsRequestBody } from "@/types";
 
 export const runtime = "nodejs";
@@ -31,6 +32,7 @@ function jsonError(error: string, status = 400) {
 }
 
 export async function POST(req: Request) {
+  applyUserKeysToEnv(req);
   let body: Partial<TtsRequestBody> & { fullText?: unknown };
   try {
     body = (await req.json()) as Partial<TtsRequestBody> & {
@@ -50,6 +52,9 @@ export async function POST(req: Request) {
     typeof body.sourceLabel === "string" ? body.sourceLabel : undefined;
   const fullText =
     typeof body.fullText === "string" ? body.fullText : null;
+  const rawRate = (body as { speakingRate?: unknown }).speakingRate;
+  const speakingRate: -1 | 0 | 1 =
+    rawRate === -1 || rawRate === 1 ? rawRate : 0;
 
   // narration 생성에 사용할 paper (full text가 있으면 abstract 자리에 주입)
   const sourcePaper: Paper = fullText
@@ -83,6 +88,7 @@ export async function POST(req: Request) {
       text: narration,
       language,
       voice,
+      speakingRate,
     });
     const arrayBuffer = result.audio.buffer.slice(
       result.audio.byteOffset,

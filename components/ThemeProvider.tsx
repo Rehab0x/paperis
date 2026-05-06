@@ -33,12 +33,6 @@ function isTheme(v: string | null): v is Theme {
   return v === "light" || v === "dark" || v === "system";
 }
 
-function readStored(): Theme {
-  if (typeof window === "undefined") return "system";
-  const raw = localStorage.getItem(STORAGE_KEY);
-  return isTheme(raw) ? raw : "system";
-}
-
 function prefersDark(): boolean {
   if (typeof window === "undefined") return false;
   return window.matchMedia("(prefers-color-scheme: dark)").matches;
@@ -49,12 +43,20 @@ export default function ThemeProvider({
 }: {
   children: React.ReactNode;
 }) {
-  const [theme, setThemeState] = useState<Theme>(() => readStored());
-  const [resolved, setResolved] = useState<"light" | "dark">(() => {
-    const t = readStored();
-    if (t === "system") return prefersDark() ? "dark" : "light";
-    return t;
-  });
+  // useState init은 항상 "system"으로 — SSR과 동일한 값으로 hydration. 마운트 직후
+  // useEffect에서 localStorage의 사용자 선택을 적용한다 (hydration mismatch 회피).
+  const [theme, setThemeState] = useState<Theme>("system");
+  const [resolved, setResolved] = useState<"light" | "dark">("light");
+
+  // 마운트 직후 localStorage 적용
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem(STORAGE_KEY);
+      if (isTheme(raw)) setThemeState(raw);
+    } catch {
+      // private mode 등에서 read 실패 → default "system" 유지
+    }
+  }, []);
 
   // theme이 변하거나 system일 때 prefers 변하면 html 클래스 동기화
   useEffect(() => {

@@ -3,6 +3,7 @@ import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import PlayerBar from "@/components/PlayerBar";
 import PlayerProvider from "@/components/PlayerProvider";
+import ApiKeysProvider from "@/components/ApiKeysProvider";
 import RegisterSW from "@/components/RegisterSW";
 import ThemeProvider from "@/components/ThemeProvider";
 import TtsCompletionToast from "@/components/TtsCompletionToast";
@@ -75,15 +76,17 @@ export default function RootLayout({
       </head>
       <body className="min-h-full flex flex-col">
         <ThemeProvider>
-          <TtsProviderPreferenceProvider>
-            <TtsQueueProvider>
-              <PlayerProvider>
-                {children}
-                <PlayerBar />
-                <TtsCompletionToast />
-              </PlayerProvider>
-            </TtsQueueProvider>
-          </TtsProviderPreferenceProvider>
+          <ApiKeysProvider>
+            <TtsProviderPreferenceProvider>
+              <TtsQueueProvider>
+                <PlayerProvider>
+                  {children}
+                  <PlayerBar />
+                  <TtsCompletionToast />
+                </PlayerProvider>
+              </TtsQueueProvider>
+            </TtsProviderPreferenceProvider>
+          </ApiKeysProvider>
         </ThemeProvider>
         <RegisterSW />
       </body>

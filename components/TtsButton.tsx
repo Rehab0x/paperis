@@ -23,8 +23,13 @@ export default function TtsButton({
   providerName,
 }: Props) {
   const { jobs, enqueue, cancel } = useTtsQueue();
-  const { provider: preferredProvider } = useTtsProviderPreference();
+  const {
+    provider: preferredProvider,
+    effectiveVoice,
+    speakingRate,
+  } = useTtsProviderPreference();
   const effectiveProvider = providerName ?? preferredProvider;
+  const effectiveVoiceFinal = voice ?? effectiveVoice;
 
   // 이 논문+언어에 대한 가장 최근 job
   const myJob = [...jobs]
@@ -49,10 +54,11 @@ export default function TtsButton({
     enqueue({
       paper,
       language,
-      voice,
+      voice: effectiveVoiceFinal,
       fullText,
       sourceLabel,
       providerName: effectiveProvider,
+      speakingRate,
     });
   }
 

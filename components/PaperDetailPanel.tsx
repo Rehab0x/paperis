@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import FullTextView from "@/components/FullTextView";
 import PdfUpload from "@/components/PdfUpload";
 import TtsButton from "@/components/TtsButton";
+import { useFetchWithKeys } from "@/components/useFetchWithKeys";
 import type {
   FullTextAttempt,
   FullTextResponse,
@@ -49,6 +50,7 @@ export default function PaperDetailPanel({ paper, onBack }: Props) {
   const [summaryError, setSummaryError] = useState<string | null>(null);
 
   const summaryAbortRef = useRef<AbortController | null>(null);
+  const fetchWithKeys = useFetchWithKeys();
 
   // 새 논문 선택 시 풀텍스트 자동 시도.
   // key={pmid}로 부모가 remount를 보장하므로 별도 dedupe ref 불필요.
@@ -64,7 +66,7 @@ export default function PaperDetailPanel({ paper, onBack }: Props) {
     let cancelled = false;
     (async () => {
       try {
-        const res = await fetch("/api/fulltext", {
+        const res = await fetchWithKeys("/api/fulltext", {
           method: "POST",
           headers: { "content-type": "application/json" },
           body: JSON.stringify({
@@ -143,7 +145,7 @@ export default function PaperDetailPanel({ paper, onBack }: Props) {
     };
 
     try {
-      const res = await fetch("/api/summarize/read", {
+      const res = await fetchWithKeys("/api/summarize/read", {
         method: "POST",
         headers: { "content-type": "application/json" },
         body: JSON.stringify(body),

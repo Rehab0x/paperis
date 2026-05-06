@@ -7,6 +7,8 @@ export interface TtsSynthesizeInput {
   text: string;
   language: Language;
   voice?: string;
+  /** 사용자 단위 -1(느림) | 0(보통) | 1(빠름). provider가 자기 단위로 매핑한다. */
+  speakingRate?: -1 | 0 | 1;
 }
 
 export type TtsAudioFormat = "audio/wav" | "audio/mpeg";

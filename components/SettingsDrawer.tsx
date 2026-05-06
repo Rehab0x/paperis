@@ -1,11 +1,25 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useRef, useState } from "react";
+import {
+  API_KEY_LABELS,
+  useApiKeys,
+  type ApiKeyName,
+} from "@/components/ApiKeysProvider";
 import { useTheme, type Theme } from "@/components/ThemeProvider";
 import {
+  PROVIDER_DEFAULT_VOICE,
+  PROVIDER_VOICES,
   useTtsProviderPreference,
+  type SpeakingRate,
   type TtsProviderName,
 } from "@/components/TtsProviderPreferenceProvider";
+import { useFetchWithKeys } from "@/components/useFetchWithKeys";
+import {
+  exportLibrary,
+  importLibrary,
+  type LibraryExport,
+} from "@/lib/audio-library";
 
 interface Props {
   open: boolean;
@@ -29,17 +43,33 @@ const TTS_OPTIONS: {
     hint: "GEMINI_API_KEY로 동작 — preview 단계, 가끔 실패할 수 있음",
   },
   {
+    value: "google-cloud",
+    label: "Google Cloud TTS (Neural2/WaveNet)",
+    hint: "GOOGLE_CLOUD_TTS_API_KEY 필요 — 월 1M자 무료, 안정적",
+  },
+  {
     value: "clova",
     label: "Naver Clova Voice (Premium)",
-    hint: "NCP_CLOVA_CLIENT_ID/SECRET 필요 — 한국어 자연스러움 우수, 안정적",
+    hint: "NCP_CLOVA_CLIENT_ID/SECRET 필요 — 한국어 자연스러움 우수",
   },
 ];
 
-// 우측 슬라이드 설정 드로어. 라이브러리와 동일한 패턴.
-// PlayerBar 위에서 끝나도록 --player-bar-h CSS 변수 사용.
+const SPEED_OPTIONS: { value: SpeakingRate; label: string }[] = [
+  { value: -1, label: "느림" },
+  { value: 0, label: "보통" },
+  { value: 1, label: "빠름" },
+];
+
 export default function SettingsDrawer({ open, onClose }: Props) {
   const { theme, setTheme } = useTheme();
-  const { provider, setProvider } = useTtsProviderPreference();
+  const {
+    provider,
+    setProvider,
+    voiceByProvider,
+    setVoice,
+    speakingRate,
+    setSpeakingRate,
+  } = useTtsProviderPreference();
 
   useEffect(() => {
     if (!open) return;
@@ -54,6 +84,9 @@ export default function SettingsDrawer({ open, onClose }: Props) {
       document.body.style.overflow = prevOverflow;
     };
   }, [open, onClose]);
+
+  const currentVoice =
+    voiceByProvider[provider] ?? PROVIDER_DEFAULT_VOICE[provider];
 
   return (
     <>
@@ -90,11 +123,8 @@ export default function SettingsDrawer({ open, onClose }: Props) {
           </button>
         </header>
 
-        <div className="flex-1 space-y-6 overflow-auto px-5 py-5 pb-8">
-          <Section
-            title="화면 테마"
-            description="라이트/다크/시스템 중에서 선택"
-          >
+        <div className="flex-1 space-y-7 overflow-auto px-5 py-5 pb-12">
+          <Section title="화면 테마" description="라이트/다크/시스템 중에서 선택">
             <RadioGroup
               name="theme"
               value={theme}
@@ -105,7 +135,7 @@ export default function SettingsDrawer({ open, onClose }: Props) {
 
           <Section
             title="TTS provider"
-            description="음성 합성에 어떤 서비스를 쓸지 — 선택은 다음 변환부터 적용됨"
+            description="음성 합성에 어떤 서비스를 쓸지 — 다음 변환부터 적용"
           >
             <RadioGroup
               name="tts"
@@ -115,13 +145,62 @@ export default function SettingsDrawer({ open, onClose }: Props) {
             />
           </Section>
 
-          <Section title="앞으로 추가될 항목">
-            <ul className="space-y-1 text-xs text-zinc-500">
-              <li>• API 키 직접 입력 (현재는 .env.local에서만)</li>
-              <li>• TTS 화자/속도 선택</li>
-              <li>• 알림 권한 토글</li>
-              <li>• 라이브러리 백업·복원</li>
-            </ul>
+          <Section
+            title="TTS 화자 / 속도"
+            description={`현재 provider(${provider})의 화자 + 재생 속도`}
+          >
+            <label className="mb-3 block">
+              <span className="mb-1 block text-xs text-zinc-500">화자</span>
+              <select
+                value={currentVoice}
+                onChange={(e) => setVoice(provider, e.target.value)}
+                className="w-full rounded-md border border-zinc-200 bg-white px-2 py-1.5 text-sm dark:border-zinc-800 dark:bg-zinc-900"
+              >
+                {PROVIDER_VOICES[provider].map((v) => (
+                  <option key={v} value={v}>
+                    {v}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <span className="mb-1 block text-xs text-zinc-500">속도</span>
+            <RadioGroup
+              name="speed"
+              value={speakingRate}
+              options={SPEED_OPTIONS}
+              onChange={(v) => setSpeakingRate(v as SpeakingRate)}
+            />
+            {provider === "gemini" ? (
+              <p className="mt-2 text-[11px] text-zinc-500">
+                Gemini는 속도 옵션을 받지 않아 “보통”으로 합성됩니다.
+              </p>
+            ) : null}
+            <VoicePreview
+              provider={provider}
+              voice={currentVoice}
+              speakingRate={speakingRate}
+            />
+          </Section>
+
+          <Section
+            title="알림"
+            description="TTS 변환이 끝나면 브라우저 알림을 표시"
+          >
+            <NotificationPermission />
+          </Section>
+
+          <Section
+            title="API 키"
+            description="입력한 키는 브라우저(localStorage)에 저장되어 fetch 시 헤더로 전송 → 서버가 .env 키 대신 사용"
+          >
+            <ApiKeysSection />
+          </Section>
+
+          <Section
+            title="라이브러리 백업 / 복원"
+            description="모든 트랙(메타 + 오디오)을 한 JSON 파일로 묶어 저장·복원"
+          >
+            <LibraryBackup />
           </Section>
         </div>
       </aside>
@@ -151,13 +230,13 @@ function Section({
   );
 }
 
-interface RadioOption<T extends string> {
+interface RadioOption<T extends string | number> {
   value: T;
   label: string;
   hint?: string;
 }
 
-function RadioGroup<T extends string>({
+function RadioGroup<T extends string | number>({
   name,
   value,
   options,
@@ -174,7 +253,7 @@ function RadioGroup<T extends string>({
         const active = value === opt.value;
         return (
           <label
-            key={opt.value}
+            key={String(opt.value)}
             className={[
               "flex cursor-pointer items-start gap-3 rounded-lg border px-3 py-2 transition",
               active
@@ -185,7 +264,7 @@ function RadioGroup<T extends string>({
             <input
               type="radio"
               name={name}
-              value={opt.value}
+              value={String(opt.value)}
               checked={active}
               onChange={() => onChange(opt.value)}
               className="mt-1"
@@ -201,6 +280,337 @@ function RadioGroup<T extends string>({
           </label>
         );
       })}
+    </div>
+  );
+}
+
+function isEnglishVoice(voice: string): boolean {
+  if (/^en[-_]/i.test(voice)) return true;
+  return ["clara", "matt", "danna"].includes(voice);
+}
+
+const PREVIEW_KO =
+  "안녕하세요. 이것은 Paperis 음성 미리듣기 예문입니다. 발음과 속도를 확인해 보세요.";
+const PREVIEW_EN =
+  "Hello. This is a Paperis text-to-speech preview. Please check the pronunciation and pacing.";
+
+function VoicePreview({
+  provider,
+  voice,
+  speakingRate,
+}: {
+  provider: TtsProviderName;
+  voice: string;
+  speakingRate: SpeakingRate;
+}) {
+  const fetchWithKeys = useFetchWithKeys();
+  const audioRef = useRef<HTMLAudioElement | null>(null);
+  const objectUrlRef = useRef<string | null>(null);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  // unmount 시 blob URL 정리
+  useEffect(() => {
+    return () => {
+      if (objectUrlRef.current) URL.revokeObjectURL(objectUrlRef.current);
+      audioRef.current?.pause();
+    };
+  }, []);
+
+  async function handlePreview() {
+    if (busy) return;
+    setBusy(true);
+    setError(null);
+    try {
+      const isEn = isEnglishVoice(voice);
+      const res = await fetchWithKeys("/api/tts/preview", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          text: isEn ? PREVIEW_EN : PREVIEW_KO,
+          language: isEn ? "en" : "ko",
+          providerName: provider,
+          voice,
+          speakingRate,
+        }),
+      });
+      if (!res.ok) {
+        const rawText = await res.text().catch(() => "");
+        let msg = `미리듣기 실패 (${res.status})`;
+        try {
+          const parsed = JSON.parse(rawText);
+          if (parsed && typeof parsed.error === "string") msg = parsed.error;
+        } catch {
+          if (rawText) msg = `${msg}: ${rawText.slice(0, 160)}`;
+        }
+        setError(msg);
+        return;
+      }
+      const blob = await res.blob();
+      if (objectUrlRef.current) URL.revokeObjectURL(objectUrlRef.current);
+      const url = URL.createObjectURL(blob);
+      objectUrlRef.current = url;
+      const a = audioRef.current;
+      if (a) {
+        a.src = url;
+        try {
+          await a.play();
+        } catch {
+          // 자동재생 차단 시 사용자에게 컨트롤로 재생 유도
+        }
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "미리듣기 실패");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <div className="mt-3 space-y-2">
+      <button
+        type="button"
+        onClick={handlePreview}
+        disabled={busy}
+        className="rounded-md border border-zinc-200 px-3 py-1.5 text-sm hover:bg-zinc-100 disabled:cursor-not-allowed disabled:opacity-50 dark:border-zinc-800 dark:hover:bg-zinc-800"
+      >
+        {busy ? "합성 중…" : "🔊 이 화자/속도로 미리듣기"}
+      </button>
+      <audio ref={audioRef} controls className="w-full" />
+      {error ? (
+        <p className="rounded-md border border-red-200 bg-red-50 px-2.5 py-1.5 text-xs text-red-700 dark:border-red-900 dark:bg-red-950 dark:text-red-300">
+          {error}
+        </p>
+      ) : null}
+    </div>
+  );
+}
+
+function NotificationPermission() {
+  const [status, setStatus] = useState<NotificationPermission | "unsupported">(
+    "default"
+  );
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    if (!("Notification" in window)) {
+      setStatus("unsupported");
+      return;
+    }
+    setStatus(Notification.permission);
+  }, []);
+
+  async function request() {
+    if (!("Notification" in window)) return;
+    try {
+      const result = await Notification.requestPermission();
+      setStatus(result);
+    } catch {
+      // 일부 브라우저는 sync 콜백
+    }
+  }
+
+  if (status === "unsupported") {
+    return (
+      <p className="text-xs text-zinc-500">
+        이 브라우저는 알림 API를 지원하지 않습니다.
+      </p>
+    );
+  }
+  if (status === "granted") {
+    return (
+      <p className="rounded-md border border-emerald-200 bg-emerald-50 px-2.5 py-1.5 text-xs text-emerald-700 dark:border-emerald-900 dark:bg-emerald-950 dark:text-emerald-300">
+        ✓ 알림 허용됨 — TTS 변환 끝나면 브라우저 알림이 표시됩니다.
+      </p>
+    );
+  }
+  if (status === "denied") {
+    return (
+      <p className="text-xs text-zinc-500">
+        알림이 차단되어 있습니다. 브라우저 주소창의 자물쇠 아이콘에서 권한을
+        다시 열어주세요.
+      </p>
+    );
+  }
+  return (
+    <button
+      type="button"
+      onClick={request}
+      className="rounded-md border border-zinc-200 px-3 py-1.5 text-sm hover:bg-zinc-100 dark:border-zinc-800 dark:hover:bg-zinc-800"
+    >
+      알림 권한 요청
+    </button>
+  );
+}
+
+function ApiKeysSection() {
+  const { keys, setKey, clearKey } = useApiKeys();
+  const [reveal, setReveal] = useState<Record<ApiKeyName, boolean>>({
+    gemini: false,
+    googleCloud: false,
+    clovaId: false,
+    clovaSecret: false,
+    pubmed: false,
+    unpaywall: false,
+  });
+
+  const fields: ApiKeyName[] = [
+    "gemini",
+    "googleCloud",
+    "clovaId",
+    "clovaSecret",
+    "pubmed",
+    "unpaywall",
+  ];
+
+  return (
+    <div className="space-y-2.5">
+      <p className="rounded-md border border-amber-200 bg-amber-50 px-2.5 py-1.5 text-[11px] text-amber-800 dark:border-amber-900 dark:bg-amber-950 dark:text-amber-300">
+        ⚠ 키는 브라우저 localStorage에 저장됩니다. XSS 위험을 인지하시고 본인
+        브라우저에서만 사용하세요.
+      </p>
+      {fields.map((name) => {
+        const v = keys[name] ?? "";
+        const visible = reveal[name];
+        return (
+          <label key={name} className="block">
+            <span className="mb-1 block font-mono text-[10px] uppercase tracking-wide text-zinc-500">
+              {API_KEY_LABELS[name]}
+            </span>
+            <div className="flex gap-1">
+              <input
+                type={visible ? "text" : "password"}
+                value={v}
+                onChange={(e) => setKey(name, e.target.value)}
+                placeholder="(미설정 시 .env.local 키 사용)"
+                className="min-w-0 flex-1 rounded-md border border-zinc-200 bg-white px-2 py-1 text-xs dark:border-zinc-800 dark:bg-zinc-900"
+                autoComplete="off"
+                spellCheck={false}
+              />
+              <button
+                type="button"
+                onClick={() =>
+                  setReveal((prev) => ({ ...prev, [name]: !prev[name] }))
+                }
+                className="rounded-md border border-zinc-200 px-2 text-xs text-zinc-500 hover:bg-zinc-100 dark:border-zinc-800 dark:hover:bg-zinc-800"
+                aria-label={visible ? "숨기기" : "보이기"}
+                title={visible ? "숨기기" : "보이기"}
+              >
+                {visible ? "🙈" : "👁"}
+              </button>
+              {v ? (
+                <button
+                  type="button"
+                  onClick={() => clearKey(name)}
+                  className="rounded-md border border-zinc-200 px-2 text-xs text-zinc-500 hover:bg-zinc-100 dark:border-zinc-800 dark:hover:bg-zinc-800"
+                  aria-label="삭제"
+                  title="삭제"
+                >
+                  🗑
+                </button>
+              ) : null}
+            </div>
+          </label>
+        );
+      })}
+    </div>
+  );
+}
+
+function LibraryBackup() {
+  const inputRef = useRef<HTMLInputElement | null>(null);
+  const [busy, setBusy] = useState<"idle" | "exporting" | "importing">("idle");
+  const [message, setMessage] = useState<string | null>(null);
+
+  async function handleExport() {
+    if (busy !== "idle") return;
+    setBusy("exporting");
+    setMessage(null);
+    try {
+      const data = await exportLibrary();
+      if (data.tracks.length === 0) {
+        setMessage("내보낼 트랙이 없습니다.");
+        return;
+      }
+      const json = JSON.stringify(data);
+      const blob = new Blob([json], { type: "application/json" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      const date = new Date()
+        .toISOString()
+        .replace(/[:.]/g, "-")
+        .slice(0, 19);
+      a.href = url;
+      a.download = `paperis-library-${date}.json`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      setTimeout(() => URL.revokeObjectURL(url), 1000);
+      setMessage(`✓ ${data.tracks.length}개 트랙을 내보냈습니다.`);
+    } catch (err) {
+      setMessage(err instanceof Error ? err.message : "내보내기 실패");
+    } finally {
+      setBusy("idle");
+    }
+  }
+
+  async function handleImport(file: File) {
+    setBusy("importing");
+    setMessage(null);
+    try {
+      const text = await file.text();
+      const data = JSON.parse(text) as LibraryExport;
+      const result = await importLibrary(data);
+      setMessage(
+        `✓ ${result.added}개 추가됨${
+          result.skipped > 0 ? `, ${result.skipped}개 건너뜀` : ""
+        }`
+      );
+    } catch (err) {
+      setMessage(err instanceof Error ? err.message : "복원 실패");
+    } finally {
+      setBusy("idle");
+      if (inputRef.current) inputRef.current.value = "";
+    }
+  }
+
+  return (
+    <div className="space-y-2">
+      <div className="flex flex-wrap gap-2">
+        <button
+          type="button"
+          onClick={handleExport}
+          disabled={busy !== "idle"}
+          className="rounded-md border border-zinc-200 px-3 py-1.5 text-sm hover:bg-zinc-100 disabled:cursor-not-allowed disabled:opacity-50 dark:border-zinc-800 dark:hover:bg-zinc-800"
+        >
+          {busy === "exporting" ? "내보내는 중…" : "📤 백업 내보내기"}
+        </button>
+        <button
+          type="button"
+          onClick={() => inputRef.current?.click()}
+          disabled={busy !== "idle"}
+          className="rounded-md border border-zinc-200 px-3 py-1.5 text-sm hover:bg-zinc-100 disabled:cursor-not-allowed disabled:opacity-50 dark:border-zinc-800 dark:hover:bg-zinc-800"
+        >
+          {busy === "importing" ? "복원 중…" : "📥 백업 복원"}
+        </button>
+        <input
+          ref={inputRef}
+          type="file"
+          accept="application/json,.json"
+          className="hidden"
+          onChange={(e) => {
+            const f = e.target.files?.[0];
+            if (f) void handleImport(f);
+          }}
+        />
+      </div>
+      {message ? (
+        <p className="text-xs text-zinc-600 dark:text-zinc-300">{message}</p>
+      ) : null}
+      <p className="text-[11px] text-zinc-400">
+        오디오 데이터까지 포함하므로 트랙 수에 따라 파일이 클 수 있습니다 (트랙
+        하나당 보통 1–5MB).
+      </p>
     </div>
   );
 }

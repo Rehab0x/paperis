@@ -248,6 +248,129 @@ export async function moveTrackDown(id: string): Promise<void> {
   return swapPositionWithNeighbor(id, "down");
 }
 
+// ─────────────────────────────────────────────
+// 백업 / 복원 (export JSON + import)
+// ─────────────────────────────────────────────
+
+interface ExportedTrack extends Omit<AudioTrack, "audioBlob"> {
+  /** WAV/MP3 바이너리를 base64로 직렬화 */
+  audioBase64: string;
+  audioMime: string;
+}
+
+export interface LibraryExport {
+  version: 1;
+  exportedAt: number;
+  tracks: ExportedTrack[];
+}
+
+function blobToBase64(blob: Blob): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const fr = new FileReader();
+    fr.onload = () => {
+      const result = fr.result;
+      if (typeof result !== "string") {
+        reject(new Error("FileReader 결과가 문자열이 아닙니다."));
+        return;
+      }
+      // result는 "data:<mime>;base64,<payload>" 형식 → payload만 추출
+      const idx = result.indexOf(",");
+      resolve(idx >= 0 ? result.slice(idx + 1) : result);
+    };
+    fr.onerror = () => reject(fr.error ?? new Error("FileReader 오류"));
+    fr.readAsDataURL(blob);
+  });
+}
+
+function base64ToBlob(b64: string, mime: string): Blob {
+  const bin = atob(b64);
+  const bytes = new Uint8Array(bin.length);
+  for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+  return new Blob([bytes], { type: mime });
+}
+
+/**
+ * 라이브러리 전체를 JSON으로 export. audioBlob은 base64 인코딩되어 한 파일에 묶임.
+ * 트랙 50편이면 50–200MB가 될 수 있으므로 큰 메모리 작업이라 사용 시 사용자 안내 필수.
+ */
+export async function exportLibrary(): Promise<LibraryExport> {
+  const db = await getDb();
+  const all = await db.getAllFromIndex(STORE, "by-position");
+  const tracks: ExportedTrack[] = [];
+  for (const t of all) {
+    const audioBase64 = await blobToBase64(t.audioBlob);
+    tracks.push({
+      id: t.id,
+      pmid: t.pmid,
+      title: t.title,
+      authors: t.authors,
+      journal: t.journal,
+      year: t.year,
+      language: t.language,
+      voice: t.voice,
+      providerName: t.providerName,
+      durationMs: t.durationMs,
+      createdAt: t.createdAt,
+      position: t.position,
+      paperSnapshot: t.paperSnapshot,
+      narrationText: t.narrationText,
+      audioBase64,
+      audioMime: t.audioBlob.type || "audio/wav",
+    });
+  }
+  return { version: 1, exportedAt: Date.now(), tracks };
+}
+
+/**
+ * import한 트랙을 라이브러리에 추가. 기존 트랙은 그대로, 같은 id면 새 id로 발급.
+ * position은 현재 라이브러리 끝에 이어 붙임.
+ */
+export async function importLibrary(
+  data: LibraryExport
+): Promise<{ added: number; skipped: number }> {
+  if (!data || data.version !== 1 || !Array.isArray(data.tracks)) {
+    throw new Error("잘못된 백업 파일 형식입니다.");
+  }
+  const db = await getDb();
+  let added = 0;
+  let skipped = 0;
+  let position = await nextPosition(db);
+  for (const t of data.tracks) {
+    if (typeof t.audioBase64 !== "string" || !t.audioBase64) {
+      skipped += 1;
+      continue;
+    }
+    try {
+      const blob = base64ToBlob(t.audioBase64, t.audioMime || "audio/wav");
+      const restored: AudioTrack = {
+        id: newId(),
+        pmid: t.pmid,
+        title: t.title,
+        authors: t.authors ?? [],
+        journal: t.journal ?? "",
+        year: t.year ?? "",
+        language: t.language,
+        voice: t.voice ?? "",
+        providerName: t.providerName ?? "",
+        audioBlob: blob,
+        durationMs: t.durationMs ?? 0,
+        createdAt: t.createdAt ?? Date.now(),
+        position,
+        paperSnapshot: t.paperSnapshot,
+        narrationText: t.narrationText,
+      };
+      await db.add(STORE, restored);
+      added += 1;
+      position += 1;
+    } catch (err) {
+      console.warn("[audio-library] import 트랙 실패", err);
+      skipped += 1;
+    }
+  }
+  if (added > 0) notifyChange();
+  return { added, skipped };
+}
+
 // 라이브러리 변경 이벤트 구독 — 같은 탭의 CustomEvent + 다른 탭의 BroadcastChannel 모두.
 export function subscribeAudioLibrary(callback: () => void): () => void {
   if (typeof window === "undefined") return () => {};

@@ -10,6 +10,7 @@ import SearchBar from "@/components/SearchBar";
 import SettingsLink from "@/components/SettingsLink";
 import SortControl from "@/components/SortControl";
 import TtsQueueBadge from "@/components/TtsQueueBadge";
+import { useFetchWithKeys } from "@/components/useFetchWithKeys";
 import { getTrackByPmid } from "@/lib/audio-library";
 import {
   getClientCachedQuery,
@@ -68,6 +69,8 @@ function HomeInner() {
   // 라이브러리에서 트랙 → 📄 논문 클릭으로 들어왔을 때 papers에 없는 pmid를
   // IndexedDB의 paperSnapshot으로 복원해 디테일 패널을 띄운다.
   const [librarySnapshot, setLibrarySnapshot] = useState<Paper | null>(null);
+
+  const fetchWithKeys = useFetchWithKeys();
 
   // 같은 (q, sort) 조합을 중복 호출하지 않도록 마지막 키를 기억
   const lastFetchedRef = useRef<string>("");
@@ -148,7 +151,7 @@ function HomeInner() {
 
       try {
         const body: SummarizeMiniRequest = { papers: remaining };
-        const res = await fetch("/api/summarize", {
+        const res = await fetchWithKeys("/api/summarize", {
           method: "POST",
           headers: { "content-type": "application/json" },
           body: JSON.stringify(body),
@@ -235,7 +238,7 @@ function HomeInner() {
           retmax: PAGE_SIZE,
           retstart: (page - 1) * PAGE_SIZE,
         };
-        const res = await fetch("/api/search", {
+        const res = await fetchWithKeys("/api/search", {
           method: "POST",
           headers: { "content-type": "application/json" },
           body: JSON.stringify(body),

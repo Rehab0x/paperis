@@ -4,6 +4,7 @@
 import { NextResponse } from "next/server";
 import { friendlyErrorMessage } from "@/lib/gemini";
 import { generateMiniSummaries } from "@/lib/summary";
+import { applyUserKeysToEnv } from "@/lib/user-keys";
 import type {
   ApiError,
   Language,
@@ -29,6 +30,7 @@ function isPaper(value: unknown): value is Paper {
 }
 
 export async function POST(req: Request) {
+  applyUserKeysToEnv(req);
   let body: Partial<SummarizeMiniRequest>;
   try {
     body = (await req.json()) as Partial<SummarizeMiniRequest>;

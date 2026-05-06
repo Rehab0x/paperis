@@ -7,6 +7,7 @@ import { enrichPapers } from "@/lib/openalex";
 import { searchPubMed } from "@/lib/pubmed";
 import { getCachedQuery, setCachedQuery } from "@/lib/query-cache";
 import { translateNaturalLanguage } from "@/lib/query-translator";
+import { applyUserKeysToEnv } from "@/lib/user-keys";
 import type {
   ApiError,
   Paper,
@@ -34,6 +35,7 @@ function clampInt(value: unknown, min: number, max: number, fallback: number): n
 }
 
 export async function POST(req: Request) {
+  applyUserKeysToEnv(req);
   let body: Partial<SearchRequest>;
   try {
     body = (await req.json()) as Partial<SearchRequest>;

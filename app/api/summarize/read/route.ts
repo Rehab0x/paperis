@@ -2,6 +2,7 @@
 // 클라이언트는 chunk 단위로 받아 Markdown처럼 점진 렌더.
 
 import { friendlyErrorMessage, streamSummary } from "@/lib/gemini";
+import { applyUserKeysToEnv } from "@/lib/user-keys";
 import type { Language, Paper, SummarizeReadRequest } from "@/types";
 
 export const runtime = "nodejs";
@@ -19,6 +20,7 @@ function isPaper(value: unknown): value is Paper {
 }
 
 export async function POST(req: Request) {
+  applyUserKeysToEnv(req);
   let body: Partial<SummarizeReadRequest> & { paper?: unknown };
   try {
     body = (await req.json()) as Partial<SummarizeReadRequest> & {
