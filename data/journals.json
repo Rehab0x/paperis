@@ -1,0 +1,44 @@
+{
+  "version": 1,
+  "updatedAt": "2026-05-08",
+  "specialties": [
+    {
+      "id": "pm-r",
+      "name": "재활의학과",
+      "nameEn": "Physical Medicine & Rehabilitation",
+      "openAlexFieldId": "fields/2734",
+      "suggestedTopics": [
+        "spasticity",
+        "stroke rehabilitation",
+        "gait",
+        "dysphagia",
+        "constraint-induced movement therapy"
+      ]
+    },
+    {
+      "id": "cardiology",
+      "name": "심장내과",
+      "nameEn": "Cardiology",
+      "openAlexFieldId": "fields/2705",
+      "suggestedTopics": [
+        "atrial fibrillation",
+        "heart failure",
+        "myocardial infarction",
+        "hypertension"
+      ]
+    },
+    {
+      "id": "neurology",
+      "name": "신경과",
+      "nameEn": "Neurology",
+      "openAlexFieldId": "fields/2728",
+      "suggestedTopics": [
+        "stroke",
+        "epilepsy",
+        "parkinson disease",
+        "multiple sclerosis",
+        "alzheimer disease"
+      ]
+    }
+  ]
+}
