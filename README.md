@@ -21,12 +21,15 @@
 ## 환경변수 (`.env.local`)
 
 ```
-GEMINI_API_KEY=        # 필수
-PUBMED_API_KEY=        # 권장 (없으면 초당 3회 제한)
-UNPAYWALL_EMAIL=       # 권장 (없으면 풀텍스트 체인 1단계 스킵)
+GEMINI_API_KEY=                  # 필수 (검색·요약 + TTS fallback)
+PUBMED_API_KEY=                  # 권장 (없으면 초당 3회 제한)
+UNPAYWALL_EMAIL=                 # 권장 (없으면 풀텍스트 체인 1단계 스킵)
+NCP_CLOVA_CLIENT_ID=             # 권장 (v3 default TTS — 한국어 자연스러움 우수)
+NCP_CLOVA_CLIENT_SECRET=
+GOOGLE_CLOUD_TTS_API_KEY=        # 선택 (Neural2/WaveNet, 월 1M자 무료)
 ```
 
-`.env.example` 참고. `.env.local`은 `.gitignore`로 제외됨.
+TTS provider 우선순위: 사용자가 설정 패널에서 선택(또는 default = Clova) → 키 없으면 서버가 자동으로 Gemini TTS로 강등. `.env.example` 참고. `.env.local`은 `.gitignore`로 제외됨.
 
 ---
 
@@ -48,7 +51,7 @@ npm run build    # 타입 체크 + 빌드 + 라우트 출력
 | 스타일 | Tailwind CSS v4 (CSS-first, config 파일 없음) |
 | 자연어 → 검색식 | Gemini 2.5 Flash Lite + responseSchema |
 | 요약 / Narration | Gemini 2.5 Flash (`@google/genai`, streaming) |
-| TTS | Gemini TTS (`gemini-2.5-flash-preview-tts`, narration only) |
+| TTS | Naver Clova Voice Premium (default) · Google Cloud TTS Neural2/WaveNet · Gemini TTS (fallback). narration only |
 | 논문 데이터 | PubMed E-utilities (esearch + efetch) |
 | 인용수 / 저널 메트릭 | OpenAlex Works API |
 | 풀텍스트 | Unpaywall · Europe PMC · PMC efetch · unpdf |

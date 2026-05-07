@@ -17,7 +17,9 @@ const STORAGE_KEY_PROVIDER = "paperis.tts_provider";
 const STORAGE_KEY_VOICE = "paperis.tts_voice_by_provider";
 const STORAGE_KEY_RATE = "paperis.tts_speaking_rate";
 
-const DEFAULT_PROVIDER: TtsProviderName = "gemini";
+// v3 default = Clova (한국어 자연스러움 + 빠름 + Vercel timeout 회피).
+// 기존 사용자 localStorage 값은 보존 — 신규 사용자만 영향. 서버는 키 부재 시 Gemini fallback.
+const DEFAULT_PROVIDER: TtsProviderName = "clova";
 const DEFAULT_RATE: SpeakingRate = 0;
 
 /** provider별 default voice — 사용자가 명시 안 했을 때 폴백 */

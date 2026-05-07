@@ -5,7 +5,7 @@ import {
   friendlyErrorMessage,
   generateNarrationText,
 } from "@/lib/gemini";
-import { getTtsProvider } from "@/lib/tts";
+import { resolveTtsProvider } from "@/lib/tts";
 import { applyUserKeysToEnv } from "@/lib/user-keys";
 import type { ApiError, Language, Paper, TtsRequestBody } from "@/types";
 
@@ -45,8 +45,9 @@ export async function POST(req: Request) {
     return jsonError("paper 필드가 필요합니다.");
   }
   const language: Language = body.language === "en" ? "en" : "ko";
+  // providerName 미지정 시 lib/tts의 DEFAULT_PROVIDER(v3=clova) 사용. 키 부재면 Gemini fallback.
   const providerName =
-    typeof body.providerName === "string" ? body.providerName : "gemini";
+    typeof body.providerName === "string" ? body.providerName : undefined;
   const voice = typeof body.voice === "string" ? body.voice : undefined;
   const sourceLabel =
     typeof body.sourceLabel === "string" ? body.sourceLabel : undefined;
@@ -61,15 +62,18 @@ export async function POST(req: Request) {
     ? { ...body.paper, abstract: fullText }
     : body.paper;
 
-  let provider;
+  let resolved;
   try {
-    provider = getTtsProvider(providerName);
+    resolved = resolveTtsProvider(providerName);
   } catch (err) {
     return jsonError(
       err instanceof Error ? err.message : "TTS provider 오류",
       400
     );
   }
+  const provider = resolved.provider;
+  // 요청 provider가 사용자가 명시한 voice 라인업과 다르면 voice 무시 (provider별 voice가 다름)
+  const voiceForProvider = resolved.degraded ? undefined : voice;
 
   // 1) Gemini로 narration 텍스트 생성
   let narration: string;
@@ -87,7 +91,7 @@ export async function POST(req: Request) {
     const result = await provider.synthesize({
       text: narration,
       language,
-      voice,
+      voice: voiceForProvider,
       speakingRate,
     });
     const arrayBuffer = result.audio.buffer.slice(
@@ -99,23 +103,25 @@ export async function POST(req: Request) {
     // Vercel/Node 헤더 제한(보통 32KB+) 안에 충분히 들어간다.
     const narrationB64 = Buffer.from(narration, "utf-8").toString("base64");
 
-    return new Response(arrayBuffer as ArrayBuffer, {
-      status: 200,
-      headers: {
-        "content-type": result.format,
-        "content-length": String(result.audio.byteLength),
-        "x-tts-provider": result.providerName,
-        "x-tts-voice": result.voice,
-        "x-tts-language": language,
-        "x-tts-format": result.format,
-        "x-audio-duration-ms": String(result.durationMs),
-        "x-audio-sample-rate": String(result.sampleRate),
-        "x-tts-narration-b64": narrationB64,
-        "access-control-expose-headers":
-          "x-tts-provider, x-tts-voice, x-tts-language, x-tts-format, x-audio-duration-ms, x-audio-sample-rate, x-tts-narration-b64",
-        "cache-control": "no-store",
-      },
-    });
+    const headers: Record<string, string> = {
+      "content-type": result.format,
+      "content-length": String(result.audio.byteLength),
+      "x-tts-provider": result.providerName,
+      "x-tts-voice": result.voice,
+      "x-tts-language": language,
+      "x-tts-format": result.format,
+      "x-audio-duration-ms": String(result.durationMs),
+      "x-audio-sample-rate": String(result.sampleRate),
+      "x-tts-narration-b64": narrationB64,
+      "access-control-expose-headers":
+        "x-tts-provider, x-tts-voice, x-tts-language, x-tts-format, x-audio-duration-ms, x-audio-sample-rate, x-tts-narration-b64, x-tts-degraded-from",
+      "cache-control": "no-store",
+    };
+    if (resolved.degraded && resolved.requestedName) {
+      headers["x-tts-degraded-from"] = resolved.requestedName;
+    }
+
+    return new Response(arrayBuffer as ArrayBuffer, { status: 200, headers });
   } catch (err) {
     return jsonError(friendlyErrorMessage(err, language), 502);
   }

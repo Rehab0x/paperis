@@ -38,9 +38,9 @@ const TTS_OPTIONS: {
   hint: string;
 }[] = [
   {
-    value: "gemini",
-    label: "Gemini TTS",
-    hint: "GEMINI_API_KEY로 동작 — preview 단계, 가끔 실패할 수 있음",
+    value: "clova",
+    label: "Naver Clova Voice (Premium) — 기본",
+    hint: "NCP_CLOVA_CLIENT_ID/SECRET 필요 — 한국어 자연스러움 우수, 빠르고 안정적",
   },
   {
     value: "google-cloud",
@@ -48,9 +48,9 @@ const TTS_OPTIONS: {
     hint: "GOOGLE_CLOUD_TTS_API_KEY 필요 — 월 1M자 무료, 안정적",
   },
   {
-    value: "clova",
-    label: "Naver Clova Voice (Premium)",
-    hint: "NCP_CLOVA_CLIENT_ID/SECRET 필요 — 한국어 자연스러움 우수",
+    value: "gemini",
+    label: "Gemini TTS (fallback)",
+    hint: "GEMINI_API_KEY로 동작 — preview 단계, 긴 narration에서 timeout 가능. 다른 provider 키 없을 때 자동 사용됨",
   },
 ];
 
