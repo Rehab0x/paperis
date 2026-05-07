@@ -1,19 +1,27 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import IssueExplorer from "@/components/IssueExplorer";
+import JournalTabs, { type JournalTab } from "@/components/JournalTabs";
+import TopicExplorer from "@/components/TopicExplorer";
+import TrendDigest from "@/components/TrendDigest";
+import { getJournalCatalog } from "@/lib/journals";
 import { getJournalByIssn } from "@/lib/openalex";
 
-// 저널 홈 — ISSN dynamic route. 첫 진입 시 IssueExplorer가 default month로 자동 fetch.
-//
-// 다음 PR(M3 PR3+)에서 탭 추가: 트렌드 / 호 탐색 / 주제 탐색.
-// 지금은 호 탐색만 활성. 저널 홈 자체는 server component (저널 메타 fetch).
+// 저널 홈 — ISSN dynamic route. 탭은 ?tab=issue|topic|trend로 분기 (URL이 source of truth).
+// default = issue.
 export const revalidate = 3600;
 
 interface Props {
   params: Promise<{ issn: string }>;
+  searchParams: Promise<{ tab?: string }>;
 }
 
 const ISSN_RE = /^\d{4}-\d{3}[\dXx]$/;
+
+function parseTab(value: string | undefined): JournalTab {
+  if (value === "topic" || value === "trend") return value;
+  return "issue";
+}
 
 export async function generateMetadata({ params }: Props) {
   const { issn: rawIssn } = await params;
@@ -27,17 +35,43 @@ export async function generateMetadata({ params }: Props) {
   };
 }
 
-export default async function JournalHomePage({ params }: Props) {
+/**
+ * 카탈로그를 훑어서 이 저널과 매칭되는 임상과의 추천 주제를 합쳐 반환.
+ * (일치 판정 로직은 단순 — 이름 매칭이 더 정밀해지면 OpenAlex의 subfield 매핑을
+ * 카탈로그에 추가하는 방식으로 확장 가능)
+ */
+async function suggestedTopicsForJournal(): Promise<string[]> {
+  // 현재 카탈로그의 모든 임상과 추천 주제를 합쳐서 dedupe.
+  // 정확한 임상과↔저널 매핑은 마일스톤 4(저널 개인화)에서 user_journal_prefs로.
+  try {
+    const catalog = await getJournalCatalog();
+    const set = new Set<string>();
+    for (const s of catalog.specialties) {
+      for (const t of s.suggestedTopics) set.add(t);
+    }
+    return Array.from(set).slice(0, 8);
+  } catch {
+    return [];
+  }
+}
+
+export default async function JournalHomePage({
+  params,
+  searchParams,
+}: Props) {
   const { issn: rawIssn } = await params;
+  const { tab: tabRaw } = await searchParams;
   const issn = decodeURIComponent(rawIssn);
   if (!ISSN_RE.test(issn)) notFound();
 
   const journal = await getJournalByIssn(issn);
   if (!journal) notFound();
 
-  // PubMed [ISSN] 쿼리는 보통 print/electronic 어느 쪽도 동작하지만, OpenAlex의
-  // issn_l(linking ISSN)이 가장 안정적이라 그쪽을 우선.
+  const tab = parseTab(tabRaw);
   const queryIssn = journal.issnL ?? issn;
+  const baseHref = `/journal/${encodeURIComponent(issn)}`;
+  const suggestedTopics =
+    tab === "topic" ? await suggestedTopicsForJournal() : [];
 
   return (
     <main className="mx-auto w-full max-w-6xl flex-1 px-4 py-8 pb-32">
@@ -68,23 +102,19 @@ export default async function JournalHomePage({ params }: Props) {
         </p>
       </header>
 
-      {/* M3 PR3에서 탭 컨테이너로 확장. 지금은 호 탐색만. */}
-      <nav
-        aria-label="저널 진입 방식"
-        className="mb-5 flex gap-1 border-b border-zinc-200 dark:border-zinc-800"
-      >
-        <span className="border-b-2 border-zinc-900 px-3 py-2 text-sm font-medium text-zinc-900 dark:border-zinc-100 dark:text-zinc-100">
-          📅 호 탐색
-        </span>
-        <span className="cursor-not-allowed px-3 py-2 text-sm text-zinc-300 dark:text-zinc-700">
-          🏷️ 주제 (곧)
-        </span>
-        <span className="cursor-not-allowed px-3 py-2 text-sm text-zinc-300 dark:text-zinc-700">
-          📈 트렌드 (곧)
-        </span>
-      </nav>
+      <JournalTabs current={tab} baseHref={baseHref} />
 
-      <IssueExplorer issn={queryIssn} journalName={journal.name} />
+      {tab === "issue" ? (
+        <IssueExplorer issn={queryIssn} journalName={journal.name} />
+      ) : tab === "topic" ? (
+        <TopicExplorer
+          issn={queryIssn}
+          journalName={journal.name}
+          suggestedTopics={suggestedTopics}
+        />
+      ) : (
+        <TrendDigest issn={queryIssn} journalName={journal.name} />
+      )}
     </main>
   );
 }
