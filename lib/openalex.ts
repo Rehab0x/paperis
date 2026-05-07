@@ -288,3 +288,20 @@ export async function searchJournalsByName(
   return fetchSources(params);
 }
 
+/**
+ * ISSN(linking 또는 일반) 한 건으로 저널 detail 조회.
+ * 저널 홈 페이지 진입 시 메타 표시용 — 없으면 null.
+ */
+export async function getJournalByIssn(
+  issn: string
+): Promise<JournalSummary | null> {
+  const trimmed = issn.trim();
+  if (!trimmed) return null;
+  const params = new URLSearchParams({
+    filter: `issn:${trimmed},type:journal`,
+    "per-page": "1",
+  });
+  const journals = await fetchSources(params);
+  return journals[0] ?? null;
+}
+

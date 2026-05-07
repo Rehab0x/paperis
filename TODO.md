@@ -44,7 +44,7 @@ app/
     layout.tsx                   /journal/* 공통 헤더 (Suspense 가드)
     page.tsx                     임상과 그리드 (server component, ISR 1h)
     specialty/[id]/page.tsx      임상과별 저널 추천 10개 (Works group_by → Sources batch)
-    [issn]/page.tsx              저널 홈 (M3 PR2~ 예정)
+    [issn]/page.tsx              저널 홈 — IssueExplorer + 탭 자리(주제·트렌드는 다음 PR)
   api/
     search/route.ts              자연어 → 검색식 → PubMed → OpenAlex → 정렬
     summarize/route.ts           미니 요약 batch
@@ -54,9 +54,11 @@ app/
     tts/route.ts                 narration 생성 + provider.synthesize (v3 default Clova + Gemini fallback 가드)
     tts/preview/route.ts         설정 패널 미리듣기 (v2.0.4 신규)
     journal/search/route.ts      OpenAlex 저널명 자동완성 (v3 M3 PR1)
+    journal/issues/route.ts      ISSN+year+month → PubMed [ISSN][PDAT] → enrich (v3 M3 PR2)
 components/
   JournalEntryLink.tsx           v3 헤더 진입점 (FEATURE_JOURNAL flag 가드)
   JournalCard.tsx                저널 표시 카드 (server-friendly)
+  IssueExplorer.tsx              호 탐색 master-detail (PaperCard/ResultsList/PaperDetailPanel 재사용)
   PaperDetailPanel.tsx           디테일 패널 본체 (풀텍스트·긴요약·TTS)
   PlayerProvider/PlayerBar.tsx   글로벌 플레이어, --player-bar-h CSS 변수
   LibraryDrawer/AudioLibrary.tsx 라이브러리 (드로어 + 트랙 리스트)
@@ -70,7 +72,7 @@ data/
   journals.json                  v3 임상과 카탈로그 (GitHub 웹 직접 편집 가능, 1h revalidate)
 lib/
   pubmed.ts xml-utils.ts
-  openalex.ts                    enrichPapers (Works) + searchJournalsBySubfield(Works group_by → Sources batch) + searchJournalsByName (자동완성)
+  openalex.ts                    enrichPapers (Works) + searchJournalsBySubfield(Works group_by → Sources batch) + searchJournalsByName (자동완성) + getJournalByIssn(저널 홈 메타)
   journals.ts                    getJournalCatalog (GitHub raw + 로컬 fallback, v3)
   gemini.ts                      callWithRetry / friendlyErrorMessage / streamSummary / generateNarrationText
   query-translator.ts            gemini-2.5-flash-lite + responseSchema + control char sanitize
@@ -96,11 +98,15 @@ public/sw.js                     paperis-v2 cache (정적 자산만, /api/는 �
 - M2 ✅ — `data/journals.json` 카탈로그 + `lib/journals.ts` + OpenAlex sources/works
 - M3 진행 중
   - PR1 ✅ — 임상과 그리드(/journal) + 임상과별 저널 추천(/journal/specialty/[id]) + 저널 자동완성(/api/journal/search) + 헤더 진입점(FEATURE_JOURNAL flag)
-  - 다음: 저널 홈(/journal/[issn]) — 호 탐색 + 주제 탐색 + 최근 트렌드 탭
+  - PR2 ✅ — 저널 홈(/journal/[issn]) shell + IssueExplorer(year/month picker + master-detail) + /api/journal/issues. 호 탐색 활성, 주제·트렌드 탭은 자리만
+  - 다음: 주제 탐색(/api/journal/topic) + 트렌드(/api/journal/trend) — 저널 홈 탭 활성화
 
 ### v3 M3 PR1에서 발견한 OpenAlex schema 정정 (load-bearing)
 PLAN.md §4의 `openAlexFieldId: "fields/2734"`는 OpenAlex와 매칭 안 됨 — 26개 fields는 너무 broad(전체 Medicine 등)고 임상과 단위에 안 맞음. 250여 개 **subfields**가 PM&R / Cardiology / Neurology와 잘 매칭. 카탈로그 schema를 `openAlexSubfieldId: "subfields/2742"` 등으로 정정.
 또 Sources API에 subfield 직접 필터 없음 → Works API의 `primary_topic.subfield.id` group_by + Sources batch fetch 두 단계로 우회. `lib/openalex.ts` `searchJournalsBySubfield`.
+
+### v3 M3 PR2에서 발견한 PubMed [ISSN] 따옴표 quirk (load-bearing)
+PubMed esearch에서 `"0028-3878"[ISSN]`(따옴표 있음)은 자동으로 `[All Fields]` 텍스트 매칭으로 fallback됨 → 결과 노이즈 섞임. `0028-3878[ISSN]`(따옴표 없음)이 정확히 `"Neurology"[Journal]`로 매핑되어 동일 결과. PDAT는 표준대로 따옴표 + range. `app/api/journal/issues/route.ts buildIssueTerm`.
 
 ---
 
