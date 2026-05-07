@@ -1,44 +1,123 @@
 # Paperis — TODO / 진척 기록
 
-> 마지막 갱신: 2026-04-29 (v2 브랜치 — MVP 마일스톤 1–8 완료)
+> 마지막 갱신: 2026-05-04 (v2.0.4 라이브, v3 시작 직전 스냅샷)
 > 외부 노출 문서는 [README.md](README.md), 컨텍스트는 [CLAUDE.md](CLAUDE.md). 이 파일은 작업 일지·기술부채 보관용.
+
+---
+
+## v3 시작 컨텍스트 (이 섹션은 v3 첫 세션이 먼저 읽어야 한다)
+
+### 현재 상태
+- **라이브**: paperis.vercel.app, **v2.0.4** (master 브랜치, tag `v2.0.4`, commit `87b06fc`)
+- **GitHub**: Rehab0x/paperis (master + v2.0.0 ~ v2.0.4 태그)
+- **Vercel**: Pro plan (5분 function timeout). 프로젝트 `randy-kims-projects-6c97c3d7/paperis`. 자동 git deploy 비활성, **수동 `vercel deploy --prod --yes`** 가 정식 배포 경로
+- **Vercel prod env**: `GEMINI_API_KEY`, `UNPAYWALL_EMAIL=randymcg83@gmail.com`만 등록. `NCP_CLOVA_*` / `GOOGLE_CLOUD_TTS_API_KEY`는 사용자 .env.local에만 있음 — 사용자는 v2.0.4의 **앱 내 설정 → API 키** 입력 패널에서 본인 키를 넣고 prod에서 직접 사용 중
+- **사용자 .env.local**: `GEMINI_API_KEY` / `PUBMED_API_KEY` / `UNPAYWALL_EMAIL` / `NCP_CLOVA_CLIENT_ID` / `NCP_CLOVA_CLIENT_SECRET` / `GOOGLE_CLOUD_TTS_API_KEY` 모두 존재
+
+### v3 시작 시 알아둘 핵심 결정 (load-bearing)
+- **단일 AI 스택은 깨졌다**. v2.0.3에서 Naver Clova, v2.0.4에서 Google Cloud TTS가 등록되어 TTS는 3-provider 라우팅. 검색식·요약은 여전히 Gemini만.
+- **API 키는 사용자별 입력 가능**. 클라이언트가 localStorage에 저장 후 모든 fetch에 `X-Paperis-Keys: base64(JSON)` 헤더로 동봉. 서버 라우트가 `applyUserKeysToEnv(req)`로 process.env override → provider들이 그 키 사용. (Node 단일 프로세스 race가 이론상 가능하지만 dev/단일 사용자 prod에선 무시 가능 수준이라 의도적으로 단순화. 동시성 문제 의심되면 provider별 ctx 인자로 변경 검토)
+- **테마는 class 기반 dark variant**. globals.css의 `@variant dark (&:where(.dark, .dark *));` + ThemeProvider가 html에 `.dark` 토글. FOUC는 layout `<head>` 안 inline script로 hydration 전에 처리. `<html>`에 `suppressHydrationWarning` 필수.
+- **PlayerBar 높이는 동적 CSS 변수** (`--player-bar-h`). ResizeObserver로 측정 → 라이브러리/설정 드로어가 그 위에서 끝남. PlayerBar가 모바일에선 두 줄, 데스크탑에선 한 줄로 높이가 달라지므로 hardcode 금지.
+- **TTS provider chunk 분할**. Clova 1900 byte, Google Cloud 4500 byte. Gemini는 한 번에 전체. MP3는 byte concat으로 자연스럽게 합쳐짐 (ID3 tag 없는 raw frame 가정).
+- **라이브러리 list은 audioBlob 제외 메타만**. `listTrackMetas()` cursor 순회로 메모리 폭주 회피 (트랙 5–10편 동시 로드 시 Chrome STATUS_ACCESS_VIOLATION 크래시 사례). 재생 시점에만 `getTrackAudio(id)`로 그 트랙 blob 로드.
+- **검색 안전망**: PubMed esearch는 종종 HTML/플레인 텍스트 응답 → `res.text()` → `JSON.parse` try/catch로 친절 메시지 변환. Gemini는 가끔 raw 제어문자(\n, \r) 포함된 query 반환 → query-translator에서 sanitize. friendlyErrorMessage가 JSON parse 에러도 retryable로 감지.
+- **v2의 master 브랜치는 v1.1과 별개로 v2 라인이 자리잡음**. v3는 master에서 다시 분기할지, v2.x로 진화시킬지 결정 필요.
+
+### 알려진 이슈·한계 (v3에서 다뤄볼 후보)
+- 인용수순 정렬은 현재 페이지(20건) 내에서만 — 진정한 글로벌 인용수 정렬은 OpenAlex Works API 별도 검색이 필요해 v2에서 보류
+- 영어 UI 토글 미지원 (한국어 고정)
+- HTML 풀텍스트 추출은 자체 구현 — 일부 publisher 페이지에서 정확도 떨어짐 (`@mozilla/readability` 도입 미정)
+- 검색 결과의 `[MeSH Terms]` 매핑이 Gemini 정확도에 의존. 빈 결과 발생 시 자동 broadening 로직 없음 (사용자가 수동 재검색)
+- TTS narration 길이가 어떤 논문에선 5분 넘어 Vercel function timeout 한계 근접 — chunk 단위 progressive 합성/스트리밍 미구현
+- Clova Premium은 정액제(월 9만원) — 사용자가 prod에 영구 적용은 보류, 본인 .env.local에서만 평가
+- 라이브러리 백업 JSON은 base64 인코딩이라 트랙 50편 = 100MB+. 개별 트랙 export 또는 zip 압축 미구현
+- TTS 변환 결과가 첫 응답 이후 자동 재시도 안 됨 (사용자가 수동으로 다시 누름)
+- IndexedDB 라이브러리는 브라우저 로컬 — 다른 기기 동기화 X (의도된 v2 결정. v3에서 클라우드 동기화 도입은 별도 결정 사항)
+
+### 핵심 파일 빠른 인덱스
+```
+app/
+  layout.tsx                     루트 — Theme/ApiKeys/TtsProviderPreference/TtsQueue/Player Provider 중첩, FOUC inline script, suppressHydrationWarning
+  page.tsx                       HomeInner — 검색·페이지네이션·디테일 패널 통합
+  api/
+    search/route.ts              자연어 → 검색식 → PubMed → OpenAlex → 정렬
+    summarize/route.ts           미니 요약 batch
+    summarize/read/route.ts      긴 요약 streaming
+    fulltext/route.ts            Unpaywall → EPMC → PMC 체인
+    pdf/route.ts                 unpdf 텍스트 추출
+    tts/route.ts                 narration 생성 + provider.synthesize
+    tts/preview/route.ts         설정 패널 미리듣기 (v2.0.4 신규)
+components/
+  PaperDetailPanel.tsx           디테일 패널 본체 (풀텍스트·긴요약·TTS)
+  PlayerProvider/PlayerBar.tsx   글로벌 플레이어, --player-bar-h CSS 변수
+  LibraryDrawer/AudioLibrary.tsx 라이브러리 (드로어 + 트랙 리스트)
+  SettingsDrawer.tsx             6개 섹션 (테마·provider·화자속도·알림·API키·백업복원)
+  ThemeProvider.tsx              class 기반 dark, hydration safe useState init
+  ApiKeysProvider.tsx            6종 키 localStorage + X-Paperis-Keys 헤더 동봉
+  TtsProviderPreferenceProvider.tsx provider/voiceByProvider/speakingRate
+  TtsQueueProvider.tsx           글로벌 TTS 큐 (FIFO, 단일 워커, 완료 토스트+Notification)
+  useFetchWithKeys.ts            X-Paperis-Keys 자동 동봉 fetch wrapper
+lib/
+  pubmed.ts openalex.ts xml-utils.ts
+  gemini.ts                      callWithRetry / friendlyErrorMessage / streamSummary / generateNarrationText
+  query-translator.ts            gemini-2.5-flash-lite + responseSchema + control char sanitize
+  query-cache.ts client-cache.ts 서버 LRU + 클라 localStorage
+  paper-type.ts summary.ts
+  fulltext/                      unpaywall·europe-pmc·pmc·html-extract·index
+  tts/                           types · gemini · clova · google-cloud · index (registry)
+  audio-library.ts               idb CRUD + listTrackMetas + exportLibrary/importLibrary
+  user-keys.ts                   X-Paperis-Keys 헤더 → process.env override
+  promise-polyfill.ts            Node 22.17 Promise.try 폴리필 (unpdf 호환)
+  anonymous-id.ts
+public/sw.js                     paperis-v2 cache (정적 자산만, /api/는 무개입)
+```
+
+### v3 시작 시 안전한 첫 행동
+1. 사용자에게 v3 방향성·범위·이름(v3? v2.x→v3?) 확인
+2. master에서 분기할지, v3 브랜치를 새로 팔지 결정
+3. 변경 폭이 크면 EnterPlanMode → AskUserQuestion으로 의사결정 갈래 좁히기
 
 ---
 
 ## v2 브랜치 — 새 시작 라인
 
-v1.1.0 라이브 시점에 사용자가 v2 방향성을 새로 잡아 master에서 분기. 코드는 처음부터 새로 작성, master는 v1 시리즈로 그대로 유지.
+v1.1.0 라이브 시점에 사용자가 v2 방향성을 새로 잡아 master에서 분기. v2.0.0 시점부터 master에서 v2 코드로 fast-forward됨. v1 시리즈는 master의 `v1.1.0` 태그까지가 마지막.
+
+### v2 출시 (master)
+
+| 버전 | 날짜 | 핵심 |
+|---|---|---|
+| **v2.0.4** | 2026-05-04 | 설정 패널 확장 — 6개 섹션 완성 (테마·TTS provider·화자/속도+미리듣기·알림 권한·API 키 6종 입력·라이브러리 백업/복원). Google Cloud TTS provider 추가 (Neural2/WaveNet, 월 1M자 무료). API 키는 클라 localStorage → `X-Paperis-Keys` 헤더 → 서버 process.env override |
+| **v2.0.3** | 2026-05-04 | 페이지네이션 (20건씩 `?page=N`), 앱 설정 패널·테마(라이트/다크/시스템) 도입, Naver Clova Voice provider 등록(설정에서 선택), 헤더 단순화(🎧+⚙ 아이콘), 영어 검색 prompt 보강, PubMed esearch JSON 안전망, Gemini control char sanitize, 친절 에러 메시지에 JSON parse 패턴 |
+| **v2.0.2** | 2026-04-30 | 라이브러리 드로어 슬라이드 애니메이션·max-w-5xl, PlayerBar 동적 높이(`--player-bar-h`), 모바일 컨트롤 두 줄 + −10/+10 텍스트, TTS 큐 배지 클릭 시 진행/대기 popover, 트랙별 `📜` 인라인 스크립트, 트랙 → `🔎` 논문 디테일, IndexedDB v1→v2(position 인덱스), `listTrackMetas`로 메모리 폭주 회피, `Promise.try` 폴리필, fetch timeout, backdrop-blur 전부 제거 |
+| **v2.0.1** | 2026-04-29 | 미니 요약 첫 줄에 주제 강제, 모바일/좁은 화면 디테일 패널 풀스크린 + 닫기, 풀텍스트 체인 단계별 fail/skip 사유 노출, PubMed `<ReferenceList>` 안의 ArticleId가 paper 본인 doi/pmcId를 덮던 파서 버그 fix, useEffect Strict Mode mount→cleanup→mount에서 첫 fetch 응답이 cancelled 처리되던 문제 fix, Node 22 Promise.try 폴리필 |
+| **v2.0.0** | 2026-04-29 | 마일스톤 1–8 일괄 — 자연어 검색·미니/긴 요약·풀텍스트 체인·TTS narration·오디오 라이브러리·anonymous ID·로그인/DB 제거 (master를 v2 코드로 fast-forward) |
 
 ### v2 마일스톤 (모두 완료, 2026-04-29)
 
 - **M1 인프라 정리** — v2 브랜치 분기, app/components/lib/types 삭제 후 인프라(package.json, next.config, tsconfig, tailwind v4 CSS-first, manifest.ts, sw.js, 아이콘)만 보존. auth/db 의존성(next-auth, drizzle, neon, dotenv) 제거, idb 추가
 - **M2 검색 백엔드** — types/index.ts 재정의(SortMode·MiniSummary·FullTextSource·AudioTrack 등), [lib/pubmed.ts](lib/pubmed.ts)·[lib/openalex.ts](lib/openalex.ts)·[lib/xml-utils.ts](lib/xml-utils.ts) 포팅, [lib/gemini.ts](lib/gemini.ts) 유틸리티(callWithRetry/friendlyErrorMessage), [lib/query-translator.ts](lib/query-translator.ts) (Gemini 2.5 Flash Lite + responseSchema), [lib/query-cache.ts](lib/query-cache.ts) 서버 LRU, [app/api/search/route.ts](app/api/search/route.ts)
-- **M3 검색 UI** — [SearchBar](components/SearchBar.tsx) / [SortControl](components/SortControl.tsx) / [ResultsList](components/ResultsList.tsx) / [PaperCard](components/PaperCard.tsx), [lib/client-cache.ts](lib/client-cache.ts) localStorage TTL, [app/page.tsx](app/page.tsx) 마스터-디테일, URL이 source of truth (`?q&sort&pmid`)
+- **M3 검색 UI** — [SearchBar](components/SearchBar.tsx) / [SortControl](components/SortControl.tsx) / [ResultsList](components/ResultsList.tsx) / [PaperCard](components/PaperCard.tsx), [lib/client-cache.ts](lib/client-cache.ts) localStorage TTL, [app/page.tsx](app/page.tsx) 마스터-디테일, URL이 source of truth (`?q&sort&pmid&page`)
 - **M4 미니 요약** — [lib/paper-type.ts](lib/paper-type.ts) classifyPaperType, [lib/summary.ts](lib/summary.ts) batch JSON 모드 (research vs review 분기), [app/api/summarize/route.ts](app/api/summarize/route.ts), [components/MiniSummary.tsx](components/MiniSummary.tsx). 상위 3개 자동 batch + 4번~ 클릭 시 단일
 - **M5 풀텍스트 체인** — [lib/fulltext/](lib/fulltext/) (unpaywall · europe-pmc · pmc · html-extract · index 오케스트레이터), [app/api/fulltext/route.ts](app/api/fulltext/route.ts), [app/api/pdf/route.ts](app/api/pdf/route.ts) (unpdf), [components/FullTextView.tsx](components/FullTextView.tsx) / [PdfUpload.tsx](components/PdfUpload.tsx) / [PaperDetailPanel.tsx](components/PaperDetailPanel.tsx). 긴 요약 스트리밍은 [lib/gemini.ts](lib/gemini.ts)의 `streamSummary` + [app/api/summarize/read/route.ts](app/api/summarize/read/route.ts)
 - **M6 TTS provider** — [lib/tts/types.ts](lib/tts/types.ts) 인터페이스, [lib/tts/gemini.ts](lib/tts/gemini.ts) GeminiTtsProvider (narration only, WAV LE 래핑 보존), [lib/tts/index.ts](lib/tts/index.ts) registry, [app/api/tts/route.ts](app/api/tts/route.ts), [components/TtsButton.tsx](components/TtsButton.tsx), [lib/audio-library.ts](lib/audio-library.ts) idb CRUD + BroadcastChannel, [lib/anonymous-id.ts](lib/anonymous-id.ts)
-- **M7 오디오 라이브러리 + 글로벌 플레이어** — [components/PlayerProvider.tsx](components/PlayerProvider.tsx) 컨텍스트 (단일 audio element ref, 자동 다음 트랙, 키보드 단축키), [components/PlayerBar.tsx](components/PlayerBar.tsx) 하단 고정, [components/AudioLibrary.tsx](components/AudioLibrary.tsx), [components/LibraryLink.tsx](components/LibraryLink.tsx) 카운트 배지, [app/library/page.tsx](app/library/page.tsx)
+- **M7 오디오 라이브러리 + 글로벌 플레이어** — [components/PlayerProvider.tsx](components/PlayerProvider.tsx) 컨텍스트 (단일 audio element ref, 자동 다음 트랙, 키보드 단축키), [components/PlayerBar.tsx](components/PlayerBar.tsx) 하단 고정, [components/AudioLibrary.tsx](components/AudioLibrary.tsx), [components/LibraryLink.tsx](components/LibraryLink.tsx) 카운트 배지
 - **M8 마무리** — README.md / CLAUDE.md / TODO.md를 v2 기준으로 갱신, .env.example 정리, `npm run build` 통과 확인
 
 ### v1과 v2 차이 요지
 
 | | v1 | v2 |
 |---|---|---|
-| 검색 | 키워드 + 4 니즈 필터 | 자연어 + Gemini 검색식 변환 (캐싱) |
+| 검색 | 키워드 + 4 니즈 필터 | 자연어 + Gemini 검색식 변환 (캐싱) + 페이지네이션 |
 | 정렬 | 4축 가중치 슬라이더 | 최신/인용수/적합도 라디오 |
 | 요약 | 한 모드 (긴 요약) | 미니(카드) + 긴(디테일) 분리, paperType 분기 |
 | 풀텍스트 | PMC만 | Unpaywall → EPMC → PMC → PDF |
-| TTS | narration + dialogue | narration only, provider 추상화 |
-| 오디오 | 장바구니 + 일회성 재생목록 | IndexedDB 라이브러리 (트랙 누적, 자동 재생 X) |
+| TTS | narration + dialogue (Gemini) | narration only, **3 provider 라우팅** (Gemini · Clova Premium · Google Cloud Neural2) + 화자/속도 + 미리듣기 |
+| 오디오 | 장바구니 + 일회성 재생목록 | IndexedDB 라이브러리 (트랙 누적, 자동 재생 X), **백업/복원**, 글로벌 PlayerBar + 인라인 스크립트 |
 | 인증/DB | Auth.js v5 + Neon Postgres | 없음 (anonymous ID만) |
-
-### v2 미진 / 후속 후보
-
-- 인용수 글로벌 정렬 (현재는 페이지 안에서만)
-- 영어 UI 토글 (현재 한국어 우선)
-- HTML 풀텍스트 추출 정확도 — 현재 직접 처리, 필요 시 `@mozilla/readability` 도입
-- TTS provider 추가 (OpenAI / Naver) — 인터페이스만 깔려 있음
-- 라이브러리 백업/내보내기 (현재 브라우저 로컬에만)
+| 설정 | 없음 | **6개 섹션 설정 패널** (테마·provider·화자속도·알림·API 키·백업) |
+| 테마 | 시스템만 (prefers-color-scheme) | 라이트/다크/시스템 + 사용자 저장 |
 
 ---
 
