@@ -6,7 +6,7 @@
       "id": "pm-r",
       "name": "재활의학과",
       "nameEn": "Physical Medicine & Rehabilitation",
-      "openAlexFieldId": "fields/2734",
+      "openAlexSubfieldId": "subfields/2742",
       "suggestedTopics": [
         "spasticity",
         "stroke rehabilitation",
@@ -19,7 +19,7 @@
       "id": "cardiology",
       "name": "심장내과",
       "nameEn": "Cardiology",
-      "openAlexFieldId": "fields/2705",
+      "openAlexSubfieldId": "subfields/2705",
       "suggestedTopics": [
         "atrial fibrillation",
         "heart failure",
@@ -31,7 +31,7 @@
       "id": "neurology",
       "name": "신경과",
       "nameEn": "Neurology",
-      "openAlexFieldId": "fields/2728",
+      "openAlexSubfieldId": "subfields/2728",
       "suggestedTopics": [
         "stroke",
         "epilepsy",

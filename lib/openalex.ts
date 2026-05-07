@@ -193,28 +193,80 @@ async function fetchSources(
     .filter((j) => j.openAlexId && j.name);
 }
 
+interface OpenAlexGroupBy {
+  key?: string;
+  key_display_name?: string;
+  count?: number;
+}
+interface OpenAlexWorksGroupResponse {
+  group_by?: OpenAlexGroupBy[];
+}
+
+function extractOpenAlexShortId(urnOrUrl: string): string | null {
+  const m = /\/([SACFTI]\d+)$/i.exec(urnOrUrl);
+  return m ? m[1] : null;
+}
+
 /**
- * 임상과 field에 속한 저널 상위 perPage개를 인용수 desc로 가져온다.
+ * 임상과 subfield에 속한 저널 상위 perPage개를 추천.
  *
- * fieldUrn은 `data/journals.json`의 `openAlexFieldId` (예: "fields/2734").
- * filter 키는 OpenAlex Sources API의 `topics.field.id`. 시스템에 따라 결과 0건일 수
- * 있어 마일스톤 3에서 첫 호출 결과를 보고 보정 필요할 수 있음.
+ * subfieldUrn은 `data/journals.json`의 `openAlexSubfieldId` (예: "subfields/2728").
+ * OpenAlex Sources API에는 subfield 직접 필터가 없어 두 단계로 우회:
+ *   1) Works API + group_by primary_location.source.id —
+ *      해당 subfield의 work이 가장 많이 출판된 source 상위
+ *   2) 그 source ID들을 Sources API에 batch fetch — full detail (issn, IF 등)
  *
- * journal type만으로 좁히고 (repository/conference 제외), 인용수 desc 정렬.
+ * fields(26개)가 너무 broad해서 임상과 단위로 안 맞고 (전체 Medicine field는
+ * 모든 임상과 포함), subfield 단위가 PM&R/Cardiology/Neurology와 잘 매칭된다.
+ *
+ * 결과는 인용수 desc 정렬. type:journal 필터로 PubMed/eBook 데이터베이스 제외.
  */
-export async function searchJournalsByField(
-  fieldUrn: string,
-  opts: { perPage?: number; page?: number } = {}
+export async function searchJournalsBySubfield(
+  subfieldUrn: string,
+  opts: { perPage?: number } = {}
 ): Promise<JournalSummary[]> {
-  const perPage = Math.min(Math.max(opts.perPage ?? 10, 1), 50);
-  const page = Math.max(opts.page ?? 1, 1);
-  const params = new URLSearchParams({
-    filter: `topics.field.id:${fieldUrn},type:journal`,
-    sort: "cited_by_count:desc",
-    "per-page": String(perPage),
-    page: String(page),
+  const perPage = Math.min(Math.max(opts.perPage ?? 10, 1), 25);
+
+  // 1) group_by로 해당 subfield의 출판 빈도 상위 source 찾기.
+  // 노이즈(PubMed/eBook 등) 제외 위해 type:journal works만 보고, 살짝 여유 있게 perPage*3 가져와
+  // 정규화 후 type:journal로 다시 좁힌다.
+  const groupParams = new URLSearchParams({
+    filter: `primary_topic.subfield.id:${subfieldUrn}`,
+    group_by: "primary_location.source.id",
+    "per-page": String(perPage * 3),
+    mailto: POLITE_MAILTO,
   });
-  return fetchSources(params);
+
+  let groupRes: Response;
+  try {
+    groupRes = await fetch(`${OPENALEX_BASE}/works?${groupParams.toString()}`, {
+      headers: { Accept: "application/json" },
+      next: { revalidate: 3600 },
+    });
+  } catch (err) {
+    console.warn("[openalex/works] network error", err);
+    return [];
+  }
+  if (!groupRes.ok) {
+    console.warn(`[openalex/works] non-ok ${groupRes.status}`);
+    return [];
+  }
+  const groupData = (await groupRes.json()) as OpenAlexWorksGroupResponse;
+  const sourceShortIds = (groupData.group_by ?? [])
+    .map((g) => (g.key ? extractOpenAlexShortId(g.key) : null))
+    .filter((id): id is string => Boolean(id));
+
+  if (sourceShortIds.length === 0) return [];
+
+  // 2) Sources batch fetch (인용수 정렬 + type:journal). batch 크기 25 안전.
+  const batch = sourceShortIds.slice(0, 25).join("|");
+  const detailParams = new URLSearchParams({
+    filter: `ids.openalex:${batch},type:journal`,
+    sort: "cited_by_count:desc",
+    "per-page": String(perPage * 2),
+  });
+  const journals = await fetchSources(detailParams);
+  return journals.slice(0, perPage);
 }
 
 /**

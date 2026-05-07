@@ -14,8 +14,13 @@ export interface Specialty {
   name: string;
   /** OpenAlex / 영문 표기 */
   nameEn: string;
-  /** OpenAlex field URN (예: "fields/2734"). Sources API filter에 그대로 들어간다 */
-  openAlexFieldId: string;
+  /**
+   * OpenAlex subfield URN (예: "subfields/2728"). Works API의
+   * `primary_topic.subfield.id` 필터에 그대로 들어간다.
+   * fields(26개)는 너무 broad해서 임상과 단위 큐레이션에 안 맞고,
+   * subfields(약 250개)가 임상과와 잘 매칭된다.
+   */
+  openAlexSubfieldId: string;
   /** 주제 탐색 화면의 추천 태그. 자유 입력도 허용 */
   suggestedTopics: string[];
 }
@@ -74,7 +79,7 @@ function isValidCatalog(value: unknown): value is JournalCatalog {
       typeof sp.id !== "string" ||
       typeof sp.name !== "string" ||
       typeof sp.nameEn !== "string" ||
-      typeof sp.openAlexFieldId !== "string"
+      typeof sp.openAlexSubfieldId !== "string"
     ) {
       return false;
     }

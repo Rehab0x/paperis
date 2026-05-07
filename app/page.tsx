@@ -3,6 +3,7 @@
 import { Suspense, useCallback, useEffect, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
+import JournalEntryLink from "@/components/JournalEntryLink";
 import LibraryLink from "@/components/LibraryLink";
 import PaperDetailPanel from "@/components/PaperDetailPanel";
 import ResultsList from "@/components/ResultsList";
@@ -356,6 +357,7 @@ function HomeInner() {
             </Link>
             <div className="flex items-center gap-1">
               <TtsQueueBadge />
+              <JournalEntryLink />
               <LibraryLink />
               <SettingsLink />
             </div>
