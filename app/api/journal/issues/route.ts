@@ -54,7 +54,8 @@ export async function GET(req: Request) {
   const issn = (searchParams.get("issn") ?? "").trim();
   const year = Number(searchParams.get("year"));
   const month = Number(searchParams.get("month"));
-  const retmaxRaw = Number(searchParams.get("retmax") ?? "50");
+  const retmaxRaw = Number(searchParams.get("retmax") ?? "20");
+  const retstartRaw = Number(searchParams.get("retstart") ?? "0");
 
   if (!ISSN_RE.test(issn)) {
     return jsonError("issn 형식이 올바르지 않습니다 (예: 0028-3878).");
@@ -67,14 +68,17 @@ export async function GET(req: Request) {
   }
   const retmax = Number.isFinite(retmaxRaw)
     ? Math.min(Math.max(Math.floor(retmaxRaw), 1), 200)
-    : 50;
+    : 20;
+  const retstart = Number.isFinite(retstartRaw)
+    ? Math.max(Math.floor(retstartRaw), 0)
+    : 0;
 
   const term = buildIssueTerm(issn, year, month);
 
   let papers: Paper[];
   let total: number;
   try {
-    const result = await searchPubMed(term, "recency", retmax, 0);
+    const result = await searchPubMed(term, "recency", retmax, retstart);
     papers = result.papers;
     total = result.total;
   } catch (err) {

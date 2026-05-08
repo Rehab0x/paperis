@@ -4,6 +4,7 @@
 // 입력 → /api/journal/topic 호출 → JournalPaperList로 master-detail 렌더.
 
 import { FormEvent, useEffect, useState } from "react";
+import JournalPaginationView from "@/components/JournalPagination";
 import JournalPaperList from "@/components/JournalPaperList";
 import { useFetchWithKeys } from "@/components/useFetchWithKeys";
 import type { Paper } from "@/types";
@@ -23,6 +24,8 @@ interface TopicResponse {
   issn: string;
 }
 
+const PAGE_SIZE = 20;
+
 export default function TopicExplorer({
   issn,
   journalName,
@@ -30,13 +33,19 @@ export default function TopicExplorer({
 }: Props) {
   const [input, setInput] = useState("");
   const [submittedTopic, setSubmittedTopic] = useState<string>("");
+  const [page, setPage] = useState(1);
   const [papers, setPapers] = useState<Paper[]>([]);
   const [total, setTotal] = useState(0);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const fetchWithKeys = useFetchWithKeys();
-  const fetchKey = `${issn}::topic::${submittedTopic}`;
+  const fetchKey = `${issn}::topic::${submittedTopic}::${page}`;
+
+  // 새 topic 또는 issn 변경 시 첫 페이지로
+  useEffect(() => {
+    setPage(1);
+  }, [issn, submittedTopic]);
 
   // dedupe ref 가드는 의도적으로 사용하지 않는다 — Strict Mode mount cycle에서 무한
   // loading 발생 (PaperDetailPanel 패턴 동일). cancelled flag + AbortController로 충분.
@@ -55,7 +64,12 @@ export default function TopicExplorer({
 
     (async () => {
       try {
-        const params = new URLSearchParams({ issn, topic: submittedTopic });
+        const params = new URLSearchParams({
+          issn,
+          topic: submittedTopic,
+          retmax: String(PAGE_SIZE),
+          retstart: String((page - 1) * PAGE_SIZE),
+        });
         const res = await fetchWithKeys(
           `/api/journal/topic?${params.toString()}`,
           { signal: controller.signal }
@@ -96,7 +110,11 @@ export default function TopicExplorer({
       cancelled = true;
       controller.abort();
     };
-  }, [fetchKey, issn, submittedTopic, fetchWithKeys]);
+  }, [fetchKey, issn, submittedTopic, page, fetchWithKeys]);
+
+  const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
+  const showFrom = total > 0 ? (page - 1) * PAGE_SIZE + 1 : 0;
+  const showTo = total > 0 ? (page - 1) * PAGE_SIZE + papers.length : 0;
 
   function handleSubmit(e: FormEvent) {
     e.preventDefault();
@@ -153,7 +171,7 @@ export default function TopicExplorer({
         {!loading && submittedTopic && total > 0 ? (
           <p className="mt-3 text-xs text-zinc-500">
             {journalName} · 주제 “{submittedTopic}” — {total.toLocaleString()}건
-            (상위 {papers.length}건 표시)
+            중 {showFrom}–{showTo}건 표시
           </p>
         ) : null}
       </div>
@@ -175,6 +193,16 @@ export default function TopicExplorer({
                 다른 키워드를 시도하거나 추천 태그를 눌러보세요.
               </p>
             </div>
+          }
+          footer={
+            !loading && papers.length > 0 ? (
+              <JournalPaginationView
+                page={page}
+                totalPages={totalPages}
+                pageSize={PAGE_SIZE}
+                onChange={setPage}
+              />
+            ) : null
           }
         />
       )}

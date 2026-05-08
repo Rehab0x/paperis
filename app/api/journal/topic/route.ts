@@ -57,7 +57,8 @@ export async function GET(req: Request) {
   const issn = (searchParams.get("issn") ?? "").trim();
   const topic = (searchParams.get("topic") ?? "").trim();
   const sortRaw = (searchParams.get("sort") ?? "relevance").trim();
-  const retmaxRaw = Number(searchParams.get("retmax") ?? "30");
+  const retmaxRaw = Number(searchParams.get("retmax") ?? "20");
+  const retstartRaw = Number(searchParams.get("retstart") ?? "0");
 
   if (!ISSN_RE.test(issn)) {
     return jsonError("issn 형식이 올바르지 않습니다 (예: 0028-3878).");
@@ -72,14 +73,17 @@ export async function GET(req: Request) {
     sortRaw === "recency" || sortRaw === "citations" ? sortRaw : "relevance";
   const retmax = Number.isFinite(retmaxRaw)
     ? Math.min(Math.max(Math.floor(retmaxRaw), 1), 100)
-    : 30;
+    : 20;
+  const retstart = Number.isFinite(retstartRaw)
+    ? Math.max(Math.floor(retstartRaw), 0)
+    : 0;
 
   const term = buildTopicTerm(issn, topic);
 
   let papers: Paper[];
   let total: number;
   try {
-    const result = await searchPubMed(term, sort, retmax, 0);
+    const result = await searchPubMed(term, sort, retmax, retstart);
     papers = result.papers;
     total = result.total;
   } catch (err) {
