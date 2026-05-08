@@ -1,302 +1,210 @@
 # Paperis — TODO / 진척 기록
 
-> 마지막 갱신: 2026-05-08 (v3 마일스톤 1·2 진행 중, master 진화 중)
+> 마지막 갱신: 2026-05-09 (v3 M1~M4 prod 라이브, paperis.vercel.app)
 > 외부 노출 문서는 [README.md](README.md), 컨텍스트는 [CLAUDE.md](CLAUDE.md), v3 로드맵은 [PAPERIS_V3_ROADMAP.md](PAPERIS_V3_ROADMAP.md). 이 파일은 작업 일지·기술부채 보관용.
 
 ---
 
-## v3 시작 컨텍스트 (이 섹션은 v3 첫 세션이 먼저 읽어야 한다)
+## 현재 상태
 
-### 현재 상태
-- **라이브**: paperis.vercel.app, **v2.0.4** (master 브랜치, tag `v2.0.4`, commit `87b06fc`)
-- **GitHub**: Rehab0x/paperis (master + v2.0.0 ~ v2.0.4 태그)
-- **Vercel**: Pro plan (5분 function timeout). 프로젝트 `randy-kims-projects-6c97c3d7/paperis`. 자동 git deploy 비활성, **수동 `vercel deploy --prod --yes`** 가 정식 배포 경로
-- **Vercel prod env**: `GEMINI_API_KEY`, `UNPAYWALL_EMAIL=randymcg83@gmail.com`만 등록. `NCP_CLOVA_*` / `GOOGLE_CLOUD_TTS_API_KEY`는 사용자 .env.local에만 있음 — 사용자는 v2.0.4의 **앱 내 설정 → API 키** 입력 패널에서 본인 키를 넣고 prod에서 직접 사용 중
-- **사용자 .env.local**: `GEMINI_API_KEY` / `PUBMED_API_KEY` / `UNPAYWALL_EMAIL` / `NCP_CLOVA_CLIENT_ID` / `NCP_CLOVA_CLIENT_SECRET` / `GOOGLE_CLOUD_TTS_API_KEY` 모두 존재
+- **라이브**: paperis.vercel.app — v3 M1~M4 배포 완료, `FEATURE_JOURNAL=1` + `FEATURE_AUTH=1`
+- **GitHub**: Rehab0x/paperis (master), origin과 동기화
+- **Vercel**: Pro plan (5분 maxDuration), 수동 배포 (`vercel deploy --prod --yes`)
+- **외부 통합**: Neon Postgres · Google OAuth · NCP Clova · Gemini · PubMed/Unpaywall — 모두 prod env 등록 완료
+- **데이터**: `data/journals.json` GitHub raw fetch (1h revalidate). 25 임상과, 3개(재활/심장/신경)에 manualSeedJournals 입력
 
-### v3 시작 시 알아둘 핵심 결정 (load-bearing)
-- **단일 AI 스택은 깨졌다**. v2.0.3에서 Naver Clova, v2.0.4에서 Google Cloud TTS가 등록되어 TTS는 3-provider 라우팅. 검색식·요약은 여전히 Gemini만.
-- **API 키는 사용자별 입력 가능**. 클라이언트가 localStorage에 저장 후 모든 fetch에 `X-Paperis-Keys: base64(JSON)` 헤더로 동봉. 서버 라우트가 `applyUserKeysToEnv(req)`로 process.env override → provider들이 그 키 사용. (Node 단일 프로세스 race가 이론상 가능하지만 dev/단일 사용자 prod에선 무시 가능 수준이라 의도적으로 단순화. 동시성 문제 의심되면 provider별 ctx 인자로 변경 검토)
-- **테마는 class 기반 dark variant**. globals.css의 `@variant dark (&:where(.dark, .dark *));` + ThemeProvider가 html에 `.dark` 토글. FOUC는 layout `<head>` 안 inline script로 hydration 전에 처리. `<html>`에 `suppressHydrationWarning` 필수.
-- **PlayerBar 높이는 동적 CSS 변수** (`--player-bar-h`). ResizeObserver로 측정 → 라이브러리/설정 드로어가 그 위에서 끝남. PlayerBar가 모바일에선 두 줄, 데스크탑에선 한 줄로 높이가 달라지므로 hardcode 금지.
-- **TTS provider chunk 분할**. Clova 1900 byte, Google Cloud 4500 byte. Gemini는 한 번에 전체. MP3는 byte concat으로 자연스럽게 합쳐짐 (ID3 tag 없는 raw frame 가정).
-- **라이브러리 list은 audioBlob 제외 메타만**. `listTrackMetas()` cursor 순회로 메모리 폭주 회피 (트랙 5–10편 동시 로드 시 Chrome STATUS_ACCESS_VIOLATION 크래시 사례). 재생 시점에만 `getTrackAudio(id)`로 그 트랙 blob 로드.
-- **검색 안전망**: PubMed esearch는 종종 HTML/플레인 텍스트 응답 → `res.text()` → `JSON.parse` try/catch로 친절 메시지 변환. Gemini는 가끔 raw 제어문자(\n, \r) 포함된 query 반환 → query-translator에서 sanitize. friendlyErrorMessage가 JSON parse 에러도 retryable로 감지.
-- **v2의 master 브랜치는 v1.1과 별개로 v2 라인이 자리잡음**. v3는 master에서 다시 분기할지, v2.x로 진화시킬지 결정 필요.
+### v3 마일스톤 진척
 
-### 알려진 이슈·한계 (v3에서 다뤄볼 후보)
-- 인용수순 정렬은 현재 페이지(20건) 내에서만 — 진정한 글로벌 인용수 정렬은 OpenAlex Works API 별도 검색이 필요해 v2에서 보류
-- 영어 UI 토글 미지원 (한국어 고정)
-- HTML 풀텍스트 추출은 자체 구현 — 일부 publisher 페이지에서 정확도 떨어짐 (`@mozilla/readability` 도입 미정)
-- 검색 결과의 `[MeSH Terms]` 매핑이 Gemini 정확도에 의존. 빈 결과 발생 시 자동 broadening 로직 없음 (사용자가 수동 재검색)
-- TTS narration 길이가 어떤 논문에선 5분 넘어 Vercel function timeout 한계 근접 — chunk 단위 progressive 합성/스트리밍 미구현
-- Clova Premium은 정액제(월 9만원) — 사용자가 prod에 영구 적용은 보류, 본인 .env.local에서만 평가
-- 라이브러리 백업 JSON은 base64 인코딩이라 트랙 50편 = 100MB+. 개별 트랙 export 또는 zip 압축 미구현
-- TTS 변환 결과가 첫 응답 이후 자동 재시도 안 됨 (사용자가 수동으로 다시 누름)
-- IndexedDB 라이브러리는 브라우저 로컬 — 다른 기기 동기화 X (의도된 v2 결정. v3에서 클라우드 동기화 도입은 별도 결정 사항)
+- M1 ✅ TTS default Clova + Gemini fallback 가드
+- M2 ✅ 카탈로그(GitHub raw) + OpenAlex Sources/Works
+- M3 ✅ 저널 큐레이션 풀스택 (호/주제/트렌드 + 차단/추가/즐겨찾기 + 페이지네이션 + OA 정렬)
+- M4 ✅ Auth.js v5 + Neon + 온보딩 + localStorage↔DB 양방향 동기화
+- **M5 다음** — Upstash Redis 캐시 (트렌드/호 분석 첫 호출 후 Gemini 호출 0)
+- M6 — Free 사용량 한도 (큐레이션 3 / TTS 5 / 풀텍스트 3 월별)
+- M7 — Toss Payments (BYOK 1회 + Pro 구독)
+- M8 — 사업자등록 후 라이브 결제 + 푸터 + 환불 정책
 
-### 핵심 파일 빠른 인덱스
+---
+
+## 다음 후보 / 기술부채
+
+### v3 마일스톤 (정해진 순서)
+
+- [ ] **M5** Upstash Redis 캐시 (`lib/journal-cache.ts` wrapper, key `trend:{issn}:{yyyy-mm}` / `issue:{issn}:{yyyy-mm}`, 과거 호 ∞ TTL · 당월 24h)
+- [ ] **M6** Free 사용량 한도 (`lib/usage.ts` `checkAndIncrement(identityKey, kind, plan)`. anonymous-id 또는 user_id. BYOK 우회. Vercel Cron 매월 1일 reset)
+- [ ] **M7** Toss Payments (BYOK 1회 + Pro 빌링키 자동결제 + 웹훅 + 약관/환불 페이지)
+- [ ] **M8** 사업자등록 후 `TOSS_LIVE_MODE=1` + 푸터 정보 + 라이브 검증
+
+### 발견된 개선 후보 (우선순위 낮음)
+
+- [ ] **카탈로그 추가 시드** — 정형외과/마취/응급/내과 등 22개 임상과의 manualSeedJournals ISSN 입력
+- [ ] **에러 바운더리** — React error boundary 없음. 런타임 에러 시 화면 깨짐
+- [ ] **HTML 풀텍스트 정확도** — `@mozilla/readability` 도입 검토 (자체 구현은 일부 publisher에서 정확도 낮음)
+- [ ] **TTS narration 길이 제어** — 5분 넘는 케이스에서 Vercel timeout 한계 근접. chunk 단위 progressive 합성 미구현
+- [ ] **라이브러리 백업 zip 압축** — 트랙 50편 base64 = 100MB+. 개별 트랙 export 또는 zip 미구현
+- [ ] **검색 결과 자동 broadening** — `[MeSH Terms]` 빈 결과 시 fallback 로직 (사용자 수동 재검색)
+- [ ] **단위 테스트** — `lib/pubmed.ts` XML 파서, `lib/openalex.ts` group_by 정렬, `lib/account-prefs.ts` 멱등 upsert 등 순수 함수부터
+- [ ] **CSP / 보안 헤더** — `Content-Security-Policy` / `X-Frame-Options`
+- [ ] **PWA 오프라인 지원** — 홈 shell/정적 페이지 precache
+- [ ] **모바일 반응형 점검** — 카드 내부 버튼 그룹이 좁은 폭에서 빡빡
+- [ ] **applyUserKeysToEnv race** — Node 단일 프로세스에서 동시 요청 시 process.env 충돌 이론적 가능성. provider별 ctx 인자로 리팩토링 검토 (단일 사용자 환경에선 사실상 무시 가능)
+- [ ] **영어 UI 토글** — 한국어 고정 (영어 검색 prompt만 일부 보강됨)
+- [ ] **이메일 magic link** — Resend/SES 등 메일 발신 셋업 후 Auth.js EmailProvider 추가 (Google 외 옵션)
+
+### v3에서 일부 해결된 v2 한계
+
+- [x] OpenAlex enrichment 캐싱 — `next: { revalidate: 3600 }` 적용 (M5에서 Redis로 더 강화 예정)
+- [x] 인용수순 정렬 페이지 한계 — 호 탐색에서는 OpenAlex enrichment + 페이지 내 정렬로 동작
+- [x] 라이브러리 다른 기기 동기화 — v3 M4에서 user_journal_prefs 4 테이블로 임상과·저널만 동기화 (오디오 자체는 여전히 IndexedDB)
+
+---
+
+## 의사결정 기록 (load-bearing — 변경 시 사용자 재합의 필요)
+
+### v3 핵심 정신
+
+- **저널 큐레이션 1순위 진입** — 자연어 검색은 보조. 임상과→저널→호/주제/트렌드 흐름이 메인 (PLAN.md §1)
+- **출퇴근 청취 1순위 시나리오** — 모든 흐름이 결국 TTS → IndexedDB 라이브러리 → PlayerBar로 수렴
+- **로그인 무관 동작 보존** — 비로그인도 v2 검색 + v3 큐레이션 모두 사용 가능. 사용량 한도는 anonymous-id 기반 (M6)
+
+### 인증 / DB
+
+- **Auth.js v5 + Google OAuth + Neon + Drizzle** — session strategy `database`(JWT 아님), session 콜백에서 `user.id` + `onboardingDone` 명시 매핑
+- **사용자 prefs PUT = 멱등 upsert** — Neon HTTP는 statement-level이라 트랜잭션 X. `onConflictDoUpdate` + `notInArray` delete (v1.1 카트 패턴 → v3 user_specialties/blocks/additions/favorites 차용)
+- **DB 마이그레이션 = add-only** — drop column 금지. 이전 코드도 새 schema 위에서 동작 보장
+- **API 키 = 사용자별 X-Paperis-Keys** — 클라 localStorage → fetch 헤더 → 서버 process.env override. BYOK 결제와 별개로 자기 키 입력 그대로 무제한
+
+### TTS / 미디어
+
+- **TTS multi-provider, default Clova + Gemini fallback** — v2.0.3-4부터 단일 Gemini 깨짐. `lib/tts/index.ts` `resolveTtsProvider`가 키 부재 시 자동 강등
+- **TTS narration only** — dialogue 모드 부활 금지. 출퇴근 청취 시나리오 단순화
+- **WAV 헤더 수동 래핑 (Gemini)** — 24kHz mono PCM. DataView write `true`(little-endian)
+- **TTS provider chunk 분할** — Clova 1900 bytes, Google Cloud 4500 bytes. MP3 byte concat
+- **`listTrackMetas` cursor 순회** — 메모리 폭주(Chrome STATUS_ACCESS_VIOLATION) 회피. blob은 재생 시점에만 로드
+
+### UI / 데이터 흐름
+
+- **PaperDetailPanel dedupe ref 가드 금지** — Strict Mode mount→cleanup→remount cycle에서 가드가 두 번째 mount 막아 무한 loading. `cancelled` flag + `AbortController`만
+- **PlayerBar 동적 높이** `--player-bar-h` — ResizeObserver 측정. 신규 페이지도 `pb-32` 또는 `pb-[calc(var(--player-bar-h)+...)]`
+- **테마 = class 기반 dark + FOUC inline script + suppressHydrationWarning** — globals.css `@variant dark`. 신규 라우트 wrapping 검증
+- **카드 상태 캐시는 pmid 키** — `lib/card-cache.ts` 모듈 단위 Map (검색·추천·연관·playlist 모달 공유)
+- **URL = source of truth** — 검색 `?q&sort&pmid&page`, 저널 `/journal/[issn]?tab=&from=`. SearchBar는 prop 변경 시 useEffect로 동기화
+- **자동 미니요약 default OFF** — 검색 결과 도착 후 layout shift + Gemini quota 낭비. 사용자가 설정에서 토글
+
+### 외부 API quirks
+
+- **PubMed `[ISSN]` 따옴표** — `0028-3878[ISSN]`(따옴표 없음)이 `[Journal]`로 정확 매핑. `"0028-3878"[ISSN]`(따옴표)은 `[All Fields]` fallback돼 노이즈. PDAT는 따옴표 + range
+- **OpenAlex 임상과 매핑 = subfields** — 26개 fields는 너무 broad(전체 Medicine 등). 250여 개 subfields가 임상과와 매칭. Sources에 subfield 직접 필터 없어 Works `primary_topic.subfield.id` group_by → Sources batch fetch 우회
+- **임상과 추천 정렬 = group_by count desc** — cited_by_count로 정렬하면 JAMA/Lancet이 어느 임상과든 위로. count desc 보존이 자연스러움
+- **manualSeedJournals 화이트리스트** — OpenAlex topic 분류 노이즈(Plastic Surgery in PM&R 등) 보완. 카탈로그에서 핵심 저널 ISSN-L 박아둠
+- **검색 안전망** — PubMed esearch JSON parse + Gemini control char sanitize + JSON parse 에러 retryable
+
+### 안전 가드
+
+- 매 단계 `npm run build` 통과 + 회귀 체크리스트 수동 검증 (v2 자연어 검색·미니요약·풀텍스트·TTS·라이브러리 흐름)
+- prod deploy는 수동 (`vercel deploy --prod --yes`) — 머지 != 배포
+- 외부 의존(Clova/Redis/Toss) 부재 시 silent 강등 — 라우트 자체는 절대 500 안 남
+- **PDF 파서 = unpdf** — pdf-parse는 Turbopack worker 경로 이슈. `next.config.ts`의 `serverExternalPackages`에서 제거 금지
+
+---
+
+## 핵심 파일 인덱스 (v3 기준)
+
 ```
 app/
-  layout.tsx                     루트 — AuthSession/Theme/ApiKeys/TtsProviderPreference/TtsQueue/Player Provider 중첩, FOUC inline script, suppressHydrationWarning
-  page.tsx                       HomeInner — 검색·페이지네이션·디테일 패널 통합. 헤더에 JournalEntryLink + AuthMenu (각각 FLAG 가드)
-  journal/                       v3 저널 큐레이션 진입점
+  layout.tsx                     루트 — AuthSession/AccountSync/Theme/ApiKeys/Tts/Player Provider 중첩
+  page.tsx                       v2 자연어 검색 + 미니요약 + 디테일 패널. 헤더에 Journal/Library/Settings/Auth 링크
+  onboarding/page.tsx            휴대폰 + 약관 (M4 PR2)
+  journal/
     layout.tsx                   /journal/* 공통 헤더 (Suspense 가드)
-    page.tsx                     임상과 그리드 (server component, ISR 1h)
-    specialty/[id]/page.tsx      임상과별 저널 추천 10개 (Works group_by → Sources batch)
-    [issn]/page.tsx              저널 홈 — IssueExplorer + 탭 자리(주제·트렌드는 다음 PR)
+    page.tsx                     임상과 그리드 (server, ISR 1h, MySpecialtiesGrid가 client 분기)
+    specialty/[id]/page.tsx      임상과별 시드 + 자동 추천 합치기 → SpecialtyJournalsList
+    [issn]/page.tsx              저널 홈 — 탭 분기 + IssueExplorer/TopicExplorer/TrendDigest
   api/
-    search/route.ts              자연어 → 검색식 → PubMed → OpenAlex → 정렬
-    summarize/route.ts           미니 요약 batch
-    summarize/read/route.ts      긴 요약 streaming
-    fulltext/route.ts            Unpaywall → EPMC → PMC 체인
-    pdf/route.ts                 unpdf 텍스트 추출
-    tts/route.ts                 narration 생성 + provider.synthesize (v3 default Clova + Gemini fallback 가드)
-    tts/preview/route.ts         설정 패널 미리듣기 (v2.0.4 신규)
-    journal/search/route.ts      OpenAlex 저널명 자동완성 (v3 M3 PR1)
-    journal/issues/route.ts      ISSN+year+month → PubMed [ISSN][PDAT] → enrich (v3 M3 PR2)
-    journal/topic/route.ts       ISSN+topic → PubMed [ISSN] AND topic (자동 MeSH 매핑) → enrich (v3 M3 PR3)
-    journal/trend/route.ts       ISSN+months → 최근 N개월 abstract → Gemini 트렌드 (headline+bullets) (v3 M3 PR3)
-    auth/[...nextauth]/route.ts  Auth.js v5 catch-all (signin/callback/session/...) (v3 M4 PR1)
-auth.ts                          Auth.js v5 + Google OAuth + Drizzle adapter. env 4종 부재 시 placeholder로 빌드 통과 (v3 M4 PR1)
+    search · summarize · summarize/read · fulltext · pdf · tts · tts/preview   v2 코어
+    journal/search · issues · topic · trend                                    v3 M3
+    auth/[...nextauth]                                                         Auth.js v5 catch-all (M4 PR1)
+    account/onboarding · prefs                                                 사용자 메타 + prefs CRUD (M4)
+auth.ts                          Auth.js v5 + Google OAuth + Drizzle adapter. env 4종 부재 시 placeholder
 components/
-  AuthMenu.tsx                   헤더 로그인/계정 드롭다운 (FEATURE_AUTH flag 가드, v3 M4 PR1)
-  AuthSessionProvider.tsx        next-auth/react SessionProvider wrapper (v3 M4 PR1)
-  JournalEntryLink.tsx           v3 헤더 진입점 (FEATURE_JOURNAL flag 가드)
-  JournalCard.tsx                저널 표시 카드 (server-friendly)
-  IssueExplorer.tsx              호 탐색 — year/month picker + JournalPaperList
-  TopicExplorer.tsx              주제 탐색 — 자유입력 + 추천 태그 + JournalPaperList
-  TrendDigest.tsx                트렌드 — 기간 라디오 + Gemini headline/bullets + JournalPaperList
-  JournalPaperList.tsx           저널 master-detail 공통 (PaperCard/ResultsList/PaperDetailPanel 재사용 + 미니요약 자동 batch)
-  JournalTabs.tsx                저널 홈 탭(?tab=issue|topic|trend, URL = source of truth)
-  PaperDetailPanel.tsx           디테일 패널 본체 (풀텍스트·긴요약·TTS)
-  PlayerProvider/PlayerBar.tsx   글로벌 플레이어, --player-bar-h CSS 변수
-  LibraryDrawer/AudioLibrary.tsx 라이브러리 (드로어 + 트랙 리스트)
-  SettingsDrawer.tsx             6개 섹션 (테마·provider·화자속도·알림·API키·백업복원). v3 default = Clova
-  ThemeProvider.tsx              class 기반 dark, hydration safe useState init
-  ApiKeysProvider.tsx            6종 키 localStorage + X-Paperis-Keys 헤더 동봉
-  TtsProviderPreferenceProvider.tsx provider/voiceByProvider/speakingRate. v3 default = Clova
-  TtsQueueProvider.tsx           글로벌 TTS 큐 (FIFO, 단일 워커, 완료 토스트+Notification)
-  useFetchWithKeys.ts            X-Paperis-Keys 자동 동봉 fetch wrapper
+  AuthMenu · AuthSessionProvider · AccountSyncProvider                  M4 인증·동기화
+  JournalEntryLink · JournalCard · JournalTabs · JournalPagination · JournalSearchAdder
+  MySpecialtiesGrid · MySpecialtiesEditor · SpecialtyJournalsList · JournalBlocksManager
+  IssueExplorer · TopicExplorer · TrendDigest · JournalPaperList
+  PaperDetailPanel · PlayerProvider · PlayerBar · LibraryDrawer · AudioLibrary · SettingsDrawer
+  ThemeProvider · ApiKeysProvider · TtsProviderPreferenceProvider · TtsQueueProvider
+  useFetchWithKeys · useAutoMiniSummary
 data/
-  journals.json                  v3 임상과 카탈로그 (GitHub 웹 직접 편집 가능, 1h revalidate)
+  journals.json                  임상과 카탈로그 25개 (GitHub raw + 로컬 fallback, 1h revalidate)
 lib/
-  pubmed.ts xml-utils.ts
-  openalex.ts                    enrichPapers (Works) + searchJournalsBySubfield(Works group_by → Sources batch) + searchJournalsByName (자동완성) + getJournalByIssn(저널 홈 메타)
-  journals.ts                    getJournalCatalog (GitHub raw + 로컬 fallback, v3)
-  gemini.ts                      callWithRetry / friendlyErrorMessage / streamSummary / generateNarrationText
-  query-translator.ts            gemini-2.5-flash-lite + responseSchema + control char sanitize
-  query-cache.ts client-cache.ts 서버 LRU + 클라 localStorage
-  paper-type.ts summary.ts
-  trend.ts                       Gemini batch JSON — 저널 abstracts → headline + bullets (v3 M3 PR3)
-  db/                            Drizzle (Neon Postgres). schema.ts (Auth.js 표준 4개 + users v3 확장) + index.ts (lazy getDb) (v3 M4 PR1)
-  fulltext/                      unpaywall·europe-pmc·pmc·html-extract·index
-  tts/                           types · gemini · clova · google-cloud · index (registry, v3 default Clova + resolveTtsProvider fallback)
-  audio-library.ts               idb CRUD + listTrackMetas + exportLibrary/importLibrary
-  user-keys.ts                   X-Paperis-Keys 헤더 → process.env override
-  promise-polyfill.ts            Node 22.17 Promise.try 폴리필 (unpdf 호환)
-  anonymous-id.ts
+  pubmed · xml-utils · openalex · journals · trend · summary · paper-type
+  gemini · query-translator · query-cache · client-cache
+  fulltext/ (unpaywall · europe-pmc · pmc · html-extract · index)
+  tts/ (types · gemini · clova · google-cloud · index — Clova default + fallback)
+  audio-library · anonymous-id · user-keys · promise-polyfill · auto-mini-summary
+  specialty-prefs · journal-blocks · journal-additions · journal-favorites    localStorage 4종
+  account-prefs                  서버 helper: load/save AccountPrefs (멱등 upsert)
+  db/ (schema · index)           Drizzle + Neon. Auth.js 표준 4 + users 확장 + user_specialties/blocks/additions/favorites
 public/sw.js                     paperis-v2 cache (정적 자산만, /api/는 무개입)
+types/index.ts                   v2 + v3 공통 타입
+types/next-auth.d.ts             Session.user.id + onboardingDone 추가 (M4 PR2)
 ```
 
-### v3 시작 시 안전한 첫 행동
-1. 사용자에게 v3 방향성·범위·이름(v3? v2.x→v3?) 확인
-2. master에서 분기할지, v3 브랜치를 새로 팔지 결정
-3. 변경 폭이 크면 EnterPlanMode → AskUserQuestion으로 의사결정 갈래 좁히기
-
-### v3 진행 상태 (2026-05-08 시작)
-- 결정: master 진화 / PLAN §14 1~8 순서 / CLAUDE.md v3 재작성 / 비로그인은 anonymous-id 기반 Free 한도 / X-Paperis-Keys 우회 허용
-- M1 ✅ — TTS default Clova + Gemini fallback 가드 (`lib/tts/index.ts` `resolveTtsProvider`)
-- M2 ✅ — `data/journals.json` 카탈로그 + `lib/journals.ts` + OpenAlex sources/works
-- M3 ✅ — 저널 큐레이션 풀스택 완성 (PR1~PR5-3 + 다수 fix)
-  - PR1: 임상과 그리드 + 임상과별 저널 추천 + 자동완성 + 헤더 진입점
-  - PR2: 저널 홈 + IssueExplorer + /api/journal/issues
-  - PR3: 주제·트렌드 탭 + JournalPaperList 공통 추출 + Gemini 트렌드 배치
-  - PR4-1: 페이지네이션 + Open Access 우선 정렬
-  - PR4-2: 임상과별 저널 차단 (localStorage)
-  - PR4-3: referrer 임상과 추적 + 임상과별 추천 태그
-  - PR4-4: 카탈로그 25개 임상과 확장 + 설정 패널 "내 임상과/차단" 관리
-  - PR5-1: 추천 알고리즘 개선(group_by count) + 화이트리스트 시드 + 차단 자동 보충
-  - PR5-2: 사용자 저널 직접 추가 (autocomplete + localStorage)
-  - PR5-3: 저널 즐겨찾기 ⭐ + 통합 그리드 상위 정렬
-  - 부수 fix: dedupe ref 가드 제거(무한 loading), 뒤로 가기 referrer specialty, 자동 미니요약 default OFF
-- M4 진행 중
-  - PR1 ✅ — Auth shell: next-auth@beta + Drizzle + Neon adapter, schema(users 확장 + Auth.js 표준 4개), AuthMenu(FEATURE_AUTH flag), AuthSessionProvider, /api/auth/[...nextauth]. 외부 환경(Neon DB + Google OAuth + AUTH_SECRET) 발급 필요
-  - PR2 다음: /onboarding 페이지 (휴대폰 + 약관 + 임상과/저널 초기화)
-  - PR3: localStorage(specialty-prefs/blocks/additions/favorites) → DB user_* 테이블 마이그레이션
-  - PR4: AccountSyncProvider 양방향 동기화
-
-### v3 M3 PR1에서 발견한 OpenAlex schema 정정 (load-bearing)
-PLAN.md §4의 `openAlexFieldId: "fields/2734"`는 OpenAlex와 매칭 안 됨 — 26개 fields는 너무 broad(전체 Medicine 등)고 임상과 단위에 안 맞음. 250여 개 **subfields**가 PM&R / Cardiology / Neurology와 잘 매칭. 카탈로그 schema를 `openAlexSubfieldId: "subfields/2742"` 등으로 정정.
-또 Sources API에 subfield 직접 필터 없음 → Works API의 `primary_topic.subfield.id` group_by + Sources batch fetch 두 단계로 우회. `lib/openalex.ts` `searchJournalsBySubfield`.
-
-### v3 M3 PR2에서 발견한 PubMed [ISSN] 따옴표 quirk (load-bearing)
-PubMed esearch에서 `"0028-3878"[ISSN]`(따옴표 있음)은 자동으로 `[All Fields]` 텍스트 매칭으로 fallback됨 → 결과 노이즈 섞임. `0028-3878[ISSN]`(따옴표 없음)이 정확히 `"Neurology"[Journal]`로 매핑되어 동일 결과. PDAT는 표준대로 따옴표 + range. `app/api/journal/issues/route.ts buildIssueTerm`.
-
 ---
 
-## v2 브랜치 — 새 시작 라인
-
-v1.1.0 라이브 시점에 사용자가 v2 방향성을 새로 잡아 master에서 분기. v2.0.0 시점부터 master에서 v2 코드로 fast-forward됨. v1 시리즈는 master의 `v1.1.0` 태그까지가 마지막.
-
-### v2 출시 (master)
+## 버전 히스토리
 
 | 버전 | 날짜 | 핵심 |
 |---|---|---|
-| **v2.0.4** | 2026-05-04 | 설정 패널 확장 — 6개 섹션 완성 (테마·TTS provider·화자/속도+미리듣기·알림 권한·API 키 6종 입력·라이브러리 백업/복원). Google Cloud TTS provider 추가 (Neural2/WaveNet, 월 1M자 무료). API 키는 클라 localStorage → `X-Paperis-Keys` 헤더 → 서버 process.env override |
-| **v2.0.3** | 2026-05-04 | 페이지네이션 (20건씩 `?page=N`), 앱 설정 패널·테마(라이트/다크/시스템) 도입, Naver Clova Voice provider 등록(설정에서 선택), 헤더 단순화(🎧+⚙ 아이콘), 영어 검색 prompt 보강, PubMed esearch JSON 안전망, Gemini control char sanitize, 친절 에러 메시지에 JSON parse 패턴 |
-| **v2.0.2** | 2026-04-30 | 라이브러리 드로어 슬라이드 애니메이션·max-w-5xl, PlayerBar 동적 높이(`--player-bar-h`), 모바일 컨트롤 두 줄 + −10/+10 텍스트, TTS 큐 배지 클릭 시 진행/대기 popover, 트랙별 `📜` 인라인 스크립트, 트랙 → `🔎` 논문 디테일, IndexedDB v1→v2(position 인덱스), `listTrackMetas`로 메모리 폭주 회피, `Promise.try` 폴리필, fetch timeout, backdrop-blur 전부 제거 |
-| **v2.0.1** | 2026-04-29 | 미니 요약 첫 줄에 주제 강제, 모바일/좁은 화면 디테일 패널 풀스크린 + 닫기, 풀텍스트 체인 단계별 fail/skip 사유 노출, PubMed `<ReferenceList>` 안의 ArticleId가 paper 본인 doi/pmcId를 덮던 파서 버그 fix, useEffect Strict Mode mount→cleanup→mount에서 첫 fetch 응답이 cancelled 처리되던 문제 fix, Node 22 Promise.try 폴리필 |
-| **v2.0.0** | 2026-04-29 | 마일스톤 1–8 일괄 — 자연어 검색·미니/긴 요약·풀텍스트 체인·TTS narration·오디오 라이브러리·anonymous ID·로그인/DB 제거 (master를 v2 코드로 fast-forward) |
-
-### v2 마일스톤 (모두 완료, 2026-04-29)
-
-- **M1 인프라 정리** — v2 브랜치 분기, app/components/lib/types 삭제 후 인프라(package.json, next.config, tsconfig, tailwind v4 CSS-first, manifest.ts, sw.js, 아이콘)만 보존. auth/db 의존성(next-auth, drizzle, neon, dotenv) 제거, idb 추가
-- **M2 검색 백엔드** — types/index.ts 재정의(SortMode·MiniSummary·FullTextSource·AudioTrack 등), [lib/pubmed.ts](lib/pubmed.ts)·[lib/openalex.ts](lib/openalex.ts)·[lib/xml-utils.ts](lib/xml-utils.ts) 포팅, [lib/gemini.ts](lib/gemini.ts) 유틸리티(callWithRetry/friendlyErrorMessage), [lib/query-translator.ts](lib/query-translator.ts) (Gemini 2.5 Flash Lite + responseSchema), [lib/query-cache.ts](lib/query-cache.ts) 서버 LRU, [app/api/search/route.ts](app/api/search/route.ts)
-- **M3 검색 UI** — [SearchBar](components/SearchBar.tsx) / [SortControl](components/SortControl.tsx) / [ResultsList](components/ResultsList.tsx) / [PaperCard](components/PaperCard.tsx), [lib/client-cache.ts](lib/client-cache.ts) localStorage TTL, [app/page.tsx](app/page.tsx) 마스터-디테일, URL이 source of truth (`?q&sort&pmid&page`)
-- **M4 미니 요약** — [lib/paper-type.ts](lib/paper-type.ts) classifyPaperType, [lib/summary.ts](lib/summary.ts) batch JSON 모드 (research vs review 분기), [app/api/summarize/route.ts](app/api/summarize/route.ts), [components/MiniSummary.tsx](components/MiniSummary.tsx). 상위 3개 자동 batch + 4번~ 클릭 시 단일
-- **M5 풀텍스트 체인** — [lib/fulltext/](lib/fulltext/) (unpaywall · europe-pmc · pmc · html-extract · index 오케스트레이터), [app/api/fulltext/route.ts](app/api/fulltext/route.ts), [app/api/pdf/route.ts](app/api/pdf/route.ts) (unpdf), [components/FullTextView.tsx](components/FullTextView.tsx) / [PdfUpload.tsx](components/PdfUpload.tsx) / [PaperDetailPanel.tsx](components/PaperDetailPanel.tsx). 긴 요약 스트리밍은 [lib/gemini.ts](lib/gemini.ts)의 `streamSummary` + [app/api/summarize/read/route.ts](app/api/summarize/read/route.ts)
-- **M6 TTS provider** — [lib/tts/types.ts](lib/tts/types.ts) 인터페이스, [lib/tts/gemini.ts](lib/tts/gemini.ts) GeminiTtsProvider (narration only, WAV LE 래핑 보존), [lib/tts/index.ts](lib/tts/index.ts) registry, [app/api/tts/route.ts](app/api/tts/route.ts), [components/TtsButton.tsx](components/TtsButton.tsx), [lib/audio-library.ts](lib/audio-library.ts) idb CRUD + BroadcastChannel, [lib/anonymous-id.ts](lib/anonymous-id.ts)
-- **M7 오디오 라이브러리 + 글로벌 플레이어** — [components/PlayerProvider.tsx](components/PlayerProvider.tsx) 컨텍스트 (단일 audio element ref, 자동 다음 트랙, 키보드 단축키), [components/PlayerBar.tsx](components/PlayerBar.tsx) 하단 고정, [components/AudioLibrary.tsx](components/AudioLibrary.tsx), [components/LibraryLink.tsx](components/LibraryLink.tsx) 카운트 배지
-- **M8 마무리** — README.md / CLAUDE.md / TODO.md를 v2 기준으로 갱신, .env.example 정리, `npm run build` 통과 확인
-
-### v1과 v2 차이 요지
-
-| | v1 | v2 |
-|---|---|---|
-| 검색 | 키워드 + 4 니즈 필터 | 자연어 + Gemini 검색식 변환 (캐싱) + 페이지네이션 |
-| 정렬 | 4축 가중치 슬라이더 | 최신/인용수/적합도 라디오 |
-| 요약 | 한 모드 (긴 요약) | 미니(카드) + 긴(디테일) 분리, paperType 분기 |
-| 풀텍스트 | PMC만 | Unpaywall → EPMC → PMC → PDF |
-| TTS | narration + dialogue (Gemini) | narration only, **3 provider 라우팅** (Gemini · Clova Premium · Google Cloud Neural2) + 화자/속도 + 미리듣기 |
-| 오디오 | 장바구니 + 일회성 재생목록 | IndexedDB 라이브러리 (트랙 누적, 자동 재생 X), **백업/복원**, 글로벌 PlayerBar + 인라인 스크립트 |
-| 인증/DB | Auth.js v5 + Neon Postgres | 없음 (anonymous ID만) |
-| 설정 | 없음 | **6개 섹션 설정 패널** (테마·provider·화자속도·알림·API 키·백업) |
-| 테마 | 시스템만 (prefers-color-scheme) | 라이트/다크/시스템 + 사용자 저장 |
+| **v3** (master 진화) | 2026-05-08~09 | 저널 큐레이션 + Auth + Neon + 디바이스 동기화. paperis.vercel.app 라이브 |
+| v2.0.4 | 2026-05-04 | 설정 패널 6개 섹션 + Google Cloud TTS + API 키 6종 + X-Paperis-Keys |
+| v2.0.3 | 2026-05-04 | 페이지네이션 + 테마(라이트/다크/시스템) + Naver Clova + 검색 안전망 |
+| v2.0.2 | 2026-04-30 | PlayerBar 동적 높이 + listTrackMetas + IndexedDB v2 |
+| v2.0.1 | 2026-04-29 | 미니 요약 주제 강제 + 풀스크린 디테일 + 풀텍스트 fail 사유 |
+| v2.0.0 | 2026-04-29 | 자연어 검색·미니/긴 요약·풀텍스트·TTS·라이브러리. Auth/DB 제거 |
+| v1.1.0 | 2026-04-26 | Google OAuth + Neon Postgres + 카트/가중치 동기화 |
+| v1.0.3 | 2026-04-25 | PMC 미스매치 + 풀텍스트 재생목록 |
+| v1.0.2 | 2026-04-25 | 페이지 번호 + 출퇴근 재생목록 + 키보드 시크 |
+| v1.0.1 | 2026-04-25 | 추천 가중치 + OpenAlex enrichment + 결정론적 스코어링 + PMC full-text |
+| v1.0.0 (MVP) | 2026-04-24 | PubMed + Gemini 요약/TTS + 연관 학습 + PDF + PWA + Vercel |
 
 ---
 
-## 출시 버전 (v1 시리즈, master 브랜치)
+## v3 진척 상세 (커밋 단위)
 
-| 버전 | 날짜 | 핵심 |
-|---|---|---|
-| **v1.1.0** | 2026-04-26 | Google OAuth 로그인 (Auth.js v5), Neon Postgres + Drizzle ORM, 카트/추천 가중치 디바이스 간 동기화, 비로그인 모드는 그대로 |
-| v1.0.3 | 2026-04-25 | PMC PMID 미스매치 검증, Open Access 카드 PDF 업로드, 카트 항목 클릭 → 메인 우측 상세, 풀텍스트 기반 재생목록 narration |
-| v1.0.2 | 2026-04-25 | 페이지 번호 버튼, 출퇴근 재생목록(장바구니+병렬 짧은 narration+커스텀 트랙 플레이어), 키보드 시크 ←/→/Space, 트랙→PaperCard 모달, 헤더 로고 홈 링크 |
-| v1.0.1 | 2026-04-25 | 추천 가중치 슬라이더(최신성/인용수/저널/니즈) + OpenAlex enrichment + 결정론적 스코어링, PMC Open Access full-text 요약, 마스터-디테일 + 카드 캐시, Gemini 503 자동 재시도 |
-| v1.0.0 (MVP) | 2026-04-24 | PubMed 검색 + 니즈 필터, Gemini 한국어/영어 스트리밍 요약, Gemini TTS narration / dialogue (멀티스피커, audio/wav), 연관 학습, PDF 업로드(unpdf), PWA 설치, Vercel 배포 |
+### M1 · M2 (2026-05-08)
 
----
+- **M1** TTS default `gemini` → `clova` + `resolveTtsProvider`/`hasProviderCredentials` 가드 (`lib/tts/index.ts`). 환경에 Clova 키 없을 때 자동 Gemini 강등 + `x-tts-degraded-from` 응답 헤더
+- **M2** `data/journals.json` (재활/심장/신경 3 임상과) + `lib/journals.ts` (GitHub raw + 로컬 fallback) + `lib/openalex.ts` `searchJournalsBySubfield`/`searchJournalsByName`/`getJournalByIssn`
 
-## 완료된 작업
+### M3 (2026-05-08)
 
-### MVP 1~8단계 (v1.0.0)
-- 1단계 PubMed 연동 ([lib/pubmed.ts](lib/pubmed.ts), [app/api/pubmed/route.ts](app/api/pubmed/route.ts), [types/index.ts](types/index.ts))
-- 2단계 Gemini 요약 ([lib/gemini.ts](lib/gemini.ts) `streamSummary`, [app/api/summarize/route.ts](app/api/summarize/route.ts))
-- 3단계 기본 UI ([components/SearchBar.tsx](components/SearchBar.tsx) / [PaperList.tsx](components/PaperList.tsx) / [PaperCard.tsx](components/PaperCard.tsx))
-- 4단계 Gemini TTS ([lib/tts.ts](lib/tts.ts) — `gemini-2.5-flash-preview-tts`, `[A]:`/`[B]:` 정규화, 24kHz mono PCM → WAV 헤더 수동 래핑)
-- 5단계 추천 3편 (`recommendPapers` → 이후 v1.0.1에서 결정론적 스코어링으로 교체)
-- 6단계 연관 학습 ([app/api/related/route.ts](app/api/related/route.ts) — `MAX_RELATED_DEPTH=2`, excludePmids로 중복 방지)
-- 7단계 PDF 업로드 ([components/PdfUpload.tsx](components/PdfUpload.tsx), [app/api/pdf/route.ts](app/api/pdf/route.ts) — unpdf, `Promise.try` 폴리필, `next.config.ts` `serverExternalPackages`)
-- 8단계 Vercel 배포 — `paperis.vercel.app`, `GEMINI_API_KEY` Production/Development 등록
-- PWA 설치 — manifest.ts + sw.js + 192/512/maskable 아이콘 + RegisterSW
-- 안정성 — `callWithRetry` 지수 백오프, `[요약 중단]` 마커 기반 친절한 에러 박스 + 다시 시도 버튼
+- **PR1** 임상과 그리드 + 임상과별 저널 추천 + 저널명 자동완성 + 헤더 진입점(`FEATURE_JOURNAL` flag)
+- **PR2** 저널 홈(`/journal/[issn]`) + IssueExplorer (year/month picker + master-detail) + `/api/journal/issues`
+- **PR3** 주제 탐색 + 트렌드(`lib/trend.ts` Gemini batch JSON) + JournalPaperList 공통 추출 + 탭 분기(`?tab=`)
+- **fix (dedupe)** IssueExplorer/TopicExplorer/TrendDigest의 `lastFetchKeyRef` 가드 제거 — Strict Mode 무한 loading
+- **PR4-1** 페이지네이션 + Open Access 우선 정렬 토글
+- **PR4-2** 임상과별 저널 차단 (`lib/journal-blocks.ts`)
+- **PR4-3** referrer 임상과 추적 (`?from=`) + 임상과별 추천 태그
+- **PR4-4** 카탈로그 25개 임상과 확장 + 설정 패널 "내 임상과/차단 저널" 관리 (`MySpecialtiesEditor`/`JournalBlocksManager`)
+- **PR5-1** 추천 알고리즘 group_by count desc + manualSeedJournals + over-fetch로 차단 자동 보충
+- **PR5-2** 사용자 저널 직접 추가 (`JournalSearchAdder` + `lib/journal-additions.ts`)
+- **PR5-3** 저널 즐겨찾기 ⭐ + 통합 그리드 상위 정렬 (`lib/journal-favorites.ts`)
+- **fix (back-link)** 저널 홈 뒤로 가기를 referrer specialty 페이지로 (3단 breadcrumb)
+- **fix (auto-mini)** 자동 미니요약 default OFF + 설정 토글
 
-### v1.0.1 — 추천 시스템 재설계 + Full-text 요약 + 레이아웃
-- **추천 시스템 재설계**: Gemini가 픽킹하던 구조를 **결정론적 스코어링**으로 분리
-  - [lib/openalex.ts](lib/openalex.ts) — PMID 일괄 enrichment(인용수, `2yr_mean_citedness`)
-  - [lib/scoring.ts](lib/scoring.ts) — 4축 점수(최신성/인용수/저널/니즈), 가중치별 정렬
-  - [lib/gemini.ts](lib/gemini.ts) `explainRecommendations` — 픽킹 결과에 한국어 한 문장 이유만 생성
-  - [components/RecommendWeights.tsx](components/RecommendWeights.tsx) — 4 슬라이더 + localStorage(`paperis.recommend.weights.v1`)
-  - 결과: 환각 PMID 위험 사라짐 + 사용자가 "최신/인용/저널/필터" 4축으로 추천을 직접 조절
-- **PMC Open Access full-text 요약**:
-  - [lib/pmc.ts](lib/pmc.ts) — JATS XML 파싱(fig/table/refs 제거, 30k자 캡, head 70%+tail 25% 트림)
-  - [app/api/pmc/route.ts](app/api/pmc/route.ts), [lib/xml-utils.ts](lib/xml-utils.ts) — `pubmed.ts`와 공용
-  - `SummarizeInput.sourceLabel` 추가 → 시스템 인스트럭션이 "abstract-only" disclaimer 자동 생략
-  - PaperCard 첨부 슬롯 통합: PDF 업로드(closed) / PMC 가져오기(open) 모두 `fullText` 단일 필드
-- **마스터-디테일 레이아웃**:
-  - URL이 source of truth(`?q&filter&page&pmid`) — 새로고침/공유에도 유지
-  - 데스크톱 좌목록 우상세, 모바일은 스택 네비
-  - [lib/card-cache.ts](lib/card-cache.ts) — pmid 키 세션 캐시(요약/오디오/연관/첨부 상태 보존)
+### M4 (2026-05-09)
 
-### v1.1.0 — 로그인 + 디바이스 동기화
-- **인증**: Auth.js v5 + Google OAuth + database session ([auth.ts](auth.ts), [app/api/auth/[...nextauth]/route.ts](app/api/auth/%5B...nextauth%5D/route.ts))
-  - `session` 콜백에서 `user.id` 명시 매핑 — Drizzle adapter + database session 조합에서 클라이언트로 user.id 전달 보장
-- **DB**: Neon Postgres + Drizzle ORM ([lib/db/schema.ts](lib/db/schema.ts), [lib/db/index.ts](lib/db/index.ts), [drizzle.config.ts](drizzle.config.ts))
-  - Auth.js 표준 4개 + `user_cart` (unique on user_id+pmid) + `user_weights` (PK user_id)
-- **계정 API** ([app/api/account/cart/route.ts](app/api/account/cart/route.ts), [app/api/account/weights/route.ts](app/api/account/weights/route.ts))
-  - 카트 PUT은 race-safe **멱등 upsert** (`onConflictDoUpdate` + `notInArray` delete) — Neon HTTP는 statement-level이라 진짜 트랜잭션 X
-- **클라이언트 동기화** ([components/AccountSyncProvider.tsx](components/AccountSyncProvider.tsx), [lib/cart.ts](lib/cart.ts), [lib/weights-store.ts](lib/weights-store.ts))
-  - 첫 로그인: server↔local 머지 후 한 번 PUT
-  - 평상시: subscribeCart/subscribeWeights → 350ms debounce → 서버 PUT
-  - `setStoredWeights`는 같은 값이면 dispatch 생략, page subscribe 콜백은 functional update + equality 체크 → 무한 루프 방지
-- **헤더 UI** ([components/AuthMenu.tsx](components/AuthMenu.tsx)): 로그인 버튼 / 로그인 후 아바타 드롭다운(이름/이메일/로그아웃)
-- 비로그인 모드는 기존 localStorage만 사용해 그대로 동작 — 서버 동기화는 부가 기능
+- **PR1** Auth.js v5 + Drizzle + Neon adapter, schema(users 확장 + Auth.js 표준 4), AuthMenu(`FEATURE_AUTH` flag), AuthSessionProvider, `/api/auth/[...nextauth]`. env 4종 부재 시 placeholder로 빌드 통과
+- **PR2** `/onboarding` 페이지 (휴대폰 normalize + 약관 4개) + `/api/account/onboarding` + AuthMenu의 "프로필 완성" 안내. 강제 redirect 안 함
+- **PR3** schema 4 테이블 추가 + `lib/account-prefs.ts` 서버 helper (멱등 upsert + notInArray) + `/api/account/prefs` GET/PUT + `AccountSyncProvider` (첫 로그인 합집합 머지 + debounced 500ms PUT). localStorage 4종(specialty/blocks/additions/favorites) → DB 양방향 동기화
 
-### v1.0.3 — PMC 미스매치 + 풀텍스트 재생목록
-- PMC 응답에 `articlePmid`, `articleTitle` 동봉 → 시드 PMID와 다른 본문 감지 + 빨간 경고 + "그래도 사용" / 취소 + PDF 업로드 fallback ([lib/pmc.ts](lib/pmc.ts), [components/PaperCard.tsx](components/PaperCard.tsx))
-- Open Access 카드도 PDF 업로드 슬롯 노출
-- 장바구니 항목 클릭 → 메인 페이지 우측 상세 (PaperModal 대신 마스터-디테일 통합)
-- 재생목록 "본문(full text)으로 narration" 토글 — 카드 캐시 + Open Access 자동 PMC fetch + abstract fallback ([components/CartPanel.tsx](components/CartPanel.tsx))
-- `/api/playlist` paper별 `sourceLabels` 배열 수용 → abstract-only disclaimer 자동 제거
+### Prod 배포 (2026-05-09)
 
-### v1.0.2 — 페이지네이션 UX + 출퇴근 재생목록
-- 숫자형 페이지네이션 ([components/Pagination.tsx](components/Pagination.tsx)) — `← 1 … 11 [12] 13 … 50 →`
-- **출퇴근 재생목록(장바구니 패턴)**:
-  - [lib/cart.ts](lib/cart.ts) — localStorage + custom event(같은 탭 컴포넌트 동기화), 최대 10편
-  - [components/CartButton.tsx](components/CartButton.tsx) — 카드 헤더 토글
-  - [components/CartPanel.tsx](components/CartPanel.tsx) — 슬라이드 오버 + 짧은 모드 체크박스 + 한 번에 생성
-  - [app/api/playlist/route.ts](app/api/playlist/route.ts) — `Promise.all` 병렬 narration + TTS, 트랙별 base64 JSON
-  - [lib/gemini.ts](lib/gemini.ts) `SummarizeInput.brief` — 1-2분 출퇴근 다이제스트 모드
-- **커스텀 플레이어**:
-  - [components/PlaylistPlayer.tsx](components/PlaylistPlayer.tsx) — ⏮ ⏭ 트랙 점프, ±10초 시크, 진행바, 트랙 리스트
-  - 키보드: ← / → 10초 시크, Space 재생/일시정지 (입력창 포커스 시 무시)
-  - "📄 이 논문 보기" → [components/PaperModal.tsx](components/PaperModal.tsx) 풀 PaperCard, ESC로 닫힘
-  - 카드 캐시 덕에 모달에서 본 요약이 검색 결과에서도 그대로 보임
-- **헤더 UX**: 로고/이름 클릭 → 홈(`/`), SearchBar가 URL prop 변화에 동기화
+- 21 commits push to origin/master + `vercel deploy --prod --yes`
+- 스모크 테스트: `/`·`/journal`·`/onboarding` 200 OK + GitHub raw catalog 200 OK
+- `paperis.vercel.app` v3 라이브
 
 ---
 
-## 다음 후보 (v1.2 ~)
-
-- [ ] **이메일 magic link 로그인**: Resend/SES 등 메일 발신 셋업 후 Auth.js EmailProvider 추가 — Google 외 옵션
-- [ ] **청취 진행률 / 들은 트랙 표시**: 같은 큐를 며칠에 나눠 듣기 + 트랙별 lastPosition 서버 저장
-- [ ] **트랙 IndexedDB 영속화**: 한 번 만든 재생목록을 새로고침 후에도 유지
-- [ ] **백그라운드 청취**: CartPanel 닫아도 audio 유지되는 persistent mini-player
-- [ ] **검색/탐색 히스토리** 서버 저장
-- [ ] **카드 캐시 서버 저장**: 요약/오디오는 비싸니 디바이스 간 공유
-
-## 기술부채 / 개선 후보 (우선순위 낮음)
-
-- [ ] **키 회전**: 이 대화 로그에 `GEMINI_API_KEY`/Vercel 토큰 노출됨 → 발급처에서 revoke 후 재발급 권장
-- [ ] **백그라운드 청취**: CartPanel 닫으면 `<audio>`가 unmount → 재생 정지. 패널 외부에 persistent 플레이어 영역을 두고 패널 닫아도 음악 유지
-- [ ] **트랙 길이 제어**: brief=true도 모델 변동에 따라 1.5–3분 범위. 글자수 기반 컷오프 또는 더 강한 프롬프트 제약
-- [ ] **PWA 오프라인 지원**: 지금 SW는 설치 가능성만 보장. 홈 shell/정적 페이지 precache 추가 시 오프라인 첫 화면 가능
-- [ ] **에러 바운더리**: React error boundary 없음. 런타임 에러 시 화면이 깨짐
-- [ ] **모바일 반응형 점검**: 카드 내부 버튼 그룹이 좁은 폭에서 좀 빡빡함
-- [ ] **테스트**: 단위 테스트 0개. `lib/pubmed.ts` XML 파서, `lib/scoring.ts` 점수 계산, `lib/pmc.ts` 본문 추출, `[A]:` 정규화 같은 순수 함수부터 추가 가치 높음
-- [ ] **OpenAlex enrichment 캐싱**: 가중치 슬라이더 움직일 때마다 매번 OpenAlex 재호출 — 같은 PMID 셋이면 메모리 캐시 또는 Vercel KV
-- [ ] **Hobby 플랜 maxDuration 실측**: 대화체 장문 / 5편 이상 playlist에서 timeout 발생 케이스 정리
-- [ ] **CSP / 보안 헤더**: `Content-Security-Policy` / `X-Frame-Options`
-- [ ] **PubMed rate limit**: 초당 3회 제한 대응 (API 키 없을 때 다중 사용자 대응)
-- [ ] **장기 캐시**: 같은 PMID + 같은 옵션으로 요약/오디오 재요청 시 Vercel KV / Blob 등
-- [ ] **Gemini TTS 안정판 전환**: `preview` 꼬리표 떨어지면 모델명 업데이트
-- [ ] **트랙 IndexedDB 영속화**: 현재는 새로고침하면 트랙 사라짐. 출퇴근에 한 번 만들고 며칠 듣게 하려면 영속화 필요
-- [ ] **(선택) GitHub ↔ Vercel 자동 배포**: 현재는 로컬 `vercel deploy --prod` 수동. push 자동 트리거로 전환 + Preview env 추가
-
----
-
-## 의사결정 기록 (변경 금지 항목)
-
-- **인증 = Auth.js v5 + Google OAuth + Neon Postgres + Drizzle**: 다른 provider/DB 도입은 사용자 재합의 후. session strategy `database`(JWT 아님), session 콜백에서 `user.id` 명시 매핑 필수.
-- **카트 PUT 멱등 upsert**: Neon HTTP는 statement-level이라 진짜 트랜잭션 X. delete + insert 패턴 race condition으로 unique 충돌 발생함. `onConflictDoUpdate` + `notInArray` delete만 사용.
-- **로그인 무관 동작 보존**: 비로그인 사용자도 모든 기능 그대로 동작. 서버 동기화는 부가 기능.
-- **단일 AI 스택**: 요약+TTS 모두 Gemini. Claude / OpenAI SDK 도입 금지. 필요 시 사용자와 재합의 후에만.
-- **추천 = 결정론적 + 설명**: 픽킹은 [lib/scoring.ts](lib/scoring.ts) 4축 가중 점수가 담당, Gemini는 [lib/gemini.ts](lib/gemini.ts) `explainRecommendations`로 한 줄 이유만 생성. 환각 PMID 방지 + 사용자가 직접 컨트롤 가능.
-- **대화체 태그 포맷**: `[A]:` / `[B]:` 고정. 프롬프트(`lib/gemini.ts`)와 TTS(`lib/tts.ts`) 양쪽이 이 포맷에 묶여 있음 — 바꾸려면 동시에 수정.
-- **WAV 헤더 수동 래핑**: Gemini TTS가 24kHz mono PCM을 주고 브라우저는 WAV를 바로 재생. 이 경로 유지.
-- **한국어 우선 UI**: 영어 토글은 있지만 기본 UI 문구·에러 메시지는 한국어.
-- **PDF 파서는 `unpdf` 사용**: `pdf-parse`는 Turbopack에서 worker 경로 문제로 실패. `pdfjs-dist`는 번들러 개입 시 `Promise.try` 폴리필이 필요. `next.config.ts`의 `serverExternalPackages`에서 제거하지 말 것.
-- **재생목록 패턴 = 트랙 분리 (한 파일 X)**: 한 WAV로 합쳐 받으면 트랙 점프·"이 논문 보기"가 어려움. 항상 트랙별 base64로 응답하고 클라이언트가 큐로 다룬다.
-- **카드 상태 캐시는 pmid 키**: 검색 결과·추천·연관·playlist 모달 — 어디서 같은 논문을 열어도 동일 캐시 인스턴스. `lib/card-cache.ts` 모듈 단위 Map.
-- **URL이 검색 source of truth**: `?q&filter&page&pmid`. SearchBar는 controlled가 아니라 prop 변경 시 useEffect로 동기화.
+*v1·v2 마일스톤 상세는 `git log` 또는 commit message 본문 참고. 이 파일은 v3 시점 기준으로 정리됨.*
