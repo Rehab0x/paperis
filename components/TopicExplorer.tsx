@@ -3,7 +3,7 @@
 // 저널 주제 탐색 — 추천 태그(저널 임상과의 suggestedTopics) + 자유 입력.
 // 입력 → /api/journal/topic 호출 → JournalPaperList로 master-detail 렌더.
 
-import { FormEvent, useEffect, useRef, useState } from "react";
+import { FormEvent, useEffect, useState } from "react";
 import JournalPaperList from "@/components/JournalPaperList";
 import { useFetchWithKeys } from "@/components/useFetchWithKeys";
 import type { Paper } from "@/types";
@@ -37,17 +37,15 @@ export default function TopicExplorer({
 
   const fetchWithKeys = useFetchWithKeys();
   const fetchKey = `${issn}::topic::${submittedTopic}`;
-  const lastFetchKeyRef = useRef<string>("");
 
+  // dedupe ref 가드는 의도적으로 사용하지 않는다 — Strict Mode mount cycle에서 무한
+  // loading 발생 (PaperDetailPanel 패턴 동일). cancelled flag + AbortController로 충분.
   useEffect(() => {
     if (!submittedTopic) {
       setPapers([]);
       setTotal(0);
-      lastFetchKeyRef.current = "";
       return;
     }
-    if (lastFetchKeyRef.current === fetchKey) return;
-    lastFetchKeyRef.current = fetchKey;
 
     let cancelled = false;
     const controller = new AbortController();

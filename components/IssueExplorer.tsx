@@ -3,7 +3,7 @@
 // 저널 호 탐색 — year/month picker + 결과 목록.
 // 결과 master-detail은 JournalPaperList로 위임 (주제 탐색·트렌드와 공통).
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import JournalPaperList from "@/components/JournalPaperList";
 import { useFetchWithKeys } from "@/components/useFetchWithKeys";
 import type { Paper } from "@/types";
@@ -63,13 +63,12 @@ export default function IssueExplorer({ issn, journalName }: Props) {
 
   const fetchWithKeys = useFetchWithKeys();
   const fetchKey = `${issn}::${year}::${month}`;
-  const lastFetchKeyRef = useRef<string>("");
   const yearOptions = useMemo(buildYearOptions, []);
 
+  // dedupe ref 가드는 의도적으로 사용하지 않는다 — React Strict Mode의 mount→cleanup→
+  // remount cycle에서 두 번째 mount가 가드에 막히면 첫 mount의 fetch는 abort되고
+  // 두 번째 fetch가 시작도 안 해 status=loading이 영원히 안 풀린다 (PaperDetailPanel 패턴).
   useEffect(() => {
-    if (lastFetchKeyRef.current === fetchKey) return;
-    lastFetchKeyRef.current = fetchKey;
-
     let cancelled = false;
     const controller = new AbortController();
 

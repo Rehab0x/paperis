@@ -3,7 +3,7 @@
 // 저널 최근 트렌드 — Gemini가 abstract 모음을 보고 만든 headline + 5-7 bullet.
 // 분석 대상이 된 논문 목록도 함께 노출 (master-detail).
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import JournalPaperList from "@/components/JournalPaperList";
 import { useFetchWithKeys } from "@/components/useFetchWithKeys";
 import type { Paper } from "@/types";
@@ -47,17 +47,17 @@ export default function TrendDigest({ issn, journalName }: Props) {
 
   const fetchWithKeys = useFetchWithKeys();
   const fetchKey = `${issn}::trend::${months}`;
-  const lastFetchKeyRef = useRef<string>("");
 
+  // dedupe ref 가드는 의도적으로 사용하지 않는다 — Strict Mode mount cycle에서 무한
+  // loading + 새 응답이 cancelled로 차단되어 화면 갱신 안 됨 (PaperDetailPanel 패턴 동일).
   useEffect(() => {
-    if (lastFetchKeyRef.current === fetchKey) return;
-    lastFetchKeyRef.current = fetchKey;
-
     let cancelled = false;
     const controller = new AbortController();
 
     setLoading(true);
     setError(null);
+    // 새 fetch 시작 시 이전 trend는 비워둠 — loading skeleton이 보이도록.
+    setTrend({ headline: "", bullets: [] });
 
     (async () => {
       try {
