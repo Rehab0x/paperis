@@ -36,29 +36,6 @@ export async function generateMetadata({ params }: Props) {
   };
 }
 
-/**
- * referrer 임상과(`?from=...`)에 해당하는 추천 주제만 반환. 없거나 매칭되는 임상과가
- * 없으면 빈 배열 — TopicExplorer는 자유 입력만 안내.
- *
- * 임상과↔저널 매핑은 사용자가 어느 임상과 그리드에서 진입했느냐로 결정. 정확한
- * "이 저널이 어느 임상과에 속하는지"는 마일스톤 4 user_journal_prefs로 저장될 예정.
- */
-async function suggestedTopicsFor(fromSpecialtyId: string | undefined): Promise<{
-  topics: string[];
-  specialtyName: string | null;
-}> {
-  if (!fromSpecialtyId) return { topics: [], specialtyName: null };
-  try {
-    const specialty = await getSpecialty(fromSpecialtyId);
-    if (!specialty) return { topics: [], specialtyName: null };
-    return {
-      topics: specialty.suggestedTopics.slice(0, 8),
-      specialtyName: specialty.name,
-    };
-  } catch {
-    return { topics: [], specialtyName: null };
-  }
-}
 
 export default async function JournalHomePage({
   params,
@@ -77,19 +54,32 @@ export default async function JournalHomePage({
   // baseHref는 탭 전환에 쓰이므로 from을 보존해야 한다. JournalTabs에서 이어붙임.
   const baseHref = `/journal/${encodeURIComponent(issn)}`;
   const fromSpecialtyId = typeof fromRaw === "string" ? fromRaw : undefined;
-  const { topics: suggestedTopics, specialtyName } =
-    tab === "topic"
-      ? await suggestedTopicsFor(fromSpecialtyId)
-      : { topics: [], specialtyName: null };
+  // referrer 임상과 메타 — 뒤로 가기 + 주제 탭 추천에 동시 사용
+  const fromSpecialty = fromSpecialtyId
+    ? await getSpecialty(fromSpecialtyId)
+    : null;
+  const suggestedTopics =
+    tab === "topic" && fromSpecialty
+      ? fromSpecialty.suggestedTopics.slice(0, 8)
+      : [];
+  const specialtyName = fromSpecialty?.name ?? null;
+
+  // 뒤로 가기 — referrer가 있으면 그 임상과 저널 목록, 없으면 임상과 그리드
+  const backHref = fromSpecialty
+    ? `/journal/specialty/${encodeURIComponent(fromSpecialty.id)}`
+    : "/journal";
+  const backLabel = fromSpecialty
+    ? `← ${fromSpecialty.name} 저널 목록`
+    : "← 임상과 목록";
 
   return (
     <main className="mx-auto w-full max-w-6xl flex-1 px-4 py-8 pb-32">
       <nav className="mb-3 text-xs text-zinc-500">
         <Link
-          href="/journal"
+          href={backHref}
           className="text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-300"
         >
-          ← 임상과 목록
+          {backLabel}
         </Link>
       </nav>
 
