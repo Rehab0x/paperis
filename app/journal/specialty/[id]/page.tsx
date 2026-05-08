@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import JournalCard from "@/components/JournalCard";
+import SpecialtyJournalsList from "@/components/SpecialtyJournalsList";
 import { getSpecialty } from "@/lib/journals";
 import { searchJournalsBySubfield } from "@/lib/openalex";
 
@@ -64,17 +64,10 @@ export default async function SpecialtyJournalsPage({ params }: Props) {
           </p>
         </div>
       ) : (
-        <ul className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-          {journals.map((j) => (
-            <li key={j.openAlexId}>
-              {/* 저널 홈은 다음 PR. 지금은 ISSN-L 있을 때만 링크 활성화. */}
-              <JournalCard
-                journal={j}
-                href={j.issnL ? `/journal/${encodeURIComponent(j.issnL)}` : undefined}
-              />
-            </li>
-          ))}
-        </ul>
+        <SpecialtyJournalsList
+          journals={journals}
+          specialtyId={specialty.id}
+        />
       )}
     </main>
   );
