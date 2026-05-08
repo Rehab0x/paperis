@@ -1,5 +1,5 @@
 {
-  "version": 2,
+  "version": 3,
   "updatedAt": "2026-05-09",
   "specialties": [
     {
@@ -13,6 +13,17 @@
         "gait",
         "dysphagia",
         "constraint-induced movement therapy"
+      ],
+      "manualSeedJournals": [
+        "0003-9993",
+        "0894-9115",
+        "1934-1482",
+        "1650-1977",
+        "0963-8288",
+        "0269-2155",
+        "1545-9683",
+        "1074-9357",
+        "1053-8135"
       ]
     },
     {
@@ -26,6 +37,16 @@
         "myocardial infarction",
         "hypertension",
         "valvular heart disease"
+      ],
+      "manualSeedJournals": [
+        "0009-7322",
+        "0735-1097",
+        "0195-668X",
+        "2380-6583",
+        "1355-6037",
+        "0002-8703",
+        "1388-9842",
+        "1941-9651"
       ]
     },
     {
@@ -39,6 +60,16 @@
         "parkinson disease",
         "multiple sclerosis",
         "alzheimer disease"
+      ],
+      "manualSeedJournals": [
+        "0028-3878",
+        "0364-5134",
+        "0006-8950",
+        "1474-4422",
+        "2168-6149",
+        "0039-2499",
+        "0885-3185",
+        "0022-3050"
       ]
     },
     {

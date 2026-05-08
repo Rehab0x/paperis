@@ -23,6 +23,13 @@ export interface Specialty {
   openAlexSubfieldId: string;
   /** 주제 탐색 화면의 추천 태그. 자유 입력도 허용 */
   suggestedTopics: string[];
+  /**
+   * 카탈로그 관리자가 "이 임상과의 핵심 저널"로 미리 보장하는 ISSN-L 목록.
+   * OpenAlex의 topic 분류 모델이 일부 work을 잘못 분류해 추천에 노이즈가 섞이는
+   * 문제를 보완 — 시드 저널은 자동 추천보다 위에, 항상 노출(차단해도 다른 임상과
+   * 시드와 무관). 빈 배열이면 자동 추천만 사용.
+   */
+  manualSeedJournals?: string[];
 }
 
 export interface JournalCatalog {

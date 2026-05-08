@@ -14,11 +14,18 @@ import {
 import type { JournalSummary } from "@/lib/openalex";
 
 interface Props {
+  /** server에서 over-fetched된 후보들 (시드 + 자동 추천 합친 결과) */
   journals: JournalSummary[];
   specialtyId: string;
+  /** 화면에 표시할 최대 개수 — 차단으로 줄어든 자리는 다음 후보로 보충된다 */
+  targetCount: number;
 }
 
-export default function SpecialtyJournalsList({ journals, specialtyId }: Props) {
+export default function SpecialtyJournalsList({
+  journals,
+  specialtyId,
+  targetCount,
+}: Props) {
   const [blocks, setBlocks] = useState<Set<string>>(() => new Set());
   const [hydrated, setHydrated] = useState(false);
   const [toast, setToast] = useState<string | null>(null);
@@ -51,12 +58,15 @@ export default function SpecialtyJournalsList({ journals, specialtyId }: Props) 
     [specialtyId]
   );
 
-  // SSR 시점엔 차단 목록을 모르니 모두 표시. hydrate 후 filter 적용 — 차단된 카드가
-  // 한 프레임 보였다가 사라질 수 있으나 localStorage 기반이라 어쩔 수 없는 trade-off.
-  const visibleJournals = hydrated
-    ? journals.filter((j) => !blocks.has(j.openAlexId))
-    : journals;
-  const hiddenCount = journals.length - visibleJournals.length;
+  // SSR 시점엔 차단 목록을 모르니 over-fetched 결과 중 상위 targetCount만 표시.
+  // hydrate 후엔 차단된 후보를 거른 다음 다시 상위 targetCount → 자리가 자동 보충.
+  const visibleJournals = (
+    hydrated ? journals.filter((j) => !blocks.has(j.openAlexId)) : journals
+  ).slice(0, targetCount);
+  // 사용자가 이 임상과에서 차단한 저널 수 (실제로 화면 후보 안에 있던 것 기준)
+  const hiddenInCandidates = hydrated
+    ? journals.reduce((n, j) => n + (blocks.has(j.openAlexId) ? 1 : 0), 0)
+    : 0;
 
   return (
     <>
@@ -78,9 +88,10 @@ export default function SpecialtyJournalsList({ journals, specialtyId }: Props) 
           </li>
         ))}
       </ul>
-      {hiddenCount > 0 ? (
+      {hiddenInCandidates > 0 ? (
         <p className="mt-4 text-xs text-zinc-400">
-          이 임상과에서 {hiddenCount}개 저널이 숨겨져 있습니다.
+          이 임상과에서 {hiddenInCandidates}개 저널이 숨겨져 있습니다 — 빈 자리는
+          다음 후보로 채워졌어요.
         </p>
       ) : null}
       {toast ? (

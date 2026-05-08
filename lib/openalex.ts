@@ -213,27 +213,26 @@ function extractOpenAlexShortId(urnOrUrl: string): string | null {
  * subfieldUrn은 `data/journals.json`의 `openAlexSubfieldId` (예: "subfields/2728").
  * OpenAlex Sources API에는 subfield 직접 필터가 없어 두 단계로 우회:
  *   1) Works API + group_by primary_location.source.id —
- *      해당 subfield의 work이 가장 많이 출판된 source 상위
- *   2) 그 source ID들을 Sources API에 batch fetch — full detail (issn, IF 등)
+ *      해당 subfield의 work이 가장 많이 출판된 source 상위 (count desc)
+ *   2) 그 source ID들을 Sources API에 batch fetch — full detail
+ *      (type:journal로 db/eBook/repository 자동 제외)
  *
- * fields(26개)가 너무 broad해서 임상과 단위로 안 맞고 (전체 Medicine field는
- * 모든 임상과 포함), subfield 단위가 PM&R/Cardiology/Neurology와 잘 매칭된다.
- *
- * 결과는 인용수 desc 정렬. type:journal 필터로 PubMed/eBook 데이터베이스 제외.
+ * **정렬 = group_by count desc** (subfield 비중 기준).
+ * cited_by_count desc로 다시 정렬하면 JAMA/Lancet 같은 일반 의학지가 어느 임상과든
+ * 위로 올라와 부적합 → "이 subfield에서 일을 많이 한 저널"이 위가 자연스럽다.
  */
 export async function searchJournalsBySubfield(
   subfieldUrn: string,
   opts: { perPage?: number } = {}
 ): Promise<JournalSummary[]> {
   const perPage = Math.min(Math.max(opts.perPage ?? 10, 1), 25);
+  // group_by에서 type:journal이 아닌 항목(repository/eBook/db)이 섞이므로 여유 있게 받기
+  const groupSize = Math.min(perPage * 4, 50);
 
-  // 1) group_by로 해당 subfield의 출판 빈도 상위 source 찾기.
-  // 노이즈(PubMed/eBook 등) 제외 위해 type:journal works만 보고, 살짝 여유 있게 perPage*3 가져와
-  // 정규화 후 type:journal로 다시 좁힌다.
   const groupParams = new URLSearchParams({
     filter: `primary_topic.subfield.id:${subfieldUrn}`,
     group_by: "primary_location.source.id",
-    "per-page": String(perPage * 3),
+    "per-page": String(groupSize),
     mailto: POLITE_MAILTO,
   });
 
@@ -252,21 +251,36 @@ export async function searchJournalsBySubfield(
     return [];
   }
   const groupData = (await groupRes.json()) as OpenAlexWorksGroupResponse;
-  const sourceShortIds = (groupData.group_by ?? [])
+  // count desc 순서로 short ID 배열 — 이 순서가 최종 결과 순서가 된다.
+  const ranked = (groupData.group_by ?? [])
     .map((g) => (g.key ? extractOpenAlexShortId(g.key) : null))
     .filter((id): id is string => Boolean(id));
 
-  if (sourceShortIds.length === 0) return [];
+  if (ranked.length === 0) return [];
 
-  // 2) Sources batch fetch (인용수 정렬 + type:journal). batch 크기 25 안전.
-  const batch = sourceShortIds.slice(0, 25).join("|");
+  // Sources batch fetch — type:journal 필터로 PubMed/eBook/repository 자동 제외.
+  // batch 크기 25 안전.
+  const batchIds = ranked.slice(0, 25);
+  const batch = batchIds.join("|");
   const detailParams = new URLSearchParams({
     filter: `ids.openalex:${batch},type:journal`,
-    sort: "cited_by_count:desc",
-    "per-page": String(perPage * 2),
+    "per-page": "25",
   });
   const journals = await fetchSources(detailParams);
-  return journals.slice(0, perPage);
+
+  // group_by count desc 순서를 보존하기 위해 ranked 순서대로 detail을 재배열.
+  const detailById = new Map<string, JournalSummary>();
+  for (const j of journals) {
+    const sid = extractOpenAlexShortId(j.openAlexId);
+    if (sid) detailById.set(sid, j);
+  }
+  const ordered: JournalSummary[] = [];
+  for (const id of ranked) {
+    const d = detailById.get(id);
+    if (d) ordered.push(d);
+    if (ordered.length >= perPage) break;
+  }
+  return ordered;
 }
 
 /**
