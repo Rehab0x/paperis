@@ -3,6 +3,7 @@
 import { Suspense, useCallback, useEffect, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
+import AuthMenu from "@/components/AuthMenu";
 import JournalEntryLink from "@/components/JournalEntryLink";
 import { useAutoMiniSummary } from "@/components/useAutoMiniSummary";
 import LibraryLink from "@/components/LibraryLink";
@@ -364,6 +365,7 @@ function HomeInner() {
               <JournalEntryLink />
               <LibraryLink />
               <SettingsLink />
+              <AuthMenu />
             </div>
           </div>
           <div className="flex flex-col gap-2 sm:flex-row sm:items-center">

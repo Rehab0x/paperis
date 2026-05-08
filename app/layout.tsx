@@ -4,6 +4,7 @@ import "./globals.css";
 import PlayerBar from "@/components/PlayerBar";
 import PlayerProvider from "@/components/PlayerProvider";
 import ApiKeysProvider from "@/components/ApiKeysProvider";
+import AuthSessionProvider from "@/components/AuthSessionProvider";
 import RegisterSW from "@/components/RegisterSW";
 import ThemeProvider from "@/components/ThemeProvider";
 import TtsCompletionToast from "@/components/TtsCompletionToast";
@@ -75,19 +76,21 @@ export default function RootLayout({
         <script dangerouslySetInnerHTML={{ __html: themeBootScript }} />
       </head>
       <body className="min-h-full flex flex-col">
-        <ThemeProvider>
-          <ApiKeysProvider>
-            <TtsProviderPreferenceProvider>
-              <TtsQueueProvider>
-                <PlayerProvider>
-                  {children}
-                  <PlayerBar />
-                  <TtsCompletionToast />
-                </PlayerProvider>
-              </TtsQueueProvider>
-            </TtsProviderPreferenceProvider>
-          </ApiKeysProvider>
-        </ThemeProvider>
+        <AuthSessionProvider>
+          <ThemeProvider>
+            <ApiKeysProvider>
+              <TtsProviderPreferenceProvider>
+                <TtsQueueProvider>
+                  <PlayerProvider>
+                    {children}
+                    <PlayerBar />
+                    <TtsCompletionToast />
+                  </PlayerProvider>
+                </TtsQueueProvider>
+              </TtsProviderPreferenceProvider>
+            </ApiKeysProvider>
+          </ThemeProvider>
+        </AuthSessionProvider>
         <RegisterSW />
       </body>
     </html>

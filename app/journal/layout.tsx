@@ -1,5 +1,6 @@
 import { Suspense } from "react";
 import Link from "next/link";
+import AuthMenu from "@/components/AuthMenu";
 import LibraryLink from "@/components/LibraryLink";
 import SettingsLink from "@/components/SettingsLink";
 import TtsQueueBadge from "@/components/TtsQueueBadge";
@@ -35,6 +36,7 @@ export default function JournalLayout({
               <TtsQueueBadge />
               <LibraryLink />
               <SettingsLink />
+              <AuthMenu />
             </div>
           </Suspense>
         </div>
