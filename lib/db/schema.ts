@@ -12,6 +12,7 @@ import { sql } from "drizzle-orm";
 import {
   boolean,
   integer,
+  jsonb,
   pgTable,
   primaryKey,
   text,
@@ -81,5 +82,87 @@ export const verificationTokens = pgTable(
   },
   (vt) => ({
     pk: primaryKey({ columns: [vt.identifier, vt.token] }),
+  })
+);
+
+// ── v3 사용자 임상과·저널 prefs (M4 PR3) ──────────────────────────────
+// localStorage 4종(specialty-prefs / journal-blocks / journal-additions /
+// journal-favorites)을 DB로 마이그레이션. 디바이스 간 동기화 + Auth 사용자 영속.
+//
+// 비로그인 사용자는 그대로 localStorage만 사용. 로그인 시 AccountSyncProvider가
+// localStorage ↔ DB 머지 + 변경 시 debounced PUT.
+
+/** 사용자가 선택한 임상과 + 표시 순서 */
+export const userSpecialties = pgTable(
+  "user_specialties",
+  {
+    userId: text("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    specialtyId: text("specialty_id").notNull(),
+    sortOrder: integer("sort_order").notNull().default(0),
+    addedAt: timestamp("added_at", { mode: "date" })
+      .notNull()
+      .default(sql`now()`),
+  },
+  (t) => ({
+    pk: primaryKey({ columns: [t.userId, t.specialtyId] }),
+  })
+);
+
+/** 임상과별로 사용자가 ✕ 숨긴 저널 */
+export const userJournalBlocks = pgTable(
+  "user_journal_blocks",
+  {
+    userId: text("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    specialtyId: text("specialty_id").notNull(),
+    /** OpenAlex source URN (예: "https://openalex.org/S172573765") */
+    openalexId: text("openalex_id").notNull(),
+    blockedAt: timestamp("blocked_at", { mode: "date" })
+      .notNull()
+      .default(sql`now()`),
+  },
+  (t) => ({
+    pk: primaryKey({ columns: [t.userId, t.specialtyId, t.openalexId] }),
+  })
+);
+
+/** 임상과별로 사용자가 직접 추가한 저널. journal jsonb로 메타 함께 저장 */
+export const userJournalAdditions = pgTable(
+  "user_journal_additions",
+  {
+    userId: text("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    specialtyId: text("specialty_id").notNull(),
+    openalexId: text("openalex_id").notNull(),
+    /** JournalSummary 객체 — UI 표시 시 OpenAlex 재호출 회피 */
+    journal: jsonb("journal").notNull(),
+    addedAt: timestamp("added_at", { mode: "date" })
+      .notNull()
+      .default(sql`now()`),
+  },
+  (t) => ({
+    pk: primaryKey({ columns: [t.userId, t.specialtyId, t.openalexId] }),
+  })
+);
+
+/** 임상과별로 사용자가 ⭐ 즐겨찾기한 저널 */
+export const userJournalFavorites = pgTable(
+  "user_journal_favorites",
+  {
+    userId: text("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    specialtyId: text("specialty_id").notNull(),
+    openalexId: text("openalex_id").notNull(),
+    favoritedAt: timestamp("favorited_at", { mode: "date" })
+      .notNull()
+      .default(sql`now()`),
+  },
+  (t) => ({
+    pk: primaryKey({ columns: [t.userId, t.specialtyId, t.openalexId] }),
   })
 );

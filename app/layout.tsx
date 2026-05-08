@@ -3,6 +3,7 @@ import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import PlayerBar from "@/components/PlayerBar";
 import PlayerProvider from "@/components/PlayerProvider";
+import AccountSyncProvider from "@/components/AccountSyncProvider";
 import ApiKeysProvider from "@/components/ApiKeysProvider";
 import AuthSessionProvider from "@/components/AuthSessionProvider";
 import RegisterSW from "@/components/RegisterSW";
@@ -77,19 +78,21 @@ export default function RootLayout({
       </head>
       <body className="min-h-full flex flex-col">
         <AuthSessionProvider>
-          <ThemeProvider>
-            <ApiKeysProvider>
-              <TtsProviderPreferenceProvider>
-                <TtsQueueProvider>
-                  <PlayerProvider>
-                    {children}
-                    <PlayerBar />
-                    <TtsCompletionToast />
-                  </PlayerProvider>
-                </TtsQueueProvider>
-              </TtsProviderPreferenceProvider>
-            </ApiKeysProvider>
-          </ThemeProvider>
+          <AccountSyncProvider>
+            <ThemeProvider>
+              <ApiKeysProvider>
+                <TtsProviderPreferenceProvider>
+                  <TtsQueueProvider>
+                    <PlayerProvider>
+                      {children}
+                      <PlayerBar />
+                      <TtsCompletionToast />
+                    </PlayerProvider>
+                  </TtsQueueProvider>
+                </TtsProviderPreferenceProvider>
+              </ApiKeysProvider>
+            </ThemeProvider>
+          </AccountSyncProvider>
         </AuthSessionProvider>
         <RegisterSW />
       </body>
