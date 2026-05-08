@@ -6,6 +6,8 @@ import {
   useApiKeys,
   type ApiKeyName,
 } from "@/components/ApiKeysProvider";
+import JournalBlocksManager from "@/components/JournalBlocksManager";
+import MySpecialtiesEditor from "@/components/MySpecialtiesEditor";
 import { useTheme, type Theme } from "@/components/ThemeProvider";
 import {
   PROVIDER_DEFAULT_VOICE,
@@ -194,6 +196,20 @@ export default function SettingsDrawer({ open, onClose }: Props) {
             description="입력한 키는 브라우저(localStorage)에 저장되어 fetch 시 헤더로 전송 → 서버가 .env 키 대신 사용"
           >
             <ApiKeysSection />
+          </Section>
+
+          <Section
+            title="내 임상과"
+            description="저널 페이지에 노출할 임상과 — 추가·삭제·순서 변경"
+          >
+            <MySpecialtiesEditor />
+          </Section>
+
+          <Section
+            title="차단된 저널"
+            description="임상과 페이지에서 ✕로 숨긴 저널들 — 복구 가능"
+          >
+            <JournalBlocksManager />
           </Section>
 
           <Section

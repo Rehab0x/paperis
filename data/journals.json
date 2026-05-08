@@ -1,6 +1,6 @@
 {
-  "version": 1,
-  "updatedAt": "2026-05-08",
+  "version": 2,
+  "updatedAt": "2026-05-09",
   "specialties": [
     {
       "id": "pm-r",
@@ -24,7 +24,8 @@
         "atrial fibrillation",
         "heart failure",
         "myocardial infarction",
-        "hypertension"
+        "hypertension",
+        "valvular heart disease"
       ]
     },
     {
@@ -38,6 +39,292 @@
         "parkinson disease",
         "multiple sclerosis",
         "alzheimer disease"
+      ]
+    },
+    {
+      "id": "orthopedics",
+      "name": "정형외과",
+      "nameEn": "Orthopedic Surgery",
+      "openAlexSubfieldId": "subfields/2732",
+      "suggestedTopics": [
+        "osteoarthritis",
+        "rotator cuff",
+        "anterior cruciate ligament",
+        "spinal fusion",
+        "total knee arthroplasty"
+      ]
+    },
+    {
+      "id": "anesthesiology",
+      "name": "마취통증의학과",
+      "nameEn": "Anesthesiology & Pain Medicine",
+      "openAlexSubfieldId": "subfields/2703",
+      "suggestedTopics": [
+        "regional anesthesia",
+        "neuropathic pain",
+        "chronic pain",
+        "opioid",
+        "nerve block"
+      ]
+    },
+    {
+      "id": "emergency",
+      "name": "응급의학과",
+      "nameEn": "Emergency Medicine",
+      "openAlexSubfieldId": "subfields/2711",
+      "suggestedTopics": [
+        "sepsis",
+        "trauma",
+        "cardiac arrest",
+        "acute kidney injury",
+        "triage"
+      ]
+    },
+    {
+      "id": "radiology",
+      "name": "영상의학과",
+      "nameEn": "Radiology",
+      "openAlexSubfieldId": "subfields/2741",
+      "suggestedTopics": [
+        "MRI",
+        "CT",
+        "deep learning",
+        "interventional radiology",
+        "ultrasound"
+      ]
+    },
+    {
+      "id": "psychiatry",
+      "name": "정신건강의학과",
+      "nameEn": "Psychiatry",
+      "openAlexSubfieldId": "subfields/2738",
+      "suggestedTopics": [
+        "depression",
+        "anxiety",
+        "schizophrenia",
+        "bipolar disorder",
+        "PTSD"
+      ]
+    },
+    {
+      "id": "oncology",
+      "name": "종양내과",
+      "nameEn": "Oncology",
+      "openAlexSubfieldId": "subfields/2730",
+      "suggestedTopics": [
+        "immunotherapy",
+        "chemotherapy",
+        "targeted therapy",
+        "tumor microenvironment",
+        "lung cancer"
+      ]
+    },
+    {
+      "id": "pediatrics",
+      "name": "소아청소년과",
+      "nameEn": "Pediatrics",
+      "openAlexSubfieldId": "subfields/2735",
+      "suggestedTopics": [
+        "neonatal",
+        "vaccination",
+        "asthma",
+        "developmental delay",
+        "preterm"
+      ]
+    },
+    {
+      "id": "internal-medicine",
+      "name": "일반내과",
+      "nameEn": "Internal Medicine",
+      "openAlexSubfieldId": "subfields/2724",
+      "suggestedTopics": [
+        "diabetes",
+        "hypertension",
+        "hyperlipidemia",
+        "geriatric",
+        "polypharmacy"
+      ]
+    },
+    {
+      "id": "dermatology",
+      "name": "피부과",
+      "nameEn": "Dermatology",
+      "openAlexSubfieldId": "subfields/2708",
+      "suggestedTopics": [
+        "psoriasis",
+        "atopic dermatitis",
+        "melanoma",
+        "biologics",
+        "acne"
+      ]
+    },
+    {
+      "id": "obgyn",
+      "name": "산부인과",
+      "nameEn": "Obstetrics & Gynecology",
+      "openAlexSubfieldId": "subfields/2729",
+      "suggestedTopics": [
+        "preeclampsia",
+        "endometriosis",
+        "in vitro fertilization",
+        "cesarean",
+        "menopause"
+      ]
+    },
+    {
+      "id": "gastroenterology",
+      "name": "소화기내과",
+      "nameEn": "Gastroenterology",
+      "openAlexSubfieldId": "subfields/2715",
+      "suggestedTopics": [
+        "inflammatory bowel disease",
+        "hepatocellular carcinoma",
+        "Helicobacter pylori",
+        "NAFLD",
+        "colonoscopy"
+      ]
+    },
+    {
+      "id": "pulmonology",
+      "name": "호흡기내과",
+      "nameEn": "Pulmonology",
+      "openAlexSubfieldId": "subfields/2740",
+      "suggestedTopics": [
+        "COPD",
+        "asthma",
+        "pneumonia",
+        "pulmonary fibrosis",
+        "ARDS"
+      ]
+    },
+    {
+      "id": "endocrinology",
+      "name": "내분비내과",
+      "nameEn": "Endocrinology, Diabetes & Metabolism",
+      "openAlexSubfieldId": "subfields/2712",
+      "suggestedTopics": [
+        "type 2 diabetes",
+        "thyroid",
+        "GLP-1",
+        "obesity",
+        "osteoporosis"
+      ]
+    },
+    {
+      "id": "nephrology",
+      "name": "신장내과",
+      "nameEn": "Nephrology",
+      "openAlexSubfieldId": "subfields/2727",
+      "suggestedTopics": [
+        "chronic kidney disease",
+        "dialysis",
+        "kidney transplantation",
+        "acute kidney injury",
+        "glomerulonephritis"
+      ]
+    },
+    {
+      "id": "infectious",
+      "name": "감염내과",
+      "nameEn": "Infectious Diseases",
+      "openAlexSubfieldId": "subfields/2725",
+      "suggestedTopics": [
+        "antimicrobial resistance",
+        "HIV",
+        "tuberculosis",
+        "COVID-19",
+        "vaccination"
+      ]
+    },
+    {
+      "id": "rheumatology",
+      "name": "류마티스내과",
+      "nameEn": "Rheumatology",
+      "openAlexSubfieldId": "subfields/2745",
+      "suggestedTopics": [
+        "rheumatoid arthritis",
+        "systemic lupus erythematosus",
+        "biologics",
+        "ankylosing spondylitis",
+        "vasculitis"
+      ]
+    },
+    {
+      "id": "hematology",
+      "name": "혈액종양내과",
+      "nameEn": "Hematology",
+      "openAlexSubfieldId": "subfields/2720",
+      "suggestedTopics": [
+        "leukemia",
+        "lymphoma",
+        "multiple myeloma",
+        "CAR-T",
+        "anticoagulation"
+      ]
+    },
+    {
+      "id": "ophthalmology",
+      "name": "안과",
+      "nameEn": "Ophthalmology",
+      "openAlexSubfieldId": "subfields/2731",
+      "suggestedTopics": [
+        "macular degeneration",
+        "glaucoma",
+        "diabetic retinopathy",
+        "cataract",
+        "anti-VEGF"
+      ]
+    },
+    {
+      "id": "ent",
+      "name": "이비인후과",
+      "nameEn": "Otorhinolaryngology",
+      "openAlexSubfieldId": "subfields/2733",
+      "suggestedTopics": [
+        "hearing loss",
+        "cochlear implant",
+        "head and neck cancer",
+        "obstructive sleep apnea",
+        "sinusitis"
+      ]
+    },
+    {
+      "id": "urology",
+      "name": "비뇨의학과",
+      "nameEn": "Urology",
+      "openAlexSubfieldId": "subfields/2748",
+      "suggestedTopics": [
+        "prostate cancer",
+        "kidney stone",
+        "benign prostatic hyperplasia",
+        "urinary incontinence",
+        "robotic surgery"
+      ]
+    },
+    {
+      "id": "family-medicine",
+      "name": "가정의학과",
+      "nameEn": "Family Medicine",
+      "openAlexSubfieldId": "subfields/2714",
+      "suggestedTopics": [
+        "preventive care",
+        "screening",
+        "chronic disease",
+        "immunization",
+        "lifestyle"
+      ]
+    },
+    {
+      "id": "general-surgery",
+      "name": "외과",
+      "nameEn": "General Surgery",
+      "openAlexSubfieldId": "subfields/2746",
+      "suggestedTopics": [
+        "laparoscopic",
+        "robotic surgery",
+        "bariatric surgery",
+        "appendectomy",
+        "wound healing"
       ]
     }
   ]
