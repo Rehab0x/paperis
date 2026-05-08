@@ -4,6 +4,7 @@ import { Suspense, useCallback, useEffect, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import JournalEntryLink from "@/components/JournalEntryLink";
+import { useAutoMiniSummary } from "@/components/useAutoMiniSummary";
 import LibraryLink from "@/components/LibraryLink";
 import PaperDetailPanel from "@/components/PaperDetailPanel";
 import ResultsList from "@/components/ResultsList";
@@ -72,6 +73,7 @@ function HomeInner() {
   const [librarySnapshot, setLibrarySnapshot] = useState<Paper | null>(null);
 
   const fetchWithKeys = useFetchWithKeys();
+  const autoMiniEnabled = useAutoMiniSummary();
 
   // 같은 (q, sort) 조합을 중복 호출하지 않도록 마지막 키를 기억
   const lastFetchedRef = useRef<string>("");
@@ -301,14 +303,16 @@ function HomeInner() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [q]);
 
-  // 결과가 도착하면 상위 3개 미니 요약을 자동으로 batch 호출 (검색 키당 1회)
+  // 결과가 도착하면 상위 3개 미니 요약을 자동으로 batch 호출 (검색 키당 1회).
+  // default OFF — 사용자가 설정에서 토글 on해야 동작 (Gemini quota + layout shift 절약).
   useEffect(() => {
+    if (!autoMiniEnabled) return;
     if (loading || papers.length === 0) return;
     const fetchKey = lastFetchedRef.current;
     if (!fetchKey || autoMiniKeyRef.current === fetchKey) return;
     autoMiniKeyRef.current = fetchKey;
     void requestMiniSummary(papers.slice(0, 3));
-  }, [loading, papers, requestMiniSummary]);
+  }, [autoMiniEnabled, loading, papers, requestMiniSummary]);
 
   // selectedPmid가 papers에 없는데 라이브러리에는 있을 수 있다 (트랙 → 📄)
   useEffect(() => {

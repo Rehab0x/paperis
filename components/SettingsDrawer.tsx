@@ -9,6 +9,8 @@ import {
 import JournalBlocksManager from "@/components/JournalBlocksManager";
 import MySpecialtiesEditor from "@/components/MySpecialtiesEditor";
 import { useTheme, type Theme } from "@/components/ThemeProvider";
+import { useAutoMiniSummary } from "@/components/useAutoMiniSummary";
+import { writeAutoMiniSummary } from "@/lib/auto-mini-summary";
 import {
   PROVIDER_DEFAULT_VOICE,
   PROVIDER_VOICES,
@@ -182,6 +184,13 @@ export default function SettingsDrawer({ open, onClose }: Props) {
               voice={currentVoice}
               speakingRate={speakingRate}
             />
+          </Section>
+
+          <Section
+            title="검색 자동 요약"
+            description="결과 상위 3건의 미니 요약을 자동으로 가져올지 — 끄면 카드를 클릭한 항목만 요약"
+          >
+            <AutoMiniSummaryToggle />
           </Section>
 
           <Section
@@ -399,6 +408,34 @@ function VoicePreview({
         </p>
       ) : null}
     </div>
+  );
+}
+
+function AutoMiniSummaryToggle() {
+  const enabled = useAutoMiniSummary();
+  // SSR/hydrate 시점에 false default. 사용자 토글 즉시 localStorage + 모든 사용처에
+  // CustomEvent로 broadcast.
+  return (
+    <label className="flex cursor-pointer items-start gap-3 rounded-lg border border-zinc-200 px-3 py-2 transition hover:border-zinc-400 dark:border-zinc-800 dark:hover:border-zinc-600">
+      <input
+        type="checkbox"
+        checked={enabled}
+        onChange={(e) => writeAutoMiniSummary(e.target.checked)}
+        className="mt-1"
+      />
+      <span className="min-w-0 flex-1">
+        <span className="block text-sm font-medium text-zinc-900 dark:text-zinc-100">
+          {enabled ? "켜짐 — 결과 도착 시 상위 3건 자동 요약" : "꺼짐 — 카드 클릭 시만 요약"}
+        </span>
+        <span className="block text-xs text-zinc-500">
+          출퇴근 청취 전 빠르게 스캔하는 패턴이면 켜세요. 검색을 자주 다시 하거나
+          페이지를 자주 넘기면 끄는 편이 Gemini 응답 시간을 아껴줍니다.
+          {enabled
+            ? " 현재 default를 사용자가 직접 켠 상태."
+            : " 기본값(꺼짐)을 그대로 사용 중."}
+        </span>
+      </span>
+    </label>
   );
 }
 

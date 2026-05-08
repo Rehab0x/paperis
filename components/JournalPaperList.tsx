@@ -7,6 +7,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import PaperDetailPanel from "@/components/PaperDetailPanel";
 import ResultsList from "@/components/ResultsList";
+import { useAutoMiniSummary } from "@/components/useAutoMiniSummary";
 import { useFetchWithKeys } from "@/components/useFetchWithKeys";
 import type {
   MiniSummary,
@@ -47,6 +48,7 @@ export default function JournalPaperList({
 
   const fetchWithKeys = useFetchWithKeys();
   const autoMiniKeyRef = useRef<string>("");
+  const autoMiniEnabled = useAutoMiniSummary();
 
   // fetchKey 바뀌면 선택·요약 캐시 리셋
   useEffect(() => {
@@ -124,13 +126,16 @@ export default function JournalPaperList({
     [miniSummaries, miniLoading, fetchWithKeys]
   );
 
-  // 결과 도착 후 상위 3건 미니 요약 자동 batch (검색 키당 1회만)
+  // 결과 도착 후 상위 3건 미니 요약 자동 batch (검색 키당 1회만).
+  // default OFF — 설정에서 사용자가 켜야 동작 (검색 refine·페이지 이동이 잦은
+  // 패턴에서 quota 낭비 회피).
   useEffect(() => {
+    if (!autoMiniEnabled) return;
     if (loading || papers.length === 0) return;
     if (autoMiniKeyRef.current === fetchKey) return;
     autoMiniKeyRef.current = fetchKey;
     void requestMiniSummary(papers.slice(0, 3));
-  }, [loading, papers, fetchKey, requestMiniSummary]);
+  }, [autoMiniEnabled, loading, papers, fetchKey, requestMiniSummary]);
 
   const handleSelect = useCallback((pmid: string) => {
     setSelectedPmid((prev) => (prev === pmid ? null : pmid));
