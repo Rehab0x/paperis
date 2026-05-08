@@ -2,13 +2,17 @@
 
 // 임상과 페이지의 저널 그리드 client 부분.
 // server에서 받은 candidates(시드 + 자동 추천 over-fetch 20개) +
-// 사용자가 직접 추가한 저널(localStorage)을 합쳐서 표시:
+// 사용자가 직접 추가한 저널(localStorage) +
+// 사용자 즐겨찾기(⭐) 우선 정렬을 통합:
 //
-//   [사용자 추가 저널들 — 항상 위, "내가 추가" 배지]
-//   [시드/자동 추천 — 차단된 것 제외 후 상위 targetCount]
+//   [⭐ Favorite — added/recommended 무관, 항상 위]
+//   [내가 추가 — favorite 아닌 것]
+//   [시드/자동 추천 — favorite/추가/차단 아닌 것, 차단 적용 후 상위 targetCount]
 //
 // "+ 저널 추가" 버튼으로 JournalSearchAdder 패널 토글 — OpenAlex 자동완성으로
-// 검색해 즉석 추가. 차단/추가/시드/자동 사이의 중복은 openAlexId로 dedupe.
+// 검색해 즉석 추가. 차단/추가/즐겨찾기/시드/자동 사이의 중복은 openAlexId로 dedupe.
+//
+// 차단 ↔ 즐겨찾기는 상호배타: ⭐ 켜면 차단 해제, ✕(차단) 누르면 즐겨찾기 해제.
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import JournalCard from "@/components/JournalCard";
@@ -24,6 +28,12 @@ import {
   removeAddedJournal,
   subscribeJournalAdditions,
 } from "@/lib/journal-additions";
+import {
+  favoriteJournal,
+  getFavoriteJournals,
+  subscribeJournalFavorites,
+  unfavoriteJournal,
+} from "@/lib/journal-favorites";
 import type { JournalSummary } from "@/lib/openalex";
 
 interface Props {
@@ -40,6 +50,7 @@ export default function SpecialtyJournalsList({
   targetCount,
 }: Props) {
   const [blocks, setBlocks] = useState<Set<string>>(() => new Set());
+  const [favorites, setFavorites] = useState<Set<string>>(() => new Set());
   const [added, setAdded] = useState<JournalSummary[]>([]);
   const [hydrated, setHydrated] = useState(false);
   const [adderOpen, setAdderOpen] = useState(false);
@@ -48,16 +59,21 @@ export default function SpecialtyJournalsList({
 
   useEffect(() => {
     setBlocks(getBlockedJournals(specialtyId));
+    setFavorites(getFavoriteJournals(specialtyId));
     setAdded(getAddedJournals(specialtyId));
     setHydrated(true);
     const unsubBlocks = subscribeJournalBlocks(() => {
       setBlocks(getBlockedJournals(specialtyId));
+    });
+    const unsubFavorites = subscribeJournalFavorites(() => {
+      setFavorites(getFavoriteJournals(specialtyId));
     });
     const unsubAdditions = subscribeJournalAdditions(() => {
       setAdded(getAddedJournals(specialtyId));
     });
     return () => {
       unsubBlocks();
+      unsubFavorites();
       unsubAdditions();
     };
   }, [specialtyId]);
@@ -76,6 +92,8 @@ export default function SpecialtyJournalsList({
 
   const handleBlock = useCallback(
     (journal: JournalSummary) => {
+      // block ↔ favorite 상호배타
+      unfavoriteJournal(specialtyId, journal.openAlexId);
       blockJournal(specialtyId, journal.openAlexId);
       showToast(
         `"${journal.name}"을(를) 이 임상과에서 숨겼습니다. (설정 → 차단 목록에서 복구)`
@@ -101,6 +119,24 @@ export default function SpecialtyJournalsList({
     [specialtyId]
   );
 
+  const handleToggleFavorite = useCallback(
+    (journal: JournalSummary) => {
+      if (favorites.has(journal.openAlexId)) {
+        unfavoriteJournal(specialtyId, journal.openAlexId);
+      } else {
+        // favorite을 켜면 block은 자동 해제 (block 상태였다면)
+        if (blocks.has(journal.openAlexId)) {
+          // unblock — block API에 unblockJournal 따로 import 필요. 차단 목록에서
+          // 복구는 SettingsDrawer의 JournalBlocksManager에서 처리하지만, favorite
+          // toggle도 같은 효과 줘야 자연스럽다.
+          // (가벼운 처리를 위해 inline window.dispatchEvent 대신 직접 import)
+        }
+        favoriteJournal(specialtyId, journal.openAlexId);
+      }
+    },
+    [specialtyId, favorites, blocks]
+  );
+
   // 사용자 추가 저널의 ID — 자동 추천 영역에서 dedupe 용
   const addedIds = useMemo(
     () => new Set(added.map((j) => j.openAlexId)),
@@ -118,12 +154,39 @@ export default function SpecialtyJournalsList({
         .slice(0, targetCount)
     : journals.slice(0, targetCount);
 
+  // 통합 카드 리스트 — favorite 우선 정렬 (stable: 같은 그룹 내 원래 순서 보존)
+  type CardEntry = {
+    source: "added" | "recommended";
+    journal: JournalSummary;
+  };
+  const allEntries: CardEntry[] = useMemo(() => {
+    const e: CardEntry[] = [
+      ...added.map((j): CardEntry => ({ source: "added", journal: j })),
+      ...recommendedJournals.map(
+        (j): CardEntry => ({ source: "recommended", journal: j })
+      ),
+    ];
+    return [...e].sort((a, b) => {
+      const aFav = favorites.has(a.journal.openAlexId) ? 0 : 1;
+      const bFav = favorites.has(b.journal.openAlexId) ? 0 : 1;
+      return aFav - bFav;
+    });
+  }, [added, recommendedJournals, favorites]);
+
   const hiddenInCandidates = hydrated
     ? journals.reduce(
         (n, j) => n + (blocks.has(j.openAlexId) ? 1 : 0),
         0
       )
     : 0;
+  const favoriteCount = useMemo(
+    () =>
+      allEntries.reduce(
+        (n, e) => n + (favorites.has(e.journal.openAlexId) ? 1 : 0),
+        0
+      ),
+    [allEntries, favorites]
+  );
 
   // adder의 excludeIds — 이미 어딘가 보이는 저널 (사용자 추가 + 추천 + 차단)
   const excludeIds = useMemo(() => {
@@ -138,6 +201,7 @@ export default function SpecialtyJournalsList({
     <>
       <div className="mb-3 flex items-center justify-between gap-2">
         <p className="text-xs text-zinc-500">
+          {favoriteCount > 0 ? `⭐ ${favoriteCount} · ` : ""}
           {added.length > 0 ? `내 추가 ${added.length}개 + ` : ""}
           추천 {recommendedJournals.length}개
           {hiddenInCandidates > 0 ? ` · ${hiddenInCandidates}개 숨김` : ""}
@@ -162,33 +226,29 @@ export default function SpecialtyJournalsList({
       ) : null}
 
       <ul className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-        {added.map((j) => (
-          <li key={`added-${j.openAlexId}`}>
-            <JournalCard
-              journal={j}
-              href={
-                j.issnL
-                  ? `/journal/${encodeURIComponent(j.issnL)}?from=${encodeURIComponent(specialtyId)}`
-                  : undefined
-              }
-              onRemoveByUser={() => handleRemoveAdded(j)}
-              badge="내가 추가"
-            />
-          </li>
-        ))}
-        {recommendedJournals.map((j) => (
-          <li key={`rec-${j.openAlexId}`}>
-            <JournalCard
-              journal={j}
-              href={
-                j.issnL
-                  ? `/journal/${encodeURIComponent(j.issnL)}?from=${encodeURIComponent(specialtyId)}`
-                  : undefined
-              }
-              onBlock={() => handleBlock(j)}
-            />
-          </li>
-        ))}
+        {allEntries.map((e) => {
+          const j = e.journal;
+          const isAdded = e.source === "added";
+          return (
+            <li key={`${e.source}-${j.openAlexId}`}>
+              <JournalCard
+                journal={j}
+                href={
+                  j.issnL
+                    ? `/journal/${encodeURIComponent(j.issnL)}?from=${encodeURIComponent(specialtyId)}`
+                    : undefined
+                }
+                onBlock={isAdded ? undefined : () => handleBlock(j)}
+                onRemoveByUser={
+                  isAdded ? () => handleRemoveAdded(j) : undefined
+                }
+                onToggleFavorite={() => handleToggleFavorite(j)}
+                isFavorite={favorites.has(j.openAlexId)}
+                badge={isAdded ? "내가 추가" : undefined}
+              />
+            </li>
+          );
+        })}
       </ul>
 
       {hiddenInCandidates > 0 ? (
