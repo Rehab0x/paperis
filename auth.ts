@@ -47,10 +47,14 @@ export const { handlers, signIn, signOut, auth } = NextAuth(
         session: { strategy: "database" },
         callbacks: {
           // database 세션 전략에서도 클라이언트가 session.user.id를 직접 받을 수
-          // 있게 명시 매핑 (v1.1 load-bearing 결정)
+          // 있게 명시 매핑 (v1.1 load-bearing 결정).
+          // user는 DrizzleAdapter가 DB에서 가져온 행 — onboardingDone도 그대로 매핑.
           session({ session, user }) {
             if (session.user && user) {
               session.user.id = user.id;
+              const onboardingDone = (user as { onboardingDone?: boolean })
+                .onboardingDone;
+              session.user.onboardingDone = Boolean(onboardingDone);
             }
             return session;
           },

@@ -2,8 +2,9 @@
 
 // 헤더 우측의 로그인/계정 메뉴.
 // FEATURE_AUTH=1일 때만 노출 (점진 롤아웃). 미로그인은 "로그인" 버튼, 로그인은
-// 아바타 드롭다운(이름·이메일·로그아웃).
+// 아바타 드롭다운(이름·이메일·온보딩 안내·로그아웃).
 
+import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import { signIn, signOut, useSession } from "next-auth/react";
 
@@ -91,6 +92,22 @@ export default function AuthMenu() {
             </div>
           </div>
           <div className="my-1 h-px bg-zinc-100 dark:bg-zinc-800" />
+          {!user.onboardingDone ? (
+            <Link
+              href="/onboarding"
+              role="menuitem"
+              onClick={() => setOpen(false)}
+              className="mb-1 flex items-start gap-2 rounded-lg border border-amber-200 bg-amber-50 px-2 py-1.5 text-xs text-amber-800 transition hover:bg-amber-100 dark:border-amber-900 dark:bg-amber-950 dark:text-amber-300 dark:hover:bg-amber-900/40"
+            >
+              <span>📝</span>
+              <span className="min-w-0 flex-1">
+                <span className="block font-medium">프로필 완성하기</span>
+                <span className="block text-[10px] opacity-80">
+                  결제·구독에 필요해요
+                </span>
+              </span>
+            </Link>
+          ) : null}
           <div className="px-2 pb-1 text-[11px] text-zinc-500 dark:text-zinc-400">
             내 임상과·저널 설정이 디바이스 간 동기화됩니다 (M4 PR3+).
           </div>
