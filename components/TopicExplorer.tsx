@@ -12,8 +12,10 @@ import type { Paper } from "@/types";
 interface Props {
   issn: string;
   journalName: string;
-  /** 임상과 카탈로그의 추천 태그 — 빠른 진입용 */
+  /** 임상과 카탈로그의 추천 태그 — 빠른 진입용. referrer 임상과 없으면 빈 배열 */
   suggestedTopics: string[];
+  /** 추천 태그가 어느 임상과 기준인지 표시 (UX 명료성). null이면 표시 안 함 */
+  specialtyName?: string | null;
 }
 
 interface TopicResponse {
@@ -30,6 +32,7 @@ export default function TopicExplorer({
   issn,
   journalName,
   suggestedTopics,
+  specialtyName,
 }: Props) {
   const [input, setInput] = useState("");
   const [submittedTopic, setSubmittedTopic] = useState<string>("");
@@ -150,7 +153,9 @@ export default function TopicExplorer({
         </form>
         {suggestedTopics.length > 0 ? (
           <div className="mt-3 flex flex-wrap gap-1.5">
-            <span className="self-center text-xs text-zinc-400">추천:</span>
+            <span className="self-center text-xs text-zinc-400">
+              {specialtyName ? `${specialtyName} 추천:` : "추천:"}
+            </span>
             {suggestedTopics.map((t) => (
               <button
                 key={t}

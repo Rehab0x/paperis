@@ -9,6 +9,8 @@ interface Props {
   current: JournalTab;
   /** URL 베이스 — 예: `/journal/0028-3878` */
   baseHref: string;
+  /** referrer 임상과 — 탭 이동 시에도 유지해 주제 탭의 추천 태그가 보존되도록 */
+  fromSpecialtyId?: string;
 }
 
 const TABS: { id: JournalTab; label: string }[] = [
@@ -17,7 +19,19 @@ const TABS: { id: JournalTab; label: string }[] = [
   { id: "trend", label: "📈 최근 트렌드" },
 ];
 
-export default function JournalTabs({ current, baseHref }: Props) {
+function buildHref(
+  baseHref: string,
+  tab: JournalTab,
+  fromSpecialtyId?: string
+): string {
+  const params = new URLSearchParams();
+  if (tab !== "issue") params.set("tab", tab);
+  if (fromSpecialtyId) params.set("from", fromSpecialtyId);
+  const qs = params.toString();
+  return qs ? `${baseHref}?${qs}` : baseHref;
+}
+
+export default function JournalTabs({ current, baseHref, fromSpecialtyId }: Props) {
   return (
     <nav
       aria-label="저널 진입 방식"
@@ -25,7 +39,7 @@ export default function JournalTabs({ current, baseHref }: Props) {
     >
       {TABS.map((t) => {
         const active = current === t.id;
-        const href = t.id === "issue" ? baseHref : `${baseHref}?tab=${t.id}`;
+        const href = buildHref(baseHref, t.id, fromSpecialtyId);
         return (
           <Link
             key={t.id}

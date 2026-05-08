@@ -4,16 +4,17 @@ import IssueExplorer from "@/components/IssueExplorer";
 import JournalTabs, { type JournalTab } from "@/components/JournalTabs";
 import TopicExplorer from "@/components/TopicExplorer";
 import TrendDigest from "@/components/TrendDigest";
-import { getJournalCatalog } from "@/lib/journals";
+import { getJournalCatalog, getSpecialty } from "@/lib/journals";
 import { getJournalByIssn } from "@/lib/openalex";
 
 // 저널 홈 — ISSN dynamic route. 탭은 ?tab=issue|topic|trend로 분기 (URL이 source of truth).
-// default = issue.
+// default = issue. ?from=specialtyId 쿼리로 referrer 임상과를 받아 주제 탭에서
+// 해당 임상과의 추천 태그만 노출 (무관 태그 노이즈 제거).
 export const revalidate = 3600;
 
 interface Props {
   params: Promise<{ issn: string }>;
-  searchParams: Promise<{ tab?: string }>;
+  searchParams: Promise<{ tab?: string; from?: string }>;
 }
 
 const ISSN_RE = /^\d{4}-\d{3}[\dXx]$/;
@@ -36,22 +37,26 @@ export async function generateMetadata({ params }: Props) {
 }
 
 /**
- * 카탈로그를 훑어서 이 저널과 매칭되는 임상과의 추천 주제를 합쳐 반환.
- * (일치 판정 로직은 단순 — 이름 매칭이 더 정밀해지면 OpenAlex의 subfield 매핑을
- * 카탈로그에 추가하는 방식으로 확장 가능)
+ * referrer 임상과(`?from=...`)에 해당하는 추천 주제만 반환. 없거나 매칭되는 임상과가
+ * 없으면 빈 배열 — TopicExplorer는 자유 입력만 안내.
+ *
+ * 임상과↔저널 매핑은 사용자가 어느 임상과 그리드에서 진입했느냐로 결정. 정확한
+ * "이 저널이 어느 임상과에 속하는지"는 마일스톤 4 user_journal_prefs로 저장될 예정.
  */
-async function suggestedTopicsForJournal(): Promise<string[]> {
-  // 현재 카탈로그의 모든 임상과 추천 주제를 합쳐서 dedupe.
-  // 정확한 임상과↔저널 매핑은 마일스톤 4(저널 개인화)에서 user_journal_prefs로.
+async function suggestedTopicsFor(fromSpecialtyId: string | undefined): Promise<{
+  topics: string[];
+  specialtyName: string | null;
+}> {
+  if (!fromSpecialtyId) return { topics: [], specialtyName: null };
   try {
-    const catalog = await getJournalCatalog();
-    const set = new Set<string>();
-    for (const s of catalog.specialties) {
-      for (const t of s.suggestedTopics) set.add(t);
-    }
-    return Array.from(set).slice(0, 8);
+    const specialty = await getSpecialty(fromSpecialtyId);
+    if (!specialty) return { topics: [], specialtyName: null };
+    return {
+      topics: specialty.suggestedTopics.slice(0, 8),
+      specialtyName: specialty.name,
+    };
   } catch {
-    return [];
+    return { topics: [], specialtyName: null };
   }
 }
 
@@ -60,7 +65,7 @@ export default async function JournalHomePage({
   searchParams,
 }: Props) {
   const { issn: rawIssn } = await params;
-  const { tab: tabRaw } = await searchParams;
+  const { tab: tabRaw, from: fromRaw } = await searchParams;
   const issn = decodeURIComponent(rawIssn);
   if (!ISSN_RE.test(issn)) notFound();
 
@@ -69,9 +74,13 @@ export default async function JournalHomePage({
 
   const tab = parseTab(tabRaw);
   const queryIssn = journal.issnL ?? issn;
+  // baseHref는 탭 전환에 쓰이므로 from을 보존해야 한다. JournalTabs에서 이어붙임.
   const baseHref = `/journal/${encodeURIComponent(issn)}`;
-  const suggestedTopics =
-    tab === "topic" ? await suggestedTopicsForJournal() : [];
+  const fromSpecialtyId = typeof fromRaw === "string" ? fromRaw : undefined;
+  const { topics: suggestedTopics, specialtyName } =
+    tab === "topic"
+      ? await suggestedTopicsFor(fromSpecialtyId)
+      : { topics: [], specialtyName: null };
 
   return (
     <main className="mx-auto w-full max-w-6xl flex-1 px-4 py-8 pb-32">
@@ -102,7 +111,11 @@ export default async function JournalHomePage({
         </p>
       </header>
 
-      <JournalTabs current={tab} baseHref={baseHref} />
+      <JournalTabs
+        current={tab}
+        baseHref={baseHref}
+        fromSpecialtyId={fromSpecialtyId}
+      />
 
       {tab === "issue" ? (
         <IssueExplorer issn={queryIssn} journalName={journal.name} />
@@ -111,6 +124,7 @@ export default async function JournalHomePage({
           issn={queryIssn}
           journalName={journal.name}
           suggestedTopics={suggestedTopics}
+          specialtyName={specialtyName}
         />
       ) : (
         <TrendDigest issn={queryIssn} journalName={journal.name} />

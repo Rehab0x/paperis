@@ -65,7 +65,14 @@ export default function SpecialtyJournalsList({ journals, specialtyId }: Props) 
           <li key={j.openAlexId}>
             <JournalCard
               journal={j}
-              href={j.issnL ? `/journal/${encodeURIComponent(j.issnL)}` : undefined}
+              // ?from=... 으로 referrer 임상과를 전달 → 저널 홈의 주제 탐색이
+              // 해당 임상과의 추천 태그만 노출하도록 한다 (atrial fibrillation이
+              // 재활의학과 저널에 뜨는 등의 무관 태그 노이즈 제거).
+              href={
+                j.issnL
+                  ? `/journal/${encodeURIComponent(j.issnL)}?from=${encodeURIComponent(specialtyId)}`
+                  : undefined
+              }
               onBlock={() => handleBlock(j)}
             />
           </li>
