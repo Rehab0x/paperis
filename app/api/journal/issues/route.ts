@@ -1,9 +1,15 @@
 // /api/journal/issues — 저널의 특정 호(year+month)에 출판된 논문 목록.
 // PubMed [ISSN] AND [PDAT] 쿼리 → efetch 파싱 → OpenAlex enrichment.
 //
-// 마일스톤 5에서 Upstash Redis 캐시(키: issue:{issn}:{yyyy-mm})로 확장 예정.
-// 마일스톤 3 이 단계에서는 PubMed/OpenAlex만으로 동작.
+// M5: Upstash Redis 캐시. 키 `issue:{issn}:{yyyy-mm}:r{retmax}s{retstart}` —
+// retmax/retstart 다르면 다른 페이지라 별도 키. 과거 호는 ∞ TTL, 당월은 24h.
 
+import {
+  TTL_24H,
+  getCached,
+  isPastIssue,
+  setCached,
+} from "@/lib/journal-cache";
 import { enrichPapers } from "@/lib/openalex";
 import { searchPubMed } from "@/lib/pubmed";
 import { applyUserKeysToEnv } from "@/lib/user-keys";
@@ -74,6 +80,20 @@ export async function GET(req: Request) {
     : 0;
 
   const term = buildIssueTerm(issn, year, month);
+  const cacheKey = `issue:${issn}:${year}-${pad2(month)}:r${retmax}s${retstart}`;
+
+  // 캐시 hit이면 PubMed/OpenAlex 호출 없이 바로 반환
+  const cached = await getCached<IssuesResponse>(cacheKey);
+  if (cached) {
+    return new Response(JSON.stringify(cached), {
+      status: 200,
+      headers: {
+        "content-type": "application/json; charset=utf-8",
+        "x-cache": "hit",
+        "cache-control": "public, max-age=0, s-maxage=3600",
+      },
+    });
+  }
 
   let papers: Paper[];
   let total: number;
@@ -105,10 +125,17 @@ export async function GET(req: Request) {
   }
 
   const body: IssuesResponse = { query: term, papers, total, year, month };
+
+  // 과거 호는 ∞ TTL (결과 불변), 당월은 24h (PubMed 인덱싱 지연 + 새 논문)
+  const ttl = isPastIssue(year, month) ? undefined : TTL_24H;
+  // fire-and-forget — 캐시 set 실패해도 응답에는 영향 없음
+  void setCached(cacheKey, body, { ttlSeconds: ttl });
+
   return new Response(JSON.stringify(body), {
     status: 200,
     headers: {
       "content-type": "application/json; charset=utf-8",
+      "x-cache": "miss",
       // 호 자체는 자주 안 바뀜. 클라가 직접 반복 호출해도 부담 적도록.
       "cache-control": "public, max-age=0, s-maxage=3600",
     },

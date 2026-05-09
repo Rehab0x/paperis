@@ -2,9 +2,11 @@
 // "요즘 핫한 주제" headline + 5-7 bullet 분석. 같이 분석된 논문 목록도 반환해
 // 사용자가 트렌드 항목 → 실제 논문으로 즉시 점프할 수 있다.
 //
-// 마일스톤 5에서 Redis 캐시(키: trend:{issn}:{yyyy-mm}) 추가 예정.
+// M5: Redis 캐시. 키 `trend:{issn}:{months}m:{yyyy-mm}:{language}` — 매달 자연 갱신.
+// Gemini 호출이 가장 비싸므로 캐시 hit 시 절감 효과가 크다. TTL 24h.
 
 import { friendlyErrorMessage } from "@/lib/gemini";
+import { TTL_24H, getCached, setCached, trendKey } from "@/lib/journal-cache";
 import { enrichPapers } from "@/lib/openalex";
 import { searchPubMed } from "@/lib/pubmed";
 import { generateJournalTrend, type JournalTrend } from "@/lib/trend";
@@ -108,6 +110,20 @@ export async function GET(req: Request) {
     period.toDay
   );
 
+  // 캐시 hit이면 PubMed/OpenAlex/Gemini 호출 모두 스킵
+  const cacheKey = `${trendKey(issn, months)}:${language}`;
+  const cached = await getCached<TrendResponse>(cacheKey);
+  if (cached) {
+    return new Response(JSON.stringify(cached), {
+      status: 200,
+      headers: {
+        "content-type": "application/json; charset=utf-8",
+        "x-cache": "hit",
+        "cache-control": "public, max-age=0, s-maxage=3600",
+      },
+    });
+  }
+
   // 1) PubMed로 최근 호 abstract 모음. recency 정렬, retmax 80으로 분석 입력 절제.
   let papers: Paper[];
   let total: number;
@@ -162,10 +178,18 @@ export async function GET(req: Request) {
     months,
     periodLabel: period.label,
   };
+
+  // 트렌드 결과 비어있으면(papers 0건 or trend.bullets 비어있음) 캐시하지 않음 —
+  // 다음 호출에서 다시 시도할 기회를 줌
+  if (papers.length > 0 && trend.bullets.length > 0) {
+    void setCached(cacheKey, body, { ttlSeconds: TTL_24H });
+  }
+
   return new Response(JSON.stringify(body), {
     status: 200,
     headers: {
       "content-type": "application/json; charset=utf-8",
+      "x-cache": "miss",
       "cache-control": "public, max-age=0, s-maxage=3600",
     },
   });

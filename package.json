@@ -12,6 +12,7 @@
     "@auth/drizzle-adapter": "^1.11.2",
     "@google/genai": "^1.50.1",
     "@neondatabase/serverless": "^1.1.0",
+    "@upstash/redis": "^1.38.0",
     "drizzle-orm": "^0.45.2",
     "idb": "^8.0.3",
     "next": "16.2.4",
