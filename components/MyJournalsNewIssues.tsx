@@ -116,7 +116,8 @@ export default function MyJournalsNewIssues() {
           전체 보기
         </Link>
       </div>
-      <div className="-mx-4 flex snap-x snap-mandatory gap-3 overflow-x-auto scroll-px-4 px-4 pb-2 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+      {/* py-2: hover:-translate-y-0.5의 lift가 잘리지 않게 위·아래 헤드룸 확보. */}
+      <div className="-mx-4 flex snap-x snap-mandatory gap-3 overflow-x-auto scroll-px-4 px-4 py-2 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
         {items.map(({ meta: j, isFavorite }) => {
           const issn = j.issnL ?? j.issns[0] ?? null;
           if (!issn) return null;
