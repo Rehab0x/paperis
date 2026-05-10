@@ -13,7 +13,17 @@ import type { Language, Paper } from "@/types";
 
 const MODEL = "gemini-2.5-flash";
 
-export type TrendDirection = "↑ 증가" | "🆕 신규" | "⚡ 논쟁" | "→ 지속";
+// Gemini schema enum에 이모지 포함된 한글 문자열을 그대로 넣으면 응답 파싱이
+// 가끔 깨진다 (LLM이 정확한 토큰 일치를 못 맞춤). 코드(영문)로 받고 클라가 라벨로
+// 매핑한다.
+export type TrendDirection = "increasing" | "new" | "debated" | "ongoing";
+
+export const DIRECTION_LABELS: Record<TrendDirection, string> = {
+  increasing: "↑ 증가",
+  new: "🆕 신규",
+  debated: "⚡ 논쟁",
+  ongoing: "→ 지속",
+};
 
 export interface TrendTheme {
   topic: string;
@@ -49,7 +59,7 @@ const trendSchema = {
           topic: { type: Type.STRING },
           direction: {
             type: Type.STRING,
-            enum: ["↑ 증가", "🆕 신규", "⚡ 논쟁", "→ 지속"],
+            enum: ["increasing", "new", "debated", "ongoing"],
           },
           insight: { type: Type.STRING },
           representativePmids: {
@@ -103,7 +113,7 @@ function trendSystemInstruction(
     `You will analyze ${paperCount} abstracts from "${journalName}" (${periodLabel}) as a single corpus.`,
     `Your task: identify what this journal has been EMPHASIZING during this period — NOT a list of individual papers, but THEMATIC TRENDS with clinical meaning.`,
     `For each theme, you MUST specify:`,
-    `- direction: is this topic newly emerging (🆕 신규), increasing in volume (↑ 증가), actively debated with conflicting evidence (⚡ 논쟁), or consistently ongoing (→ 지속)?`,
+    `- direction: one of "new" (newly emerging), "increasing" (rising volume), "debated" (conflicting evidence), or "ongoing" (consistent over time). Use the English code, not Korean.`,
     `- insight: WHY does this matter clinically? What should a busy physiatrist take away? Do NOT just restate the topic — state the implication.`,
     `- representativePmids: 1-2 PMIDs from the corpus that best exemplify this theme. Only use PMIDs that actually appear in the provided abstracts.`,
     `methodologyShift: Note if a new outcome measure, study design, or assessment tool is appearing repeatedly (e.g. "여러 연구에서 MCID 기반 반응자 분석 도입 증가"). Leave empty string if no notable shift.`,
@@ -204,10 +214,10 @@ export async function generateJournalTrend(
 
   const validPmids = new Set(papers.map((p) => p.pmid));
   const VALID_DIRECTIONS = new Set<TrendDirection>([
-    "↑ 증가",
-    "🆕 신규",
-    "⚡ 논쟁",
-    "→ 지속",
+    "increasing",
+    "new",
+    "debated",
+    "ongoing",
   ]);
 
   const themes: TrendTheme[] = [];
@@ -218,7 +228,7 @@ export async function generateJournalTrend(
       typeof t.direction === "string" &&
       VALID_DIRECTIONS.has(t.direction as TrendDirection)
         ? (t.direction as TrendDirection)
-        : "→ 지속";
+        : "ongoing";
     const insight = typeof t.insight === "string" ? t.insight.trim() : "";
     if (!topic || !insight) continue;
     const pmids = Array.isArray(t.representativePmids)

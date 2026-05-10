@@ -22,7 +22,14 @@ interface Props {
 }
 
 type Quarter = "all" | "Q1" | "Q2" | "Q3" | "Q4";
-type Direction = "↑ 증가" | "🆕 신규" | "⚡ 논쟁" | "→ 지속";
+type Direction = "increasing" | "new" | "debated" | "ongoing";
+
+const DIRECTION_LABEL: Record<Direction, string> = {
+  increasing: "↑ 증가",
+  new: "🆕 신규",
+  debated: "⚡ 논쟁",
+  ongoing: "→ 지속",
+};
 
 interface TrendTheme {
   topic: string;
@@ -80,13 +87,12 @@ function isFutureQuarter(year: number, q: Quarter): boolean {
 }
 
 const DIRECTION_COLOR: Record<Direction, string> = {
-  "↑ 증가":
+  increasing:
     "border-emerald-300 bg-emerald-50 text-emerald-800 dark:border-emerald-800 dark:bg-emerald-950 dark:text-emerald-300",
-  "🆕 신규":
-    "border-sky-300 bg-sky-50 text-sky-800 dark:border-sky-800 dark:bg-sky-950 dark:text-sky-300",
-  "⚡ 논쟁":
+  new: "border-sky-300 bg-sky-50 text-sky-800 dark:border-sky-800 dark:bg-sky-950 dark:text-sky-300",
+  debated:
     "border-amber-300 bg-amber-50 text-amber-800 dark:border-amber-800 dark:bg-amber-950 dark:text-amber-300",
-  "→ 지속":
+  ongoing:
     "border-zinc-300 bg-zinc-50 text-zinc-800 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-300",
 };
 
@@ -285,9 +291,9 @@ export default function TrendDigest({ issn, journalName }: Props) {
               >
                 <div className="flex flex-wrap items-center gap-2">
                   <span
-                    className={`rounded-full border px-2 py-0.5 text-[10px] font-medium ${DIRECTION_COLOR[t.direction]}`}
+                    className={`rounded-full border px-2 py-0.5 text-[10px] font-medium ${DIRECTION_COLOR[t.direction] ?? DIRECTION_COLOR.ongoing}`}
                   >
-                    {t.direction}
+                    {DIRECTION_LABEL[t.direction] ?? DIRECTION_LABEL.ongoing}
                   </span>
                   <span className="text-sm font-semibold text-zinc-900 dark:text-zinc-100">
                     {t.topic}
