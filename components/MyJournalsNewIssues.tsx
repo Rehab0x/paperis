@@ -22,11 +22,14 @@ import {
   subscribeJournalFavorites,
 } from "@/lib/journal-favorites";
 import { getJournalMetas } from "@/lib/journal-meta-cache";
+import { shouldShowNewIndicator } from "@/lib/journal-visits";
 import type { JournalSummary } from "@/lib/openalex";
 
 interface DisplayItem {
   meta: JournalSummary;
   isFavorite: boolean;
+  /** 한 번도 방문 안 했거나 14일 이상 안 본 경우 → ● 표시 */
+  hasNewIndicator: boolean;
 }
 
 export default function MyJournalsNewIssues() {
@@ -58,12 +61,20 @@ export default function MyJournalsNewIssues() {
       for (const j of favoriteMetas) {
         if (seen.has(j.openAlexId)) continue;
         seen.add(j.openAlexId);
-        out.push({ meta: j, isFavorite: true });
+        out.push({
+          meta: j,
+          isFavorite: true,
+          hasNewIndicator: shouldShowNewIndicator(j.openAlexId),
+        });
       }
       for (const [id, j] of addedMap) {
         if (seen.has(id)) continue;
         seen.add(id);
-        out.push({ meta: j, isFavorite: false });
+        out.push({
+          meta: j,
+          isFavorite: false,
+          hasNewIndicator: shouldShowNewIndicator(id),
+        });
       }
       setItems(out);
     }
@@ -118,7 +129,7 @@ export default function MyJournalsNewIssues() {
       </div>
       {/* py-2: hover:-translate-y-0.5의 lift가 잘리지 않게 위·아래 헤드룸 확보. */}
       <div className="-mx-4 flex snap-x snap-mandatory gap-3 overflow-x-auto scroll-px-4 px-4 py-2 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-        {items.map(({ meta: j, isFavorite }) => {
+        {items.map(({ meta: j, isFavorite, hasNewIndicator }) => {
           const issn = j.issnL ?? j.issns[0] ?? null;
           if (!issn) return null;
           return (
@@ -127,14 +138,25 @@ export default function MyJournalsNewIssues() {
               href={`/journal/${encodeURIComponent(issn)}?tab=issue`}
               className="relative flex h-44 w-36 shrink-0 snap-start flex-col justify-between rounded-2xl border border-paperis-border bg-paperis-surface p-4 transition hover:-translate-y-0.5 hover:border-paperis-text-3"
             >
-              {isFavorite ? (
+              {hasNewIndicator ? (
                 <span
-                  aria-hidden
+                  aria-label="새 호 가능성"
+                  title="한동안 안 봤거나 처음 보는 저널 — 새 호가 나왔을 수 있어요"
                   className="absolute right-3 top-3 h-2 w-2 rounded-full bg-paperis-accent shadow-[0_0_0_4px_rgb(255_91_58/0.18)]"
                 />
               ) : null}
-              <div className="line-clamp-3 font-serif text-base font-medium leading-tight tracking-tight text-paperis-text">
-                {j.name}
+              <div className="flex items-start gap-1.5">
+                {isFavorite ? (
+                  <span
+                    aria-label="즐겨찾기"
+                    className="text-[11px] leading-none text-paperis-accent"
+                  >
+                    ★
+                  </span>
+                ) : null}
+                <div className="line-clamp-3 font-serif text-base font-medium leading-tight tracking-tight text-paperis-text">
+                  {j.name}
+                </div>
               </div>
               <div>
                 <div className="font-mono text-[11px] tabular-nums text-paperis-text-2">
