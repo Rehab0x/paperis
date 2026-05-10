@@ -1,6 +1,6 @@
 "use client";
 
-import { Suspense, useCallback, useEffect, useRef, useState } from "react";
+import { Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import AuthMenu from "@/components/AuthMenu";
@@ -67,6 +67,7 @@ function HomeInner() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [showQueryDetail, setShowQueryDetail] = useState(false);
+  const [oaFirst, setOaFirst] = useState(false);
 
   const [miniSummaries, setMiniSummaries] = useState<Map<string, MiniSummary>>(
     () => new Map()
@@ -350,6 +351,23 @@ function HomeInner() {
       ? papers.find((p) => p.pmid === selectedPmid) ?? librarySnapshot
       : null;
 
+  // OA 우선 토글 — 현재 페이지(20편) 안에서 Open Access 논문을 위로.
+  // 자연어 검색은 PubMed 서버 페이지네이션(retmax=PAGE_SIZE)이라 "전체 결과 단위"로
+  // 정렬하려면 모든 페이지를 fetch해야 해 비용이 큼. 페이지 단위 정렬만으로도 OA
+  // 논문이 위로 보여 출퇴근 청취 시나리오에 충분히 도움이 된다.
+  const displayedPapers = useMemo<Paper[]>(() => {
+    if (!oaFirst) return papers;
+    return [...papers].sort((a, b) => {
+      const ao = a.access === "open" ? 0 : 1;
+      const bo = b.access === "open" ? 0 : 1;
+      return ao - bo;
+    });
+  }, [papers, oaFirst]);
+  const oaCountInPage = useMemo(
+    () => papers.reduce((n, p) => n + (p.access === "open" ? 1 : 0), 0),
+    [papers]
+  );
+
   return (
     <div className="flex w-full flex-1 flex-col">
       <header className="sticky top-0 z-10 border-b border-paperis-border bg-paperis-bg/85 backdrop-blur-xl">
@@ -445,14 +463,35 @@ function HomeInner() {
           {(papers.length > 0 || loading) && (
             <>
               {!loading && total > 0 ? (
-                <p className="mb-3 text-xs text-zinc-500">
-                  PubMed 전체 결과 {total.toLocaleString()}건 중{" "}
-                  {(page - 1) * PAGE_SIZE + 1}–
-                  {(page - 1) * PAGE_SIZE + papers.length}건 표시
-                </p>
+                <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+                  <p className="text-xs text-paperis-text-3">
+                    PubMed 전체 결과 {total.toLocaleString()}건 중{" "}
+                    {(page - 1) * PAGE_SIZE + 1}–
+                    {(page - 1) * PAGE_SIZE + papers.length}건 표시
+                  </p>
+                  {papers.length > 0 ? (
+                    <button
+                      type="button"
+                      onClick={() => setOaFirst((v) => !v)}
+                      aria-pressed={oaFirst}
+                      className={[
+                        "rounded-full border px-3 py-1 text-xs transition",
+                        oaFirst
+                          ? "border-paperis-accent bg-paperis-accent-dim/40 text-paperis-accent"
+                          : "border-paperis-border text-paperis-text-2 hover:border-paperis-text-3",
+                      ].join(" ")}
+                      title="이 페이지에서 Open Access 논문을 위로 정렬"
+                    >
+                      {oaFirst ? "✓ " : ""}📖 Open Access 우선{" "}
+                      <span className="text-paperis-text-3">
+                        ({oaCountInPage}/{papers.length})
+                      </span>
+                    </button>
+                  ) : null}
+                </div>
               ) : null}
               <ResultsList
-                papers={papers}
+                papers={displayedPapers}
                 loading={loading}
                 selectedPmid={selectedPmid}
                 miniSummaries={miniSummaries}

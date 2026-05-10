@@ -220,7 +220,7 @@ export default function JournalPaperList({
       >
         {papers.length > 0 ? (
           <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
-            <p className="text-xs text-zinc-500">
+            <p className="text-xs text-paperis-text-3">
               총 {sortedPapers.length.toLocaleString()}건 중 {showFrom}–{showTo}건
               표시
             </p>
@@ -231,13 +231,13 @@ export default function JournalPaperList({
               className={[
                 "rounded-full border px-3 py-1 text-xs transition",
                 oaFirst
-                  ? "border-emerald-500 bg-emerald-50 text-emerald-700 dark:border-emerald-700 dark:bg-emerald-950 dark:text-emerald-300"
-                  : "border-zinc-200 text-zinc-600 hover:border-zinc-400 dark:border-zinc-800 dark:text-zinc-300 dark:hover:border-zinc-600",
+                  ? "border-paperis-accent bg-paperis-accent-dim/40 text-paperis-accent"
+                  : "border-paperis-border text-paperis-text-2 hover:border-paperis-text-3",
               ].join(" ")}
               title="Open Access 논문을 전체 결과 상위로 정렬"
             >
               {oaFirst ? "✓ " : ""}📖 Open Access 우선{" "}
-              <span className="text-zinc-400">
+              <span className="text-paperis-text-3">
                 ({oaCount}/{papers.length})
               </span>
             </button>
