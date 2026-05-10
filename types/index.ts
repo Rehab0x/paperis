@@ -4,7 +4,14 @@ export type Language = "ko" | "en";
 export type SortMode = "recency" | "citations" | "relevance";
 export type AccessLevel = "open" | "closed";
 export type PaperType = "research" | "review";
-export type FullTextSource = "unpaywall" | "europepmc" | "pmc" | "pdf";
+export type FullTextSource =
+  | "unpaywall"
+  | "openalex"
+  | "europepmc"
+  | "pmc"
+  | "s2"
+  | "medrxiv"
+  | "pdf";
 
 export interface Paper {
   pmid: string;

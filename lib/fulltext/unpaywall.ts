@@ -1,9 +1,7 @@
 // Unpaywall: DOI → 합법적 OA URL → HTML/PDF fetch → 텍스트.
 // 공식 정책: email 식별자 필수 (polite pool). UNPAYWALL_EMAIL 환경변수가 없으면 통째로 스킵.
 
-import "@/lib/promise-polyfill";
-import { extractText } from "unpdf";
-import { htmlToText } from "@/lib/fulltext/html-extract";
+import { fetchAssetAsText } from "@/lib/fulltext/asset-fetcher";
 
 // publisher가 응답을 안 주면 무한정 기다리지 않도록 fetch별 timeout.
 const FETCH_TIMEOUT_MS = 8000;
@@ -55,37 +53,6 @@ function pickUrls(loc: UnpaywallLocation | null | undefined): string[] {
   return Array.from(new Set(urls));
 }
 
-async function fetchAsset(
-  url: string
-): Promise<{ kind: "html" | "pdf"; content: string | Uint8Array } | null> {
-  try {
-    const res = await fetch(url, {
-      headers: {
-        Accept:
-          "application/pdf,text/html;q=0.9,application/xhtml+xml;q=0.8,*/*;q=0.5",
-        "User-Agent":
-          "paperis/2 (https://paperis.example; full-text fetcher)",
-      },
-      redirect: "follow",
-      signal: AbortSignal.timeout(FETCH_TIMEOUT_MS),
-    });
-    if (!res.ok) return null;
-    const ctype = (res.headers.get("content-type") ?? "").toLowerCase();
-    if (ctype.includes("application/pdf") || /\.pdf(\?|$)/i.test(url)) {
-      const buf = new Uint8Array(await res.arrayBuffer());
-      return { kind: "pdf", content: buf };
-    }
-    if (ctype.includes("html") || ctype.includes("xml") || ctype === "") {
-      const html = await res.text();
-      return { kind: "html", content: html };
-    }
-    return null;
-  } catch (err) {
-    console.warn("[fulltext.unpaywall] fetch error", url, err);
-    return null;
-  }
-}
-
 export async function fetchUnpaywallFullText(
   doi: string
 ): Promise<{ text: string; sourceUrl: string } | null> {
@@ -107,27 +74,9 @@ export async function fetchUnpaywallFullText(
     for (const url of urls) {
       if (tried >= MAX_URLS) break;
       tried += 1;
-      const asset = await fetchAsset(url);
-      if (!asset) continue;
-      if (asset.kind === "pdf") {
-        try {
-          const result = await extractText(asset.content as Uint8Array, {
-            mergePages: true,
-          });
-          const text = Array.isArray(result.text)
-            ? result.text.join("\n\n")
-            : (result.text as string);
-          if (text && text.trim().length > 200) {
-            return { text: text.trim(), sourceUrl: url };
-          }
-        } catch (err) {
-          console.warn("[fulltext.unpaywall] pdf parse error", url, err);
-        }
-      } else {
-        const text = htmlToText(asset.content as string);
-        if (text && text.length > 400) {
-          return { text, sourceUrl: url };
-        }
+      const asset = await fetchAssetAsText(url);
+      if (asset) {
+        return { text: asset.text, sourceUrl: url };
       }
     }
   }

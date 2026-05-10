@@ -11,9 +11,18 @@ interface Props {
 
 const SOURCE_LABEL: Record<FullTextSource, string> = {
   unpaywall: "Unpaywall (OA)",
+  openalex: "OpenAlex (OA)",
   europepmc: "Europe PMC",
   pmc: "PMC",
+  s2: "Semantic Scholar (OA)",
+  medrxiv: "medRxiv 프리프린트",
   pdf: "업로드 PDF",
+};
+
+/** 본문이 최종 출판본이 아닌 경우 사용자에게 명시할 안내 */
+const SOURCE_CAVEAT: Partial<Record<FullTextSource, string>> = {
+  medrxiv:
+    "⚠ 프리프린트(peer review 전) 버전입니다 — 최종 출판본과 내용이 다를 수 있습니다.",
 };
 
 const PREVIEW_CHARS = 1200;
@@ -40,6 +49,11 @@ export default function FullTextView({
         <span className="hidden text-xs text-zinc-400 group-open:inline">접기</span>
       </summary>
       <div className="border-t border-zinc-200 px-3 py-3 text-sm leading-relaxed dark:border-zinc-800">
+        {SOURCE_CAVEAT[source] ? (
+          <p className="mb-2 rounded-md border border-amber-200 bg-amber-50 px-2.5 py-1.5 text-xs text-amber-800 dark:border-amber-900 dark:bg-amber-950 dark:text-amber-300">
+            {SOURCE_CAVEAT[source]}
+          </p>
+        ) : null}
         {sourceUrl ? (
           <a
             href={sourceUrl}

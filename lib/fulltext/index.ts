@@ -1,10 +1,18 @@
 // 풀텍스트 체인 오케스트레이터.
-// 순서: Unpaywall(DOI 기반) → Europe PMC(DOI/PMCID/PMID) → PMC efetch(PMCID).
-// 각 단계는 try/catch 후 다음으로 폴백. 실패 시 단계별 skipReason/failReason을 모아 반환 →
-// UI에서 사용자에게 어디서 막혔는지 보여주고 다음 액션(예: UNPAYWALL_EMAIL 설정)을 제안.
+// 순서:
+//   1. Unpaywall          DOI + UNPAYWALL_EMAIL
+//   2. OpenAlex OA URL    DOI 또는 PMID — 1순위 보강 (FULLTEXT_CHAIN_IMPROVEMENT.md)
+//   3. Europe PMC         DOI/PMCID/PMID
+//   4. PMC efetch         PMCID
+//   5. Semantic Scholar   PMID/DOI — openAccessPdf 필드
+//   6. medRxiv 프리프린트  DOI — UI에 "프리프린트" 안내 필수
+// 각 단계 try/catch 후 다음으로 폴백. 실패 시 attempted 배열에 skipReason/failReason 누적.
 
 import { fetchEuropePmcFullText } from "@/lib/fulltext/europe-pmc";
+import { fetchMedRxivFullText } from "@/lib/fulltext/medrxiv";
+import { fetchOpenAlexFullText } from "@/lib/fulltext/openalex";
 import { fetchPmcFullText } from "@/lib/fulltext/pmc";
+import { fetchSemanticScholarFullText } from "@/lib/fulltext/semantic-scholar";
 import { fetchUnpaywallFullText } from "@/lib/fulltext/unpaywall";
 import type {
   FullTextAttempt,
@@ -61,7 +69,33 @@ export async function fetchFullText(
     }
   }
 
-  // 2) Europe PMC — DOI / PMCID / PMID 중 하나라도 있으면 시도
+  // 2) OpenAlex OA URL — DOI 또는 PMID 있으면 시도. open_access.oa_url에 publisher
+  //    OA, 기관 레포, preprint 등이 모두 포함돼 Unpaywall이 못 찾은 경로도 잡힘.
+  if (!input.doi && !input.pmid) {
+    attempted.push({
+      source: "openalex",
+      skipReason: "DOI / PMID 모두 없음",
+    });
+  } else {
+    try {
+      const r = await fetchOpenAlexFullText({
+        doi: input.doi ?? null,
+        pmid: input.pmid ?? null,
+      });
+      if (r) return ok("openalex", r);
+      attempted.push({
+        source: "openalex",
+        failReason: "OpenAlex가 OA URL을 보유하지 않거나 본문 추출에 실패",
+      });
+    } catch (err) {
+      attempted.push({
+        source: "openalex",
+        failReason: err instanceof Error ? err.message : "알 수 없는 오류",
+      });
+    }
+  }
+
+  // 3) Europe PMC — DOI / PMCID / PMID 중 하나라도 있으면 시도
   if (!input.doi && !input.pmcId && !input.pmid) {
     attempted.push({
       source: "europepmc",
@@ -88,7 +122,7 @@ export async function fetchFullText(
     }
   }
 
-  // 3) PMC efetch — PMCID 필수
+  // 4) PMC efetch — PMCID 필수
   if (!input.pmcId) {
     attempted.push({ source: "pmc", skipReason: "PMCID 없음 (비-OA 추정)" });
   } else {
@@ -102,6 +136,47 @@ export async function fetchFullText(
     } catch (err) {
       attempted.push({
         source: "pmc",
+        failReason: err instanceof Error ? err.message : "알 수 없는 오류",
+      });
+    }
+  }
+
+  // 5) Semantic Scholar — openAccessPdf 필드. PMID/DOI 둘 중 하나면 시도.
+  if (!input.doi && !input.pmid) {
+    attempted.push({ source: "s2", skipReason: "DOI / PMID 모두 없음" });
+  } else {
+    try {
+      const r = await fetchSemanticScholarFullText({
+        doi: input.doi ?? null,
+        pmid: input.pmid ?? null,
+      });
+      if (r) return ok("s2", r);
+      attempted.push({
+        source: "s2",
+        failReason: "Semantic Scholar가 openAccessPdf를 보유하지 않음",
+      });
+    } catch (err) {
+      attempted.push({
+        source: "s2",
+        failReason: err instanceof Error ? err.message : "알 수 없는 오류",
+      });
+    }
+  }
+
+  // 6) medRxiv 프리프린트 — DOI 필수. 최종본 아닌 preprint라 UI에 안내 필요.
+  if (!input.doi) {
+    attempted.push({ source: "medrxiv", skipReason: "DOI 없음" });
+  } else {
+    try {
+      const r = await fetchMedRxivFullText(input.doi);
+      if (r) return ok("medrxiv", r);
+      attempted.push({
+        source: "medrxiv",
+        failReason: "medRxiv에 등록된 프리프린트 없음",
+      });
+    } catch (err) {
+      attempted.push({
+        source: "medrxiv",
         failReason: err instanceof Error ? err.message : "알 수 없는 오류",
       });
     }

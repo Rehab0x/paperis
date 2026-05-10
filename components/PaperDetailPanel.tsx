@@ -38,8 +38,11 @@ const initial: FullTextState = {
 
 const SOURCE_LABEL: Record<FullTextSource, string> = {
   unpaywall: "Unpaywall full text",
+  openalex: "OpenAlex OA full text",
   europepmc: "Europe PMC full text",
   pmc: "PMC full text",
+  s2: "Semantic Scholar OA PDF",
+  medrxiv: "medRxiv preprint (not peer-reviewed)",
   pdf: "User-uploaded PDF",
 };
 
