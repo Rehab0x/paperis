@@ -105,30 +105,30 @@ export default function BillingPage() {
     <main className="mx-auto w-full max-w-3xl flex-1 px-4 py-10 pb-32">
       <Link
         href="/"
-        className="inline-flex h-7 items-center gap-1 text-xs text-zinc-500 transition hover:text-zinc-900 dark:hover:text-zinc-100"
+        className="inline-flex h-7 items-center gap-1 text-xs text-paperis-text-3 transition hover:text-paperis-text"
       >
         ← 홈으로
       </Link>
-      <h1 className="mt-2 text-2xl font-semibold tracking-tight text-zinc-900 dark:text-zinc-100">
+      <h1 className="mt-2 font-serif text-3xl font-medium tracking-tight text-paperis-text">
         업그레이드
       </h1>
-      <p className="mt-2 text-sm text-zinc-600 dark:text-zinc-400">
+      <p className="mt-2 text-sm text-paperis-text-2">
         무료 한도를 우회하고 저널 큐레이션·TTS·풀텍스트 요약을 자유롭게 이용하세요.
       </p>
 
       {!FEATURE_AUTH ? (
-        <div className="mt-6 rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900 dark:border-amber-900 dark:bg-amber-950 dark:text-amber-200">
+        <div className="mt-6 rounded-xl border border-paperis-accent/40 bg-paperis-accent-dim/40 p-4 text-sm text-paperis-accent">
           결제 기능은 현재 점진 롤아웃 중입니다 (NEXT_PUBLIC_FEATURE_AUTH=0).
         </div>
       ) : status === "loading" ? (
-        <div className="mt-6 h-32 animate-pulse rounded-xl bg-zinc-100 dark:bg-zinc-900" />
+        <div className="mt-6 h-32 animate-pulse rounded-xl bg-paperis-surface-2" />
       ) : !isLoggedIn ? (
-        <div className="mt-6 rounded-xl border border-zinc-200 bg-zinc-50 p-4 text-sm text-zinc-700 dark:border-zinc-800 dark:bg-zinc-900 dark:text-zinc-300">
+        <div className="mt-6 rounded-xl border border-paperis-border bg-paperis-surface-2 p-4 text-sm text-paperis-text-2">
           결제하려면{" "}
           <span className="font-medium">우측 상단 Google 로그인</span>이 필요합니다.
         </div>
       ) : !onboardingDone ? (
-        <div className="mt-6 rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900 dark:border-amber-900 dark:bg-amber-950 dark:text-amber-200">
+        <div className="mt-6 rounded-xl border border-paperis-accent/40 bg-paperis-accent-dim/40 p-4 text-sm text-paperis-accent">
           결제 전에{" "}
           <Link href="/onboarding" className="font-medium underline">
             프로필(휴대폰·약관)
@@ -139,22 +139,22 @@ export default function BillingPage() {
 
       <div className="mt-8 grid gap-4 sm:grid-cols-2">
         {/* BYOK */}
-        <div className="flex flex-col rounded-2xl border border-zinc-200 bg-white p-5 dark:border-zinc-800 dark:bg-zinc-950">
-          <div className="text-xs font-medium text-emerald-600 dark:text-emerald-400">
+        <div className="flex flex-col rounded-2xl border border-paperis-border bg-paperis-surface p-5">
+          <div className="text-[11px] font-semibold uppercase tracking-[0.06em] text-paperis-accent">
             평생 1회 결제
           </div>
-          <h2 className="mt-1 text-xl font-semibold text-zinc-900 dark:text-zinc-100">
+          <h2 className="mt-1 font-serif text-2xl font-medium tracking-tight text-paperis-text">
             BYOK
           </h2>
-          <div className="mt-3 text-3xl font-bold text-zinc-900 dark:text-zinc-100">
+          <div className="mt-3 text-3xl font-bold tabular-nums text-paperis-text">
             9,900<span className="ml-0.5 text-base font-medium">원</span>
           </div>
-          <p className="mt-1 text-xs text-zinc-500">한 번 결제, 평생 이용</p>
-          <ul className="mt-4 space-y-2 text-sm text-zinc-700 dark:text-zinc-300">
+          <p className="mt-1 text-xs text-paperis-text-3">한 번 결제, 평생 이용</p>
+          <ul className="mt-4 space-y-2 text-sm text-paperis-text-2">
             <li>✓ 저널 큐레이션 무제한</li>
             <li>✓ TTS 변환 무제한</li>
             <li>✓ 풀텍스트 요약 무제한</li>
-            <li className="text-zinc-500">
+            <li className="text-paperis-text-3">
               ※ Gemini API 키를 직접 입력해도 같은 효과 (무료, 자기 키 사용)
             </li>
           </ul>
@@ -162,25 +162,25 @@ export default function BillingPage() {
             type="button"
             onClick={() => startPayment("byok")}
             disabled={loading || !FEATURE_AUTH}
-            className="mt-6 inline-flex h-10 w-full items-center justify-center rounded-lg bg-zinc-900 text-sm font-medium text-white transition hover:bg-zinc-800 disabled:cursor-not-allowed disabled:opacity-50 dark:bg-zinc-100 dark:text-zinc-900 dark:hover:bg-zinc-200"
+            className="mt-6 inline-flex h-10 w-full items-center justify-center rounded-lg bg-paperis-accent text-sm font-medium text-paperis-bg transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
           >
             {loading ? "결제 준비 중…" : "BYOK 결제하기"}
           </button>
         </div>
 
         {/* Pro */}
-        <div className="flex flex-col rounded-2xl border border-violet-200 bg-violet-50/50 p-5 dark:border-violet-900 dark:bg-violet-950/20">
-          <div className="text-xs font-medium text-violet-600 dark:text-violet-400">
+        <div className="flex flex-col rounded-2xl border border-paperis-accent/40 bg-paperis-accent-dim/20 p-5">
+          <div className="text-[11px] font-semibold uppercase tracking-[0.06em] text-paperis-accent">
             월 구독
           </div>
-          <h2 className="mt-1 text-xl font-semibold text-zinc-900 dark:text-zinc-100">
+          <h2 className="mt-1 font-serif text-2xl font-medium tracking-tight text-paperis-text">
             Pro
           </h2>
-          <div className="mt-3 text-3xl font-bold text-zinc-900 dark:text-zinc-100">
+          <div className="mt-3 text-3xl font-bold tabular-nums text-paperis-text">
             4,900<span className="ml-0.5 text-base font-medium">원/월</span>
           </div>
-          <p className="mt-1 text-xs text-zinc-500">자동 갱신, 언제든 해지</p>
-          <ul className="mt-4 space-y-2 text-sm text-zinc-700 dark:text-zinc-300">
+          <p className="mt-1 text-xs text-paperis-text-3">자동 갱신, 언제든 해지</p>
+          <ul className="mt-4 space-y-2 text-sm text-paperis-text-2">
             <li>✓ BYOK 모든 혜택</li>
             <li>✓ 새 기능 우선 사용</li>
             <li>✓ 우선 고객지원</li>
@@ -189,7 +189,7 @@ export default function BillingPage() {
             type="button"
             onClick={() => startPayment("pro")}
             disabled={loading || !FEATURE_AUTH}
-            className="mt-6 inline-flex h-10 w-full items-center justify-center rounded-lg bg-violet-600 text-sm font-medium text-white transition hover:bg-violet-700 disabled:cursor-not-allowed disabled:opacity-50"
+            className="mt-6 inline-flex h-10 w-full items-center justify-center rounded-lg bg-paperis-accent text-sm font-medium text-paperis-bg transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
           >
             {loading ? "결제 준비 중…" : "Pro 구독하기"}
           </button>
@@ -197,12 +197,12 @@ export default function BillingPage() {
       </div>
 
       {error ? (
-        <div className="mt-6 rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-900 dark:border-red-900 dark:bg-red-950 dark:text-red-200">
+        <div className="mt-6 rounded-xl border border-paperis-accent/40 bg-paperis-accent-dim/40 p-4 text-sm text-paperis-accent">
           {error}
         </div>
       ) : null}
 
-      <p className="mt-8 text-xs text-zinc-500">
+      <p className="mt-8 text-xs text-paperis-text-3">
         결제 진행 시{" "}
         <Link href="/legal/terms" className="underline">
           이용약관

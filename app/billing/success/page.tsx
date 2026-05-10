@@ -101,14 +101,14 @@ function SuccessInner() {
 
   if (state.status === "verifying") {
     return (
-      <div className="rounded-xl border border-zinc-200 bg-white p-6 text-sm text-zinc-700 dark:border-zinc-800 dark:bg-zinc-950 dark:text-zinc-300">
+      <div className="rounded-xl border border-paperis-border bg-paperis-surface p-6 text-sm text-paperis-text-2">
         <div className="flex items-center gap-3">
-          <span className="inline-block h-4 w-4 animate-spin rounded-full border-2 border-zinc-300 border-t-zinc-700 dark:border-zinc-700 dark:border-t-zinc-200" />
+          <span className="inline-block h-4 w-4 animate-spin rounded-full border-2 border-paperis-border border-t-paperis-accent" />
           {flow === "byok"
             ? "결제를 확정하는 중입니다…"
             : "구독을 활성화하는 중입니다 (카드 등록 + 첫 달 결제)…"}
         </div>
-        <p className="mt-3 text-xs text-zinc-500">
+        <p className="mt-3 text-xs text-paperis-text-3">
           창을 닫지 마세요. 처리에 5초 정도 걸릴 수 있습니다.
         </p>
       </div>
@@ -117,12 +117,12 @@ function SuccessInner() {
 
   if (state.status === "success") {
     return (
-      <div className="rounded-xl border border-emerald-200 bg-emerald-50 p-6 dark:border-emerald-900 dark:bg-emerald-950">
+      <div className="rounded-xl border border-paperis-accent/40 bg-paperis-accent-dim/40 p-6">
         <div className="text-2xl">✅</div>
-        <h2 className="mt-2 text-lg font-semibold text-emerald-900 dark:text-emerald-100">
+        <h2 className="mt-2 font-serif text-xl font-medium tracking-tight text-paperis-text">
           {flow === "byok" ? "결제가 완료되었습니다" : "Pro 구독이 시작되었습니다"}
         </h2>
-        <p className="mt-2 text-sm text-emerald-800 dark:text-emerald-200">
+        <p className="mt-2 text-sm text-paperis-text-2">
           {flow === "byok"
             ? "BYOK 평생 권한이 활성화되었습니다. 이제 모든 한도 없이 이용할 수 있습니다."
             : `Pro 권한이 활성화되었습니다. 매월 자동 결제됩니다.${
@@ -134,13 +134,13 @@ function SuccessInner() {
         <div className="mt-5 flex gap-2">
           <Link
             href="/"
-            className="inline-flex h-9 items-center rounded-lg bg-zinc-900 px-4 text-sm font-medium text-white hover:bg-zinc-800 dark:bg-zinc-100 dark:text-zinc-900 dark:hover:bg-zinc-200"
+            className="inline-flex h-9 items-center rounded-lg bg-paperis-accent px-4 text-sm font-medium text-paperis-bg transition hover:opacity-90"
           >
             홈으로
           </Link>
           <Link
             href="/journal"
-            className="inline-flex h-9 items-center rounded-lg border border-zinc-300 bg-white px-4 text-sm font-medium text-zinc-700 hover:border-zinc-500 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-300"
+            className="inline-flex h-9 items-center rounded-lg border border-paperis-border bg-paperis-surface px-4 text-sm font-medium text-paperis-text-2 transition hover:border-paperis-text-3 hover:text-paperis-text"
           >
             저널 큐레이션
           </Link>
@@ -150,13 +150,13 @@ function SuccessInner() {
   }
 
   return (
-    <div className="rounded-xl border border-red-200 bg-red-50 p-6 dark:border-red-900 dark:bg-red-950">
+    <div className="rounded-xl border border-paperis-accent/40 bg-paperis-accent-dim/40 p-6">
       <div className="text-2xl">⚠️</div>
-      <h2 className="mt-2 text-lg font-semibold text-red-900 dark:text-red-100">
+      <h2 className="mt-2 font-serif text-xl font-medium tracking-tight text-paperis-text">
         결제 처리 중 문제가 발생했습니다
       </h2>
-      <p className="mt-2 text-sm text-red-800 dark:text-red-200">{state.message}</p>
-      <p className="mt-4 text-xs text-red-700 dark:text-red-300">
+      <p className="mt-2 text-sm text-paperis-accent">{state.message}</p>
+      <p className="mt-4 text-xs text-paperis-text-2">
         결제는 이미 처리되었을 수 있습니다. 위 정보와 함께 고객센터로 문의해 주세요.
         (자세한 내용은{" "}
         <Link href="/legal/refund" className="underline">
@@ -167,7 +167,7 @@ function SuccessInner() {
       <div className="mt-5">
         <Link
           href="/billing"
-          className="inline-flex h-9 items-center rounded-lg border border-red-300 bg-white px-4 text-sm font-medium text-red-700 hover:bg-red-50 dark:border-red-800 dark:bg-red-950 dark:text-red-300"
+          className="inline-flex h-9 items-center rounded-lg border border-paperis-accent bg-paperis-accent px-4 text-sm font-medium text-paperis-bg transition hover:opacity-90"
         >
           결제 페이지로
         </Link>
@@ -207,13 +207,13 @@ export default function BillingSuccessPage() {
     <main className="mx-auto w-full max-w-3xl flex-1 px-4 py-10 pb-32">
       <Link
         href="/"
-        className="mb-3 inline-flex h-7 items-center gap-1 text-xs text-zinc-500 transition hover:text-zinc-900 dark:hover:text-zinc-100"
+        className="mb-3 inline-flex h-7 items-center gap-1 text-xs text-paperis-text-3 transition hover:text-paperis-text"
       >
         ← 홈으로
       </Link>
       <Suspense
         fallback={
-          <div className="h-32 animate-pulse rounded-xl bg-zinc-100 dark:bg-zinc-900" />
+          <div className="h-32 animate-pulse rounded-xl bg-paperis-surface-2" />
         }
       >
         <SuccessInner />

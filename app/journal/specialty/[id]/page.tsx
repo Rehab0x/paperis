@@ -69,21 +69,21 @@ export default async function SpecialtyJournalsPage({ params }: Props) {
 
   return (
     <main className="mx-auto w-full max-w-6xl flex-1 px-4 py-8 pb-32">
-      <nav className="mb-3 text-xs text-zinc-500">
+      <nav className="mb-3 text-xs text-paperis-text-3">
         <Link
           href="/journal"
-          className="text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-300"
+          className="text-paperis-text-3 transition hover:text-paperis-text"
         >
           ← 임상과 목록
         </Link>
       </nav>
 
       <header className="mb-7">
-        <h1 className="text-2xl font-semibold tracking-tight text-zinc-900 dark:text-zinc-100">
+        <h1 className="font-serif text-3xl font-medium tracking-tight text-paperis-text">
           {specialty.name}
         </h1>
-        <p className="mt-0.5 text-sm text-zinc-500">{specialty.nameEn}</p>
-        <p className="mt-3 text-xs text-zinc-500">
+        <p className="mt-0.5 text-sm text-paperis-text-3">{specialty.nameEn}</p>
+        <p className="mt-3 text-xs text-paperis-text-3">
           카탈로그 핵심 저널 + OpenAlex 자동 추천 — 상위 {TARGET_COUNT}건. 카드
           우상단 ✕로 이 임상과에서 숨길 수 있고, 자리는 다음 후보로 자동
           보충됩니다.
@@ -91,10 +91,10 @@ export default async function SpecialtyJournalsPage({ params }: Props) {
       </header>
 
       {journals.length === 0 ? (
-        <div className="rounded-2xl border border-dashed border-zinc-300 bg-white p-8 text-center text-sm text-zinc-500 dark:border-zinc-700 dark:bg-zinc-950">
+        <div className="rounded-2xl border border-dashed border-paperis-border bg-paperis-surface p-8 text-center text-sm text-paperis-text-3">
           저널 추천을 가져오지 못했습니다. OpenAlex API가 일시적으로 응답하지
           않거나 field ID 매핑이 비어 있을 수 있습니다.
-          <p className="mt-2 text-xs text-zinc-400">
+          <p className="mt-2 text-xs text-paperis-text-3">
             subfield:{" "}
             <code className="font-mono">{specialty.openAlexSubfieldId}</code>
           </p>

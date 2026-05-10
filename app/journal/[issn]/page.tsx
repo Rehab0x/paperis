@@ -100,20 +100,20 @@ export default async function JournalHomePage({
     <main className="mx-auto w-full max-w-6xl flex-1 px-4 py-8 pb-32">
       {/* 홈 "내 저널" 카드의 ● (새 호 가능성) 인디케이터 갱신 — 마운트 1회 기록 */}
       <MarkJournalVisited openAlexId={journal.openAlexId} />
-      <nav className="mb-3 text-xs text-zinc-500">
+      <nav className="mb-3 text-xs text-paperis-text-3">
         <Link
           href={backHref}
-          className="text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-300"
+          className="text-paperis-text-3 transition hover:text-paperis-text"
         >
           {backLabel}
         </Link>
       </nav>
 
       <header className="mb-7">
-        <h1 className="text-2xl font-semibold tracking-tight text-zinc-900 dark:text-zinc-100">
+        <h1 className="font-serif text-3xl font-medium tracking-tight text-paperis-text">
           {journal.name}
         </h1>
-        <p className="mt-1 flex flex-wrap items-center gap-x-3 text-xs text-zinc-500">
+        <p className="mt-1 flex flex-wrap items-center gap-x-3 text-xs text-paperis-text-3">
           {journal.publisher ? <span>{journal.publisher}</span> : null}
           {journal.issnL ? (
             <span className="font-mono">ISSN-L {journal.issnL}</span>

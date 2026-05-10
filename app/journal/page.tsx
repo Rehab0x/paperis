@@ -17,10 +17,10 @@ export default async function JournalLandingPage() {
   return (
     <main className="mx-auto w-full max-w-6xl flex-1 px-4 py-8 pb-32">
       <div className="mb-8">
-        <h1 className="text-2xl font-semibold tracking-tight text-zinc-900 dark:text-zinc-100">
+        <h1 className="font-serif text-3xl font-medium tracking-tight text-paperis-text">
           임상과를 고르세요
         </h1>
-        <p className="mt-1.5 text-sm text-zinc-500">
+        <p className="mt-1.5 text-sm text-paperis-text-3">
           임상과별 주요 저널 — 호 탐색, 주제 탐색, 최근 트렌드를 한 번에.
         </p>
       </div>

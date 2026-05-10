@@ -19,24 +19,24 @@ function FailInner() {
 
   if (isCancel) {
     return (
-      <div className="rounded-xl border border-zinc-200 bg-zinc-50 p-6 dark:border-zinc-800 dark:bg-zinc-900">
+      <div className="rounded-xl border border-paperis-border bg-paperis-surface-2 p-6">
         <div className="text-2xl">🔙</div>
-        <h2 className="mt-2 text-lg font-semibold text-zinc-900 dark:text-zinc-100">
+        <h2 className="mt-2 font-serif text-xl font-medium tracking-tight text-paperis-text">
           결제를 취소했습니다
         </h2>
-        <p className="mt-2 text-sm text-zinc-700 dark:text-zinc-300">
+        <p className="mt-2 text-sm text-paperis-text-2">
           언제든지 다시 시도할 수 있습니다.
         </p>
         <div className="mt-5 flex gap-2">
           <Link
             href="/billing"
-            className="inline-flex h-9 items-center rounded-lg bg-zinc-900 px-4 text-sm font-medium text-white hover:bg-zinc-800 dark:bg-zinc-100 dark:text-zinc-900 dark:hover:bg-zinc-200"
+            className="inline-flex h-9 items-center rounded-lg bg-paperis-accent px-4 text-sm font-medium text-paperis-bg transition hover:opacity-90"
           >
             결제 페이지로
           </Link>
           <Link
             href="/"
-            className="inline-flex h-9 items-center rounded-lg border border-zinc-300 bg-white px-4 text-sm font-medium text-zinc-700 hover:border-zinc-500 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-300"
+            className="inline-flex h-9 items-center rounded-lg border border-paperis-border bg-paperis-surface px-4 text-sm font-medium text-paperis-text-2 transition hover:border-paperis-text-3 hover:text-paperis-text"
           >
             홈으로
           </Link>
@@ -46,30 +46,30 @@ function FailInner() {
   }
 
   return (
-    <div className="rounded-xl border border-red-200 bg-red-50 p-6 dark:border-red-900 dark:bg-red-950">
+    <div className="rounded-xl border border-paperis-accent/40 bg-paperis-accent-dim/40 p-6">
       <div className="text-2xl">⚠️</div>
-      <h2 className="mt-2 text-lg font-semibold text-red-900 dark:text-red-100">
+      <h2 className="mt-2 font-serif text-xl font-medium tracking-tight text-paperis-text">
         결제에 실패했습니다
       </h2>
-      <p className="mt-2 text-sm text-red-800 dark:text-red-200">{message}</p>
-      <dl className="mt-4 space-y-1 text-xs text-red-700 dark:text-red-300">
+      <p className="mt-2 text-sm text-paperis-accent">{message}</p>
+      <dl className="mt-4 space-y-1 text-xs text-paperis-text-2">
         {code ? (
-          <div>오류 코드: <code>{code}</code></div>
+          <div>오류 코드: <code className="font-mono">{code}</code></div>
         ) : null}
         {orderId ? (
-          <div>주문번호: <code>{orderId}</code></div>
+          <div>주문번호: <code className="font-mono">{orderId}</code></div>
         ) : null}
       </dl>
       <div className="mt-5 flex gap-2">
         <Link
           href="/billing"
-          className="inline-flex h-9 items-center rounded-lg bg-red-600 px-4 text-sm font-medium text-white hover:bg-red-700"
+          className="inline-flex h-9 items-center rounded-lg bg-paperis-accent px-4 text-sm font-medium text-paperis-bg transition hover:opacity-90"
         >
           다시 시도
         </Link>
         <Link
           href="/"
-          className="inline-flex h-9 items-center rounded-lg border border-red-300 bg-white px-4 text-sm font-medium text-red-700 hover:bg-red-50 dark:border-red-800 dark:bg-red-950 dark:text-red-300"
+          className="inline-flex h-9 items-center rounded-lg border border-paperis-border bg-paperis-surface px-4 text-sm font-medium text-paperis-text-2 transition hover:border-paperis-text-3 hover:text-paperis-text"
         >
           홈으로
         </Link>
@@ -83,13 +83,13 @@ export default function BillingFailPage() {
     <main className="mx-auto w-full max-w-3xl flex-1 px-4 py-10 pb-32">
       <Link
         href="/"
-        className="mb-3 inline-flex h-7 items-center gap-1 text-xs text-zinc-500 transition hover:text-zinc-900 dark:hover:text-zinc-100"
+        className="mb-3 inline-flex h-7 items-center gap-1 text-xs text-paperis-text-3 transition hover:text-paperis-text"
       >
         ← 홈으로
       </Link>
       <Suspense
         fallback={
-          <div className="h-32 animate-pulse rounded-xl bg-zinc-100 dark:bg-zinc-900" />
+          <div className="h-32 animate-pulse rounded-xl bg-paperis-surface-2" />
         }
       >
         <FailInner />

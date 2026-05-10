@@ -80,7 +80,7 @@ export default function OnboardingPage() {
   if (status === "loading" || !session?.user) {
     return (
       <main className="mx-auto w-full max-w-2xl flex-1 px-4 py-10">
-        <p className="text-sm text-zinc-500">불러오는 중…</p>
+        <p className="text-sm text-paperis-text-3">불러오는 중…</p>
       </main>
     );
   }
@@ -89,15 +89,15 @@ export default function OnboardingPage() {
     <main className="mx-auto w-full max-w-2xl flex-1 px-4 py-10 pb-32">
       <Link
         href="/"
-        className="inline-flex h-7 items-center gap-1 text-xs text-zinc-500 transition hover:text-zinc-900 dark:hover:text-zinc-100"
+        className="inline-flex h-7 items-center gap-1 text-xs text-paperis-text-3 transition hover:text-paperis-text"
       >
         ← 홈으로
       </Link>
       <header className="mt-2 mb-7">
-        <h1 className="text-2xl font-semibold tracking-tight text-zinc-900 dark:text-zinc-100">
+        <h1 className="font-serif text-3xl font-medium tracking-tight text-paperis-text">
           프로필 완성
         </h1>
-        <p className="mt-1.5 text-sm text-zinc-500">
+        <p className="mt-1.5 text-sm text-paperis-text-3">
           {session.user.name ? `${session.user.name}님, 환영합니다. ` : ""}
           결제·구독을 위해 휴대폰 번호와 약관 동의가 필요합니다. 한 번만 입력하면
           됩니다.
@@ -106,10 +106,10 @@ export default function OnboardingPage() {
 
       <form onSubmit={handleSubmit} className="space-y-7">
         <section>
-          <h2 className="text-sm font-semibold text-zinc-900 dark:text-zinc-100">
+          <h2 className="text-sm font-semibold text-paperis-text">
             휴대폰 번호
           </h2>
-          <p className="mt-0.5 text-xs text-zinc-500">
+          <p className="mt-0.5 text-xs text-paperis-text-3">
             Toss Payments 자동결제에 필수. 010-XXXX-XXXX 형식 또는 +82 표기 모두
             가능.
           </p>
@@ -120,12 +120,12 @@ export default function OnboardingPage() {
             value={phone}
             onChange={(e) => setPhone(e.target.value)}
             placeholder="010-1234-5678"
-            className="mt-3 w-full rounded-md border border-zinc-200 bg-white px-3 py-2 text-sm dark:border-zinc-800 dark:bg-zinc-900"
+            className="mt-3 w-full rounded-lg border border-paperis-border bg-paperis-surface px-3 py-2 text-sm text-paperis-text"
           />
         </section>
 
         <section>
-          <h2 className="text-sm font-semibold text-zinc-900 dark:text-zinc-100">
+          <h2 className="text-sm font-semibold text-paperis-text">
             약관 동의
           </h2>
           <div className="mt-3 space-y-2">
@@ -160,7 +160,7 @@ export default function OnboardingPage() {
         </section>
 
         {error ? (
-          <div className="rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700 dark:border-red-900 dark:bg-red-950 dark:text-red-300">
+          <div className="rounded-lg border border-paperis-accent/40 bg-paperis-accent-dim/40 p-3 text-sm text-paperis-accent">
             {error}
           </div>
         ) : null}
@@ -169,14 +169,14 @@ export default function OnboardingPage() {
           <button
             type="button"
             onClick={() => router.replace("/")}
-            className="rounded-md px-3 py-2 text-sm text-zinc-500 hover:text-zinc-700 dark:hover:text-zinc-300"
+            className="rounded-lg px-3 py-2 text-sm text-paperis-text-3 transition hover:text-paperis-text"
           >
             나중에
           </button>
           <button
             type="submit"
             disabled={!canSubmit}
-            className="rounded-md bg-zinc-900 px-4 py-2 text-sm font-medium text-white hover:bg-zinc-700 disabled:cursor-not-allowed disabled:bg-zinc-300 dark:bg-zinc-100 dark:text-zinc-900 dark:hover:bg-zinc-300 dark:disabled:bg-zinc-700"
+            className="rounded-lg bg-paperis-accent px-4 py-2 text-sm font-medium text-paperis-bg transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
           >
             {submitting ? "저장 중…" : "완료"}
           </button>
@@ -200,22 +200,22 @@ function Checkbox({
   required?: boolean;
 }) {
   return (
-    <label className="flex cursor-pointer items-start gap-3 rounded-lg border border-zinc-200 px-3 py-2 transition hover:border-zinc-400 dark:border-zinc-800 dark:hover:border-zinc-600">
+    <label className="flex cursor-pointer items-start gap-3 rounded-lg border border-paperis-border px-3 py-2 transition hover:border-paperis-text-3">
       <input
         type="checkbox"
         checked={checked}
         onChange={(e) => onChange(e.target.checked)}
-        className="mt-0.5"
+        className="mt-0.5 accent-paperis-accent"
       />
       <span className="min-w-0 flex-1">
-        <span className="block text-sm text-zinc-900 dark:text-zinc-100">
+        <span className="block text-sm text-paperis-text">
           {label}
           {required ? (
-            <span className="ml-1 text-[10px] font-medium text-red-600">*</span>
+            <span className="ml-1 text-[10px] font-medium text-paperis-accent">*</span>
           ) : null}
         </span>
         {hint ? (
-          <span className="block text-xs text-zinc-500">{hint}</span>
+          <span className="block text-xs text-paperis-text-3">{hint}</span>
         ) : null}
       </span>
     </label>
