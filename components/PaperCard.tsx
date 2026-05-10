@@ -48,35 +48,35 @@ export default function PaperCard({
       id={`paper-${paper.pmid}`}
       onClick={() => onSelect(paper.pmid)}
       className={[
-        "group cursor-pointer rounded-xl border p-4 transition",
+        "group cursor-pointer rounded-2xl border p-4 transition",
         selected
-          ? "border-zinc-900 bg-zinc-50 shadow-sm dark:border-zinc-100 dark:bg-zinc-900"
-          : "border-zinc-200 bg-white hover:border-zinc-400 hover:shadow-sm dark:border-zinc-800 dark:bg-zinc-950 dark:hover:border-zinc-600",
+          ? "border-paperis-accent bg-paperis-surface-2"
+          : "border-paperis-border bg-paperis-surface hover:border-paperis-text-3",
       ].join(" ")}
       aria-current={selected ? "true" : undefined}
     >
       <div className="flex items-start gap-3">
-        <span className="mt-0.5 text-xs font-mono text-zinc-400">
+        <span className="mt-0.5 font-mono text-xs tabular-nums text-paperis-text-3">
           {String(index + 1).padStart(2, "0")}
         </span>
         <div className="min-w-0 flex-1">
-          <h3 className="text-base font-semibold leading-snug text-zinc-900 dark:text-zinc-100">
+          <h3 className="font-serif text-base font-medium leading-snug tracking-tight text-paperis-text">
             {paper.title || "(제목 없음)"}
           </h3>
-          <p className="mt-1.5 text-xs text-zinc-500">
+          <p className="mt-1.5 text-xs text-paperis-text-3">
             {formatAuthors(paper.authors)}
           </p>
-          <p className="mt-0.5 flex flex-wrap items-center gap-x-2 text-xs text-zinc-500">
+          <p className="mt-0.5 flex flex-wrap items-center gap-x-2 text-xs text-paperis-text-3">
             <span className="italic">{paper.journal || "—"}</span>
             {paper.year ? <span>· {paper.year}</span> : null}
             {paper.access === "open" ? (
-              <span className="rounded bg-emerald-50 px-1.5 py-0.5 text-[10px] font-medium text-emerald-700 dark:bg-emerald-950 dark:text-emerald-400">
+              <span className="rounded bg-paperis-accent-dim/40 px-1.5 py-0.5 text-[10px] font-medium text-paperis-accent">
                 Open Access
               </span>
             ) : null}
-            {cited ? <span className="text-zinc-400">· 인용 {cited}</span> : null}
+            {cited ? <span>· 인용 {cited}</span> : null}
             {isReview(paper) ? (
-              <span className="rounded bg-indigo-50 px-1.5 py-0.5 text-[10px] font-medium text-indigo-700 dark:bg-indigo-950 dark:text-indigo-400">
+              <span className="rounded bg-paperis-surface-2 px-1.5 py-0.5 text-[10px] font-medium text-paperis-text-2">
                 Review
               </span>
             ) : null}
@@ -90,7 +90,7 @@ export default function PaperCard({
             />
           ) : paper.abstract ? (
             <>
-              <p className="mt-2.5 line-clamp-3 text-sm leading-relaxed text-zinc-600 dark:text-zinc-400">
+              <p className="mt-2.5 line-clamp-3 text-sm leading-relaxed text-paperis-text-2">
                 {paper.abstract}
               </p>
               <MiniSummaryView
@@ -100,7 +100,7 @@ export default function PaperCard({
               />
             </>
           ) : (
-            <p className="mt-2.5 text-xs italic text-zinc-400">
+            <p className="mt-2.5 text-xs italic text-paperis-text-3">
               초록이 제공되지 않습니다.
             </p>
           )}

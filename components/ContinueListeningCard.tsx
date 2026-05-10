@@ -69,42 +69,41 @@ export default function ContinueListeningCard() {
       ? Math.min(1, player.currentTimeMs / player.durationMs)
       : 0;
 
+  // 프로토타입 톤 — 따뜻한 gradient + accent label + 라운드 play 버튼
   return (
-    <section className="mb-6 rounded-2xl border border-amber-200 bg-amber-50 p-4 dark:border-amber-900/60 dark:bg-amber-950/30">
-      <div className="flex items-center justify-between">
-        <h2 className="text-xs font-medium tracking-wide text-amber-700 dark:text-amber-300">
-          ▶ 이어 듣기
-        </h2>
-        <span className="text-[10px] text-amber-700/70 dark:text-amber-300/70">
-          가장 최근 트랙
-        </span>
-      </div>
-      <div className="mt-2.5 flex items-start gap-3">
-        <button
-          type="button"
-          onClick={handlePlay}
-          aria-label="재생"
-          className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-amber-600 text-lg text-white shadow transition hover:bg-amber-700"
+    <section className="mb-5">
+      <button
+        type="button"
+        onClick={handlePlay}
+        aria-label="가장 최근 트랙 재생"
+        className="group flex w-full items-center gap-4 rounded-2xl border border-paperis-border bg-gradient-to-br from-paperis-accent-dim/30 to-paperis-surface-2 p-4 text-left transition hover:-translate-y-0.5 hover:border-paperis-accent/60"
+      >
+        <span
+          className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-paperis-accent text-lg text-paperis-bg shadow"
+          aria-hidden
         >
           {isCurrent && player.isPlaying ? "❚❚" : "▶"}
-        </button>
-        <div className="min-w-0 flex-1">
-          <div className="line-clamp-2 text-sm font-medium text-zinc-900 dark:text-zinc-100">
+        </span>
+        <span className="min-w-0 flex-1">
+          <span className="block text-[11px] font-semibold uppercase tracking-[0.06em] text-paperis-accent">
+            ▶ 이어 듣기
+          </span>
+          <span className="mt-1 block truncate text-sm font-medium text-paperis-text">
             {latest.title}
-          </div>
-          <div className="mt-0.5 truncate text-xs text-zinc-600 dark:text-zinc-400">
+          </span>
+          <span className="mt-1 block truncate text-[11px] text-paperis-text-3">
             {latest.journal} · 약 {totalMin}분
-          </div>
+          </span>
           {isCurrent ? (
-            <div className="mt-2 h-1 w-full overflow-hidden rounded-full bg-amber-200 dark:bg-amber-900/60">
-              <div
-                className="h-full bg-amber-600 transition-[width]"
+            <span className="mt-2 block h-[3px] overflow-hidden rounded-full bg-paperis-border">
+              <span
+                className="block h-full bg-paperis-accent transition-[width]"
                 style={{ width: `${progress * 100}%` }}
               />
-            </div>
+            </span>
           ) : null}
-        </div>
-      </div>
+        </span>
+      </button>
     </section>
   );
 }

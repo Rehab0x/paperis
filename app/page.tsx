@@ -351,23 +351,21 @@ function HomeInner() {
 
   return (
     <div className="flex w-full flex-1 flex-col">
-      <header className="sticky top-0 z-10 border-b border-zinc-200 bg-white dark:border-zinc-800 dark:bg-zinc-950">
+      <header className="sticky top-0 z-10 border-b border-paperis-border bg-paperis-bg/85 backdrop-blur-xl">
         <div className="mx-auto flex max-w-6xl flex-col gap-3 px-4 py-3 sm:py-4">
           <div className="flex items-center justify-between gap-4">
             <Link
               href="/"
-              className="text-lg font-semibold tracking-tight text-zinc-900 dark:text-zinc-100"
+              className="font-serif text-2xl font-medium tracking-tight text-paperis-text"
             >
               Paperis
-              <span className="ml-1.5 align-text-top text-[10px] font-mono text-zinc-400">
-                v2
-              </span>
+              <span className="text-paperis-accent">.</span>
             </Link>
             <div className="flex items-center gap-1">
               <TtsQueueBadge />
-              <JournalEntryLink />
-              <LibraryLink />
-              <SettingsLink />
+              <JournalEntryLink className="inline-flex h-9 w-9 items-center justify-center rounded-lg text-paperis-text-2 transition hover:bg-paperis-surface-2 hover:text-paperis-text" />
+              <LibraryLink className="relative inline-flex h-9 w-9 items-center justify-center rounded-lg text-paperis-text-2 transition hover:bg-paperis-surface-2 hover:text-paperis-text" />
+              <SettingsLink className="inline-flex h-9 w-9 items-center justify-center rounded-lg text-lg text-paperis-text-2 transition hover:bg-paperis-surface-2 hover:text-paperis-text" />
               <AuthMenu />
             </div>
           </div>
@@ -386,22 +384,22 @@ function HomeInner() {
             />
           </div>
           {translated && q.trim() ? (
-            <div className="text-xs text-zinc-500">
+            <div className="text-xs text-paperis-text-3">
               <button
                 type="button"
                 onClick={() => setShowQueryDetail((v) => !v)}
-                className="font-mono text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-300"
+                className="font-mono text-paperis-text-3 transition hover:text-paperis-text-2"
                 title="변환된 검색식 보기/숨기기"
               >
                 {showQueryDetail ? "▾" : "▸"} 검색식
               </button>
               {showQueryDetail ? (
-                <span className="ml-2 break-all font-mono text-zinc-500 dark:text-zinc-400">
+                <span className="ml-2 break-all font-mono text-paperis-text-2">
                   {translated.query}
                 </span>
               ) : null}
               {translated.note ? (
-                <span className="ml-2 italic text-zinc-400">
+                <span className="ml-2 italic text-paperis-text-3">
                   · {translated.note}
                 </span>
               ) : null}
@@ -426,18 +424,18 @@ function HomeInner() {
             </div>
           ) : null}
           {!q.trim() && !loading ? (
-            <>
+            <div className="paperis-stagger">
               <ContinueListeningCard />
               <MyJournalsNewIssues />
-              <div className="mt-2 rounded-2xl border border-dashed border-zinc-200 bg-white/50 p-5 text-center dark:border-zinc-800 dark:bg-zinc-950/50">
-                <p className="text-sm text-zinc-600 dark:text-zinc-300">
+              <div className="mt-2 rounded-2xl border border-dashed border-paperis-border bg-paperis-surface/50 p-5 text-center">
+                <p className="text-sm text-paperis-text-2">
                   또는, 위 검색창에 자연어로 질문해 보세요.
                 </p>
-                <p className="mt-1 text-[11px] text-zinc-500">
+                <p className="mt-1 text-[11px] text-paperis-text-3">
                   Gemini가 PubMed 검색식으로 바꿔 돌립니다.
                 </p>
               </div>
-            </>
+            </div>
           ) : null}
 
           {q.trim() && !loading && papers.length === 0 && !error ? (

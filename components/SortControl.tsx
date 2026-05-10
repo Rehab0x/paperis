@@ -23,7 +23,7 @@ export default function SortControl({ value, onChange, disabled }: Props) {
     <div
       role="radiogroup"
       aria-label="정렬"
-      className="flex flex-wrap items-center gap-1 rounded-lg border border-zinc-200 bg-white p-1 text-sm dark:border-zinc-800 dark:bg-zinc-900"
+      className="flex flex-wrap items-center gap-1 rounded-xl border border-paperis-border bg-paperis-surface p-1 text-sm"
     >
       {OPTIONS.map((opt) => {
         const active = value === opt.value;
@@ -37,10 +37,10 @@ export default function SortControl({ value, onChange, disabled }: Props) {
             disabled={disabled}
             onClick={() => onChange(opt.value)}
             className={[
-              "rounded-md px-3 py-1.5 transition",
+              "rounded-lg px-3 py-1.5 transition",
               active
-                ? "bg-zinc-900 text-white shadow-sm dark:bg-zinc-100 dark:text-zinc-900"
-                : "text-zinc-600 hover:bg-zinc-100 dark:text-zinc-300 dark:hover:bg-zinc-800",
+                ? "bg-paperis-accent text-paperis-bg"
+                : "text-paperis-text-2 hover:bg-paperis-surface-2 hover:text-paperis-text",
               disabled ? "cursor-not-allowed opacity-50" : "",
             ].join(" ")}
           >

@@ -91,11 +91,9 @@ export default function UsageBanner() {
   }
 
   const tone = isExhausted
-    ? "border-red-200 bg-red-50 text-red-900 dark:border-red-900 dark:bg-red-950 dark:text-red-100"
-    : "border-amber-200 bg-amber-50 text-amber-900 dark:border-amber-900 dark:bg-amber-950 dark:text-amber-100";
-  const ctaTone = isExhausted
-    ? "bg-red-600 text-white hover:bg-red-700"
-    : "bg-amber-600 text-white hover:bg-amber-700";
+    ? "border-paperis-accent/40 bg-paperis-accent-dim/40 text-paperis-text"
+    : "border-paperis-border bg-paperis-surface text-paperis-text";
+  const ctaTone = "bg-paperis-accent text-paperis-bg hover:opacity-90";
 
   return (
     <div className={`mx-auto max-w-6xl px-4 pt-3`}>

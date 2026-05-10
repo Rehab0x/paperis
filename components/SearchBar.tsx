@@ -27,22 +27,25 @@ export default function SearchBar({ initialValue, loading, onSubmit }: Props) {
   return (
     <form
       onSubmit={handleSubmit}
-      className="flex w-full items-center gap-2 rounded-xl border border-zinc-200 bg-white p-1.5 shadow-sm transition focus-within:border-zinc-400 focus-within:shadow-md dark:border-zinc-800 dark:bg-zinc-900 dark:focus-within:border-zinc-600"
+      className="flex w-full items-center gap-2 rounded-2xl border border-paperis-border bg-paperis-surface p-1.5 transition focus-within:border-paperis-accent/60"
     >
+      <span aria-hidden className="pl-2.5 text-paperis-text-3">
+        🔍
+      </span>
       <input
         type="text"
         value={value}
         onChange={(e) => setValue(e.target.value)}
-        placeholder="예) 아급성기 뇌졸중 환자에서 상지 로봇치료의 효과"
+        placeholder="자연어로 논문 검색..."
         autoFocus
         disabled={loading}
-        className="flex-1 bg-transparent px-3 py-2 text-base outline-none placeholder:text-zinc-400 disabled:opacity-60"
+        className="flex-1 bg-transparent px-1 py-2 text-base text-paperis-text outline-none placeholder:text-paperis-text-3 disabled:opacity-60"
         aria-label="자연어 검색어"
       />
       <button
         type="submit"
         disabled={loading || value.trim().length === 0}
-        className="rounded-lg bg-zinc-900 px-4 py-2 text-sm font-medium text-white transition hover:bg-zinc-700 disabled:cursor-not-allowed disabled:opacity-40 dark:bg-zinc-100 dark:text-zinc-900 dark:hover:bg-zinc-300"
+        className="rounded-xl bg-paperis-accent px-4 py-2 text-sm font-medium text-paperis-bg transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-40"
       >
         {loading ? "검색 중…" : "검색"}
       </button>

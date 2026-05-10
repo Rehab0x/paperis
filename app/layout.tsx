@@ -1,5 +1,5 @@
 import type { Metadata, Viewport } from "next";
-import { Geist, Geist_Mono } from "next/font/google";
+import { Fraunces, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import PlayerBar from "@/components/PlayerBar";
 import PlayerProvider from "@/components/PlayerProvider";
@@ -22,9 +22,13 @@ try {
 } catch (e) {}
 `;
 
-const geistSans = Geist({
-  variable: "--font-geist-sans",
+// Fraunces: 에디토리얼 의학 저널 톤 — 저널명·헤드라인 전용 (font-serif)
+// 본문은 Pretendard (한글 가독성). globals.css에서 CDN으로 로드.
+const fraunces = Fraunces({
+  variable: "--font-fraunces",
   subsets: ["latin"],
+  weight: ["400", "500", "600"],
+  style: ["normal", "italic"],
 });
 
 const geistMono = Geist_Mono({
@@ -71,10 +75,15 @@ export default function RootLayout({
     <html
       lang="ko"
       suppressHydrationWarning
-      className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
+      className={`${fraunces.variable} ${geistMono.variable} h-full antialiased`}
     >
       <head>
         <script dangerouslySetInnerHTML={{ __html: themeBootScript }} />
+        {/* Pretendard — 한글 가독성 우선 본문 폰트 (CDN). next/font에 등록 X. */}
+        <link
+          rel="stylesheet"
+          href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css"
+        />
       </head>
       <body className="min-h-full flex flex-col">
         <AuthSessionProvider>
