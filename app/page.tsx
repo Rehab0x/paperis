@@ -14,7 +14,6 @@ import SettingsLink from "@/components/SettingsLink";
 import SortControl from "@/components/SortControl";
 import ContinueListeningCard from "@/components/ContinueListeningCard";
 import MyJournalsNewIssues from "@/components/MyJournalsNewIssues";
-import QuickAccessGrid from "@/components/QuickAccessGrid";
 import TtsQueueBadge from "@/components/TtsQueueBadge";
 import UsageBanner from "@/components/UsageBanner";
 import { useFetchWithKeys } from "@/components/useFetchWithKeys";
@@ -430,7 +429,6 @@ function HomeInner() {
             <>
               <ContinueListeningCard />
               <MyJournalsNewIssues />
-              <QuickAccessGrid />
               <div className="mt-2 rounded-2xl border border-dashed border-zinc-200 bg-white/50 p-5 text-center dark:border-zinc-800 dark:bg-zinc-950/50">
                 <p className="text-sm text-zinc-600 dark:text-zinc-300">
                   또는, 위 검색창에 자연어로 질문해 보세요.

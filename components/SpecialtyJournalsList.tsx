@@ -34,6 +34,7 @@ import {
   subscribeJournalFavorites,
   unfavoriteJournal,
 } from "@/lib/journal-favorites";
+import { cacheJournalMetas } from "@/lib/journal-meta-cache";
 import type { JournalSummary } from "@/lib/openalex";
 
 interface Props {
@@ -83,6 +84,12 @@ export default function SpecialtyJournalsList({
       if (toastTimerRef.current) clearTimeout(toastTimerRef.current);
     };
   }, []);
+
+  // 본 저널들의 메타를 캐시 — 홈의 "내 저널" 카드가 favorites(openAlexId만 저장)도
+  // 메타 복원해 표시할 수 있게.
+  useEffect(() => {
+    cacheJournalMetas([...journals, ...added]);
+  }, [journals, added]);
 
   function showToast(msg: string) {
     setToast(msg);
