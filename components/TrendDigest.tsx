@@ -87,6 +87,44 @@ function isFutureQuarter(year: number, q: Quarter): boolean {
   return startMs > Date.now();
 }
 
+/**
+ * representativePmids 클릭 시 페이지 내 PaperCard(id=`paper-{pmid}`)로 smooth
+ * scroll + 짧은 highlight ring. 카드가 *현재 페이지에 없을 때*는 PubMed 외부 링크
+ * 새 탭으로 fallback.
+ *
+ * JournalPaperList가 클라 페이지네이션이라 80건 중 1페이지(20건)에 없으면 카드가
+ * DOM에 없음 — PubMed fallback이 자연스러움.
+ */
+function jumpToPaper(pmid: string): void {
+  if (typeof window === "undefined") return;
+  const el = document.getElementById(`paper-${pmid}`);
+  if (el) {
+    el.scrollIntoView({ behavior: "smooth", block: "start" });
+    // 짧게 ring highlight — 사용자가 어느 카드인지 즉시 인지
+    el.classList.add(
+      "ring-2",
+      "ring-amber-400",
+      "ring-offset-2",
+      "transition"
+    );
+    setTimeout(() => {
+      el.classList.remove(
+        "ring-2",
+        "ring-amber-400",
+        "ring-offset-2",
+        "transition"
+      );
+    }, 1800);
+    return;
+  }
+  // 페이지 내에 없음 — PubMed 새 탭
+  window.open(
+    `https://pubmed.ncbi.nlm.nih.gov/${encodeURIComponent(pmid)}/`,
+    "_blank",
+    "noopener,noreferrer"
+  );
+}
+
 const DIRECTION_COLOR: Record<Direction, string> = {
   increasing:
     "border-emerald-300 bg-emerald-50 text-emerald-800 dark:border-emerald-800 dark:bg-emerald-950 dark:text-emerald-300",
@@ -309,14 +347,14 @@ export default function TrendDigest({ issn, journalName }: Props) {
                     {t.representativePmids.map((pmid, idx) => (
                       <span key={pmid}>
                         {idx > 0 ? ", " : ""}
-                        <a
-                          href={`https://pubmed.ncbi.nlm.nih.gov/${pmid}/`}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="font-mono underline hover:text-zinc-700 dark:hover:text-zinc-300"
+                        <button
+                          type="button"
+                          onClick={() => jumpToPaper(pmid)}
+                          title="페이지 내 논문 카드로 이동 (없으면 PubMed 새 탭)"
+                          className="cursor-pointer rounded font-mono underline hover:text-zinc-700 dark:hover:text-zinc-300"
                         >
                           {pmid}
-                        </a>
+                        </button>
                       </span>
                     ))}
                   </p>

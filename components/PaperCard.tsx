@@ -44,6 +44,8 @@ export default function PaperCard({
 
   return (
     <article
+      // 트렌드의 representativePmids가 anchor scroll로 점프할 때 타깃 id로 사용
+      id={`paper-${paper.pmid}`}
       onClick={() => onSelect(paper.pmid)}
       className={[
         "group cursor-pointer rounded-xl border p-4 transition",

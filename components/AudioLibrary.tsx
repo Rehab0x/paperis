@@ -203,6 +203,12 @@ export default function AudioLibrary({ onOpenPaper }: Props) {
                       {player.isPlaying ? "▶" : "⏸"}
                     </span>
                   ) : null}
+                  {/* 트렌드 트랙 시각 구분 — pmid가 "trend:" prefix면 📊 배지 */}
+                  {track.pmid.startsWith("trend:") ? (
+                    <span className="mr-1.5 rounded bg-indigo-50 px-1.5 py-0.5 text-[9px] font-medium text-indigo-700 dark:bg-indigo-950 dark:text-indigo-300">
+                      📊 트렌드
+                    </span>
+                  ) : null}
                   {track.title}
                 </p>
                 <p className="mt-0.5 truncate text-[11px] leading-tight text-zinc-500">
