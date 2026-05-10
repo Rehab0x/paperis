@@ -16,14 +16,26 @@ let _client: Redis | null = null;
 // 한 번 초기화 실패하면 그 프로세스 동안 다시 시도 안 함 (콜드스타트마다 시도)
 let _initFailed = false;
 
+// dev 환경에서만 진단 로그 — prod logs 노이즈 방지
+const IS_DEV = process.env.NODE_ENV === "development";
+
 function getClient(): Redis | null {
   if (_initFailed) return null;
   if (_client) return _client;
   const url = process.env.UPSTASH_REDIS_REST_URL;
   const token = process.env.UPSTASH_REDIS_REST_TOKEN;
-  if (!url || !token) return null;
+  if (!url || !token) {
+    if (IS_DEV) {
+      console.warn("[journal-cache] env missing", {
+        hasUrl: Boolean(url),
+        hasToken: Boolean(token),
+      });
+    }
+    return null;
+  }
   try {
     _client = new Redis({ url, token });
+    if (IS_DEV) console.log("[journal-cache] Redis client initialized");
     return _client;
   } catch (err) {
     console.warn("[journal-cache] Redis init failed", err);
@@ -37,6 +49,9 @@ export async function getCached<T>(key: string): Promise<T | null> {
   if (!client) return null;
   try {
     const v = await client.get<T>(key);
+    if (IS_DEV) {
+      console.log(`[journal-cache] GET ${key}: ${v ? "HIT" : "miss"}`);
+    }
     return v ?? null;
   } catch (err) {
     console.warn("[journal-cache] get failed", key, err);
@@ -56,6 +71,11 @@ export async function setCached<T>(
       await client.set(key, value, { ex: options.ttlSeconds });
     } else {
       await client.set(key, value);
+    }
+    if (IS_DEV) {
+      console.log(
+        `[journal-cache] SET ${key}${options?.ttlSeconds ? ` (ttl ${options.ttlSeconds}s)` : ""}`
+      );
     }
   } catch (err) {
     console.warn("[journal-cache] set failed", key, err);
