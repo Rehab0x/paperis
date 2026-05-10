@@ -108,8 +108,19 @@ export default function AuthMenu() {
               </span>
             </Link>
           ) : null}
+          {user.onboardingDone ? (
+            <Link
+              href="/billing"
+              role="menuitem"
+              onClick={() => setOpen(false)}
+              className="mb-1 flex items-center gap-2 rounded-lg px-2 py-1.5 text-xs font-medium text-zinc-700 transition hover:bg-zinc-100 dark:text-zinc-300 dark:hover:bg-zinc-800"
+            >
+              <span>💎</span>
+              <span>업그레이드</span>
+            </Link>
+          ) : null}
           <div className="px-2 pb-1 text-[11px] text-zinc-500 dark:text-zinc-400">
-            내 임상과·저널 설정이 디바이스 간 동기화됩니다 (M4 PR3+).
+            내 임상과·저널 설정이 디바이스 간 동기화됩니다.
           </div>
           <button
             type="button"
