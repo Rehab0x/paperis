@@ -166,3 +166,53 @@ export const userJournalFavorites = pgTable(
     pk: primaryKey({ columns: [t.userId, t.specialtyId, t.openalexId] }),
   })
 );
+
+// ── v3 M6 — 사용량 카운터 + M7 결제(미리 schema만) ─────────────────────
+
+/**
+ * 월별 사용량. identityKey는 `user_id` (로그인) 또는 `anon:{uuid}` (비로그인).
+ * yearMonth는 KST 기준 "YYYY-MM" — 매달 자연 분리되어 cron 없이도 lazy reset.
+ *
+ * BYOK/Pro 사용자는 lib/usage.ts에서 사전 분기되어 카운트 자체 안 일어남.
+ */
+export const usageMonthly = pgTable(
+  "usage_monthly",
+  {
+    identityKey: text("identity_key").notNull(),
+    yearMonth: text("year_month").notNull(),
+    /** 호/주제/트렌드 실행 횟수 */
+    curationCount: integer("curation_count").notNull().default(0),
+    /** TTS narration 변환 횟수 */
+    ttsCount: integer("tts_count").notNull().default(0),
+    /** 풀텍스트 요약 호출 횟수 */
+    fulltextCount: integer("fulltext_count").notNull().default(0),
+    updatedAt: timestamp("updated_at", { mode: "date" })
+      .notNull()
+      .default(sql`now()`),
+  },
+  (t) => ({
+    pk: primaryKey({ columns: [t.identityKey, t.yearMonth] }),
+  })
+);
+
+/**
+ * 결제 구독 — M7에서 채워짐. M6에는 schema만 미리 (사용 안 함, plan 조회 시 fallback).
+ * status: active / cancelled / suspended
+ * plan: pro / byok
+ */
+export const subscriptions = pgTable("subscriptions", {
+  userId: text("user_id")
+    .primaryKey()
+    .references(() => users.id, { onDelete: "cascade" }),
+  status: text("status").notNull().default("inactive"),
+  plan: text("plan"),
+  expiresAt: timestamp("expires_at", { mode: "date" }),
+  tossCustomerKey: text("toss_customer_key"),
+  tossBillingKey: text("toss_billing_key"),
+  createdAt: timestamp("created_at", { mode: "date" })
+    .notNull()
+    .default(sql`now()`),
+  updatedAt: timestamp("updated_at", { mode: "date" })
+    .notNull()
+    .default(sql`now()`),
+});

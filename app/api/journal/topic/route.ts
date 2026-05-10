@@ -6,6 +6,12 @@
 
 import { enrichPapers } from "@/lib/openalex";
 import { searchPubMed } from "@/lib/pubmed";
+import {
+  checkAndIncrement,
+  getIdentityKey,
+  getPlan,
+  limitExceededMessage,
+} from "@/lib/usage";
 import { applyUserKeysToEnv } from "@/lib/user-keys";
 import type { ApiError, Paper, SortMode } from "@/types";
 
@@ -79,6 +85,17 @@ export async function GET(req: Request) {
     : 0;
 
   const term = buildTopicTerm(issn, topic);
+
+  // Free 한도 체크 (curation 카테고리)
+  const identityKey = await getIdentityKey(req);
+  const plan = await getPlan(req);
+  const usage = await checkAndIncrement(identityKey, "curation", plan);
+  if (!usage.allowed) {
+    return jsonError(
+      limitExceededMessage("curation", usage, identityKey?.startsWith("anon:") === false),
+      429
+    );
+  }
 
   let papers: Paper[];
   let total: number;

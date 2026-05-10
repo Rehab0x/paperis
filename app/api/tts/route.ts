@@ -6,6 +6,12 @@ import {
   generateNarrationText,
 } from "@/lib/gemini";
 import { resolveTtsProvider } from "@/lib/tts";
+import {
+  checkAndIncrement,
+  getIdentityKey,
+  getPlan,
+  limitExceededMessage,
+} from "@/lib/usage";
 import { applyUserKeysToEnv } from "@/lib/user-keys";
 import type { ApiError, Language, Paper, TtsRequestBody } from "@/types";
 
@@ -72,6 +78,17 @@ export async function POST(req: Request) {
     );
   }
   const provider = resolved.provider;
+
+  // Free 한도 체크 (TTS 카테고리). BYOK/Pro는 무제한 통과
+  const identityKey = await getIdentityKey(req);
+  const plan = await getPlan(req);
+  const usage = await checkAndIncrement(identityKey, "tts", plan);
+  if (!usage.allowed) {
+    return jsonError(
+      limitExceededMessage("tts", usage, identityKey?.startsWith("anon:") === false),
+      429
+    );
+  }
   // 요청 provider가 사용자가 명시한 voice 라인업과 다르면 voice 무시 (provider별 voice가 다름)
   const voiceForProvider = resolved.degraded ? undefined : voice;
 

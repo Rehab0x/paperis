@@ -2,6 +2,12 @@
 // 클라이언트는 chunk 단위로 받아 Markdown처럼 점진 렌더.
 
 import { friendlyErrorMessage, streamSummary } from "@/lib/gemini";
+import {
+  checkAndIncrement,
+  getIdentityKey,
+  getPlan,
+  limitExceededMessage,
+} from "@/lib/usage";
 import { applyUserKeysToEnv } from "@/lib/user-keys";
 import type { Language, Paper, SummarizeReadRequest } from "@/types";
 
@@ -43,6 +49,20 @@ export async function POST(req: Request) {
   const paper: Paper = fullText
     ? { ...body.paper, abstract: fullText }
     : body.paper;
+
+  // Free 한도 체크 (fulltext 카테고리 — 긴 요약은 풀텍스트 요약 그룹).
+  // BYOK/Pro는 무제한. Streaming 시작 전이라 정상 jsonError 가능.
+  const identityKey = await getIdentityKey(req);
+  const plan = await getPlan(req);
+  const usage = await checkAndIncrement(identityKey, "fulltext", plan);
+  if (!usage.allowed) {
+    const msg = limitExceededMessage(
+      "fulltext",
+      usage,
+      identityKey?.startsWith("anon:") === false
+    );
+    return new Response(msg, { status: 429 });
+  }
 
   const encoder = new TextEncoder();
   const stream = new ReadableStream<Uint8Array>({

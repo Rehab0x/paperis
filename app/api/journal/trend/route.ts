@@ -10,6 +10,12 @@ import { TTL_24H, getCached, setCached, trendKey } from "@/lib/journal-cache";
 import { enrichPapers } from "@/lib/openalex";
 import { searchPubMed } from "@/lib/pubmed";
 import { generateJournalTrend, type JournalTrend } from "@/lib/trend";
+import {
+  checkAndIncrement,
+  getIdentityKey,
+  getPlan,
+  limitExceededMessage,
+} from "@/lib/usage";
 import { applyUserKeysToEnv } from "@/lib/user-keys";
 import type { ApiError, Paper } from "@/types";
 
@@ -110,7 +116,7 @@ export async function GET(req: Request) {
     period.toDay
   );
 
-  // 캐시 hit이면 PubMed/OpenAlex/Gemini 호출 모두 스킵
+  // 캐시 hit이면 PubMed/OpenAlex/Gemini 호출 모두 스킵 — usage 카운트도 안 함
   const cacheKey = `${trendKey(issn, months)}:${language}`;
   const cached = await getCached<TrendResponse>(cacheKey);
   if (cached) {
@@ -122,6 +128,17 @@ export async function GET(req: Request) {
         "cache-control": "public, max-age=0, s-maxage=3600",
       },
     });
+  }
+
+  // 캐시 miss → Free 한도 체크 (curation 카테고리)
+  const identityKey = await getIdentityKey(req);
+  const plan = await getPlan(req);
+  const usage = await checkAndIncrement(identityKey, "curation", plan);
+  if (!usage.allowed) {
+    return jsonError(
+      limitExceededMessage("curation", usage, identityKey?.startsWith("anon:") === false),
+      429
+    );
   }
 
   // 1) PubMed로 최근 호 abstract 모음. recency 정렬, retmax 80으로 분석 입력 절제.

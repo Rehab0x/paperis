@@ -12,6 +12,12 @@ import {
 } from "@/lib/journal-cache";
 import { enrichPapers } from "@/lib/openalex";
 import { searchPubMed } from "@/lib/pubmed";
+import {
+  checkAndIncrement,
+  getIdentityKey,
+  getPlan,
+  limitExceededMessage,
+} from "@/lib/usage";
 import { applyUserKeysToEnv } from "@/lib/user-keys";
 import type { ApiError, Paper } from "@/types";
 
@@ -82,7 +88,7 @@ export async function GET(req: Request) {
   const term = buildIssueTerm(issn, year, month);
   const cacheKey = `issue:${issn}:${year}-${pad2(month)}:r${retmax}s${retstart}`;
 
-  // 캐시 hit이면 PubMed/OpenAlex 호출 없이 바로 반환
+  // 캐시 hit이면 PubMed/OpenAlex 호출 없이 바로 반환 — usage 카운트도 안 함 (비용 0)
   const cached = await getCached<IssuesResponse>(cacheKey);
   if (cached) {
     return new Response(JSON.stringify(cached), {
@@ -93,6 +99,17 @@ export async function GET(req: Request) {
         "cache-control": "public, max-age=0, s-maxage=3600",
       },
     });
+  }
+
+  // 캐시 miss → Free 한도 체크 (BYOK/Pro는 무제한 통과)
+  const identityKey = await getIdentityKey(req);
+  const plan = await getPlan(req);
+  const usage = await checkAndIncrement(identityKey, "curation", plan);
+  if (!usage.allowed) {
+    return jsonError(
+      limitExceededMessage("curation", usage, identityKey?.startsWith("anon:") === false),
+      429
+    );
   }
 
   let papers: Paper[];
