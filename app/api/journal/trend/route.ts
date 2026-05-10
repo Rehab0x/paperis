@@ -197,9 +197,11 @@ export async function GET(req: Request) {
   };
 
   // 트렌드 결과 비어있으면(papers 0건 or trend.bullets 비어있음) 캐시하지 않음 —
-  // 다음 호출에서 다시 시도할 기회를 줌
+  // 다음 호출에서 다시 시도할 기회를 줌.
+  // await으로 set 보장 — Vercel serverless가 응답 후 종료해 fire-and-forget이
+  // 미완료되는 문제 방지.
   if (papers.length > 0 && trend.bullets.length > 0) {
-    void setCached(cacheKey, body, { ttlSeconds: TTL_24H });
+    await setCached(cacheKey, body, { ttlSeconds: TTL_24H });
   }
 
   return new Response(JSON.stringify(body), {

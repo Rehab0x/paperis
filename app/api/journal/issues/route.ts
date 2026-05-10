@@ -145,10 +145,11 @@ export async function GET(req: Request) {
 
   const body: IssuesResponse = { query: term, papers, total, year, month };
 
-  // 과거 호는 ∞ TTL (결과 불변), 당월은 24h (PubMed 인덱싱 지연 + 새 논문)
+  // 과거 호는 ∞ TTL (결과 불변), 당월은 24h (PubMed 인덱싱 지연 + 새 논문).
+  // Vercel serverless는 응답 후 함수 즉시 종료라 fire-and-forget(void)이 완료
+  // 못 함 → await로 set 보장 (Redis SET ~100ms이라 응답 영향 미미).
   const ttl = isPastIssue(year, month) ? undefined : TTL_24H;
-  // fire-and-forget — 캐시 set 실패해도 응답에는 영향 없음
-  void setCached(cacheKey, body, { ttlSeconds: ttl });
+  await setCached(cacheKey, body, { ttlSeconds: ttl });
 
   return new Response(JSON.stringify(body), {
     status: 200,
