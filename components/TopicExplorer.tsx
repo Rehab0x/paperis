@@ -1,10 +1,10 @@
 "use client";
 
 // 저널 주제 탐색 — 추천 태그(저널 임상과의 suggestedTopics) + 자유 입력.
-// 입력 → /api/journal/topic 호출 → JournalPaperList로 master-detail 렌더.
+// 입력 → /api/journal/topic 호출 (전체 100건까지) → JournalPaperList가 클라
+// 페이지네이션 + OA 우선 정렬.
 
 import { FormEvent, useEffect, useState } from "react";
-import JournalPaginationView from "@/components/JournalPagination";
 import JournalPaperList from "@/components/JournalPaperList";
 import { useFetchWithKeys } from "@/components/useFetchWithKeys";
 import type { Paper } from "@/types";
@@ -26,7 +26,9 @@ interface TopicResponse {
   issn: string;
 }
 
-const PAGE_SIZE = 20;
+// 한 번에 받을 최대치. PubMed efetch cap 200까지 가능하나 Gemini 미니요약/auto
+// batch 부담 감안해 100으로.
+const FETCH_LIMIT = 100;
 
 export default function TopicExplorer({
   issn,
@@ -36,22 +38,14 @@ export default function TopicExplorer({
 }: Props) {
   const [input, setInput] = useState("");
   const [submittedTopic, setSubmittedTopic] = useState<string>("");
-  const [page, setPage] = useState(1);
   const [papers, setPapers] = useState<Paper[]>([]);
   const [total, setTotal] = useState(0);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const fetchWithKeys = useFetchWithKeys();
-  const fetchKey = `${issn}::topic::${submittedTopic}::${page}`;
+  const fetchKey = `${issn}::topic::${submittedTopic}`;
 
-  // 새 topic 또는 issn 변경 시 첫 페이지로
-  useEffect(() => {
-    setPage(1);
-  }, [issn, submittedTopic]);
-
-  // dedupe ref 가드는 의도적으로 사용하지 않는다 — Strict Mode mount cycle에서 무한
-  // loading 발생 (PaperDetailPanel 패턴 동일). cancelled flag + AbortController로 충분.
   useEffect(() => {
     if (!submittedTopic) {
       setPapers([]);
@@ -70,8 +64,7 @@ export default function TopicExplorer({
         const params = new URLSearchParams({
           issn,
           topic: submittedTopic,
-          retmax: String(PAGE_SIZE),
-          retstart: String((page - 1) * PAGE_SIZE),
+          retmax: String(FETCH_LIMIT),
         });
         const res = await fetchWithKeys(
           `/api/journal/topic?${params.toString()}`,
@@ -113,11 +106,7 @@ export default function TopicExplorer({
       cancelled = true;
       controller.abort();
     };
-  }, [fetchKey, issn, submittedTopic, page, fetchWithKeys]);
-
-  const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
-  const showFrom = total > 0 ? (page - 1) * PAGE_SIZE + 1 : 0;
-  const showTo = total > 0 ? (page - 1) * PAGE_SIZE + papers.length : 0;
+  }, [fetchKey, issn, submittedTopic, fetchWithKeys]);
 
   function handleSubmit(e: FormEvent) {
     e.preventDefault();
@@ -175,8 +164,8 @@ export default function TopicExplorer({
         ) : null}
         {!loading && submittedTopic && total > 0 ? (
           <p className="mt-3 text-xs text-zinc-500">
-            {journalName} · 주제 “{submittedTopic}” — {total.toLocaleString()}건
-            중 {showFrom}–{showTo}건 표시
+            {journalName} · 주제 “{submittedTopic}” — PubMed 전체{" "}
+            {total.toLocaleString()}건 (받은 {papers.length}건 정렬·페이지네이션)
           </p>
         ) : null}
       </div>
@@ -198,16 +187,6 @@ export default function TopicExplorer({
                 다른 키워드를 시도하거나 추천 태그를 눌러보세요.
               </p>
             </div>
-          }
-          footer={
-            !loading && papers.length > 0 ? (
-              <JournalPaginationView
-                page={page}
-                totalPages={totalPages}
-                pageSize={PAGE_SIZE}
-                onChange={setPage}
-              />
-            ) : null
           }
         />
       )}

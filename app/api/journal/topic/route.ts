@@ -77,9 +77,12 @@ export async function GET(req: Request) {
   }
   const sort: SortMode =
     sortRaw === "recency" || sortRaw === "citations" ? sortRaw : "relevance";
+  // 주제 검색 결과 전체를 한 번에 받아 client에서 정렬 + 페이지네이션. PubMed
+  // 매칭이 많을 수 있어 cap 200까지 허용 (default 100 — Gemini 미니요약 batch
+  // 부담 절제).
   const retmax = Number.isFinite(retmaxRaw)
-    ? Math.min(Math.max(Math.floor(retmaxRaw), 1), 100)
-    : 20;
+    ? Math.min(Math.max(Math.floor(retmaxRaw), 1), 200)
+    : 100;
   const retstart = Number.isFinite(retstartRaw)
     ? Math.max(Math.floor(retstartRaw), 0)
     : 0;

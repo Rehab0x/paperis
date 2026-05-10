@@ -1,10 +1,10 @@
 "use client";
 
 // 저널 최근 트렌드 — Gemini가 abstract 모음을 보고 만든 headline + 5-7 bullet.
-// 분석 대상이 된 논문 목록도 함께 노출 (master-detail).
+// 분석 대상이 된 논문 목록(최대 80건)도 함께 노출. JournalPaperList가 클라
+// 페이지네이션 + OA 우선 정렬.
 
-import { useEffect, useMemo, useState } from "react";
-import JournalPaginationView from "@/components/JournalPagination";
+import { useEffect, useState } from "react";
 import JournalPaperList from "@/components/JournalPaperList";
 import { useFetchWithKeys } from "@/components/useFetchWithKeys";
 import type { Paper } from "@/types";
@@ -35,11 +35,8 @@ const MONTH_OPTIONS = [
   { v: 12, label: "최근 12개월" },
 ];
 
-const PAGE_SIZE = 20;
-
 export default function TrendDigest({ issn, journalName }: Props) {
   const [months, setMonths] = useState<number>(6);
-  const [page, setPage] = useState(1);
 
   const [papers, setPapers] = useState<Paper[]>([]);
   const [total, setTotal] = useState(0);
@@ -50,15 +47,8 @@ export default function TrendDigest({ issn, journalName }: Props) {
   const [error, setError] = useState<string | null>(null);
 
   const fetchWithKeys = useFetchWithKeys();
-  const fetchKey = `${issn}::trend::${months}::${page}`;
+  const fetchKey = `${issn}::trend::${months}`;
 
-  // 기간 또는 issn 변경 시 첫 페이지로
-  useEffect(() => {
-    setPage(1);
-  }, [issn, months]);
-
-  // dedupe ref 가드는 의도적으로 사용하지 않는다 — Strict Mode mount cycle에서 무한
-  // loading + 새 응답이 cancelled로 차단되어 화면 갱신 안 됨 (PaperDetailPanel 패턴 동일).
   useEffect(() => {
     let cancelled = false;
     const controller = new AbortController();
@@ -119,16 +109,6 @@ export default function TrendDigest({ issn, journalName }: Props) {
     };
   }, [fetchKey, issn, journalName, months, fetchWithKeys]);
 
-  // 80건을 받아 클라이언트가 페이지 단위로 슬라이스
-  const pagedPapers = useMemo(
-    () => papers.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE),
-    [papers, page]
-  );
-  const totalPages = Math.max(1, Math.ceil(papers.length / PAGE_SIZE));
-  const showFrom = papers.length > 0 ? (page - 1) * PAGE_SIZE + 1 : 0;
-  const showTo =
-    papers.length > 0 ? (page - 1) * PAGE_SIZE + pagedPapers.length : 0;
-
   return (
     <section className="flex flex-col gap-4">
       <div className="flex flex-wrap items-center gap-3 rounded-2xl border border-zinc-200 bg-white p-3 dark:border-zinc-800 dark:bg-zinc-950">
@@ -154,8 +134,8 @@ export default function TrendDigest({ issn, journalName }: Props) {
         </div>
         {periodLabel ? (
           <span className="text-xs text-zinc-500">
-            기간 {periodLabel} · {total.toLocaleString()}건 분석 대상 (상위{" "}
-            {papers.length}건 중 {showFrom}–{showTo}건 표시)
+            기간 {periodLabel} · 분석 대상 {total.toLocaleString()}건 (받은{" "}
+            {papers.length}건 정렬·페이지네이션)
           </span>
         ) : null}
       </div>
@@ -204,20 +184,10 @@ export default function TrendDigest({ issn, journalName }: Props) {
       ) : null}
 
       <JournalPaperList
-        papers={pagedPapers}
+        papers={papers}
         loading={loading && papers.length === 0}
         error={null}
         fetchKey={fetchKey}
-        footer={
-          !loading && papers.length > 0 ? (
-            <JournalPaginationView
-              page={page}
-              totalPages={totalPages}
-              pageSize={PAGE_SIZE}
-              onChange={setPage}
-            />
-          ) : null
-        }
       />
     </section>
   );

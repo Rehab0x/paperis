@@ -1,10 +1,16 @@
 "use client";
 
-// 저널 큐레이션 흐름의 공통 master-detail. 호 탐색·주제 탐색이 같은 골격을 쓴다.
-// 외부에서 papers/loading/error를 props로 주고, 내부에서 selectedPmid + 미니 요약
-// 자동 batch + PaperDetailPanel 디스플레이를 처리.
+// 저널 큐레이션 흐름의 공통 master-detail. 호 탐색·주제 탐색·트렌드가 같은 골격.
+// 부모는 papers 전체(보통 100-200건)를 한 번에 전달. 이 컴포넌트가 자체적으로:
+//   - Open Access 우선 정렬 (전체 결과 단위 — 진정한 "OA 위로")
+//   - 페이지네이션 (page state + slice)
+//   - 페이지 변경 시 자동 스크롤 top
+//   - 미니 요약 자동 batch (옵션, 사용자 설정)
+//   - 카드 선택 → PaperDetailPanel
+// 페이지네이션은 결과 위·아래 양쪽에 표시 — 스크롤 왕복 안 해도 다음 페이지 가능.
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import JournalPaginationView from "@/components/JournalPagination";
 import PaperDetailPanel from "@/components/PaperDetailPanel";
 import ResultsList from "@/components/ResultsList";
 import { useAutoMiniSummary } from "@/components/useAutoMiniSummary";
@@ -27,9 +33,11 @@ interface Props {
    * (예: `${issn}::${year}::${month}` 또는 `${issn}::${topic}`)
    */
   fetchKey: string;
-  /** 결과 카드 아래에 노출할 페이지네이션 등 부가 영역 */
-  footer?: React.ReactNode;
+  /** 한 페이지에 표시할 카드 수 — default 20 */
+  pageSize?: number;
 }
+
+const DEFAULT_PAGE_SIZE = 20;
 
 export default function JournalPaperList({
   papers,
@@ -37,7 +45,7 @@ export default function JournalPaperList({
   error,
   emptyMessage,
   fetchKey,
-  footer,
+  pageSize = DEFAULT_PAGE_SIZE,
 }: Props) {
   const [selectedPmid, setSelectedPmid] = useState<string | null>(null);
   const [miniSummaries, setMiniSummaries] = useState<Map<string, MiniSummary>>(
@@ -45,10 +53,16 @@ export default function JournalPaperList({
   );
   const [miniLoading, setMiniLoading] = useState<Set<string>>(() => new Set());
   const [oaFirst, setOaFirst] = useState(false);
+  const [page, setPage] = useState(1);
 
   const fetchWithKeys = useFetchWithKeys();
   const autoMiniKeyRef = useRef<string>("");
   const autoMiniEnabled = useAutoMiniSummary();
+
+  // fetchKey 또는 oaFirst 바뀌면 1페이지로 — 정렬 변경 시 첫 페이지 보는 게 자연스러움
+  useEffect(() => {
+    setPage(1);
+  }, [fetchKey, oaFirst]);
 
   // fetchKey 바뀌면 선택·요약 캐시 리셋
   useEffect(() => {
@@ -58,8 +72,9 @@ export default function JournalPaperList({
     autoMiniKeyRef.current = "";
   }, [fetchKey]);
 
-  // Open Access 우선 정렬 — 같은 access 안에서는 원래 순서 보존(stable sort).
-  const displayPapers = useMemo(() => {
+  // Open Access 우선 정렬 — 전체 papers 단위 (페이지 안에서만이 아니라).
+  // 같은 access 안에서는 원래 순서 보존(stable sort).
+  const sortedPapers = useMemo(() => {
     if (!oaFirst) return papers;
     return [...papers].sort((a, b) => {
       const aOpen = a.access === "open" ? 0 : 1;
@@ -72,6 +87,28 @@ export default function JournalPaperList({
     () => papers.reduce((n, p) => n + (p.access === "open" ? 1 : 0), 0),
     [papers]
   );
+
+  // 페이지 슬라이스 — sorted 결과 중 현재 페이지만 표시
+  const totalPages = Math.max(1, Math.ceil(sortedPapers.length / pageSize));
+  const safePage = Math.min(Math.max(page, 1), totalPages);
+  const pagedPapers = useMemo(
+    () => sortedPapers.slice((safePage - 1) * pageSize, safePage * pageSize),
+    [sortedPapers, safePage, pageSize]
+  );
+  const showFrom = sortedPapers.length > 0 ? (safePage - 1) * pageSize + 1 : 0;
+  const showTo =
+    sortedPapers.length > 0
+      ? (safePage - 1) * pageSize + pagedPapers.length
+      : 0;
+
+  const handlePageChange = useCallback((next: number) => {
+    setPage(next);
+    // 페이지 이동 시 자동으로 페이지 상단 — 스크롤 내려서 페이지네이션 누른 후
+    // 다시 위로 안 가도 됨
+    if (typeof window !== "undefined") {
+      window.scrollTo({ top: 0, behavior: "smooth" });
+    }
+  }, []);
 
   const requestMiniSummary = useCallback(
     async (targets: Paper[]) => {
@@ -126,16 +163,23 @@ export default function JournalPaperList({
     [miniSummaries, miniLoading, fetchWithKeys]
   );
 
-  // 결과 도착 후 상위 3건 미니 요약 자동 batch (검색 키당 1회만).
-  // default OFF — 설정에서 사용자가 켜야 동작 (검색 refine·페이지 이동이 잦은
-  // 패턴에서 quota 낭비 회피).
+  // 결과 도착 후 *현재 페이지의* 상위 3건 미니 요약 자동 batch.
+  // default OFF — 설정에서 사용자가 켜야 동작.
   useEffect(() => {
     if (!autoMiniEnabled) return;
-    if (loading || papers.length === 0) return;
-    if (autoMiniKeyRef.current === fetchKey) return;
-    autoMiniKeyRef.current = fetchKey;
-    void requestMiniSummary(papers.slice(0, 3));
-  }, [autoMiniEnabled, loading, papers, fetchKey, requestMiniSummary]);
+    if (loading || pagedPapers.length === 0) return;
+    const autoKey = `${fetchKey}::p${safePage}`;
+    if (autoMiniKeyRef.current === autoKey) return;
+    autoMiniKeyRef.current = autoKey;
+    void requestMiniSummary(pagedPapers.slice(0, 3));
+  }, [
+    autoMiniEnabled,
+    loading,
+    pagedPapers,
+    fetchKey,
+    safePage,
+    requestMiniSummary,
+  ]);
 
   const handleSelect = useCallback((pmid: string) => {
     setSelectedPmid((prev) => (prev === pmid ? null : pmid));
@@ -155,6 +199,17 @@ export default function JournalPaperList({
       ? papers.find((p) => p.pmid === selectedPmid) ?? null
       : null;
 
+  // 페이지네이션 노드 — header/footer 양쪽 동일 컴포넌트
+  const paginationNode =
+    !loading && totalPages > 1 ? (
+      <JournalPaginationView
+        page={safePage}
+        totalPages={totalPages}
+        pageSize={pageSize}
+        onChange={handlePageChange}
+      />
+    ) : null;
+
   return (
     <div className="flex w-full flex-col gap-6 lg:flex-row">
       <div
@@ -164,7 +219,11 @@ export default function JournalPaperList({
         ].join(" ")}
       >
         {papers.length > 0 ? (
-          <div className="mb-3 flex items-center justify-end">
+          <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+            <p className="text-xs text-zinc-500">
+              총 {sortedPapers.length.toLocaleString()}건 중 {showFrom}–{showTo}건
+              표시
+            </p>
             <button
               type="button"
               onClick={() => setOaFirst((v) => !v)}
@@ -175,13 +234,18 @@ export default function JournalPaperList({
                   ? "border-emerald-500 bg-emerald-50 text-emerald-700 dark:border-emerald-700 dark:bg-emerald-950 dark:text-emerald-300"
                   : "border-zinc-200 text-zinc-600 hover:border-zinc-400 dark:border-zinc-800 dark:text-zinc-300 dark:hover:border-zinc-600",
               ].join(" ")}
-              title="Open Access 논문을 위로 정렬"
+              title="Open Access 논문을 전체 결과 상위로 정렬"
             >
               {oaFirst ? "✓ " : ""}📖 Open Access 우선{" "}
-              <span className="text-zinc-400">({oaCount}/{papers.length})</span>
+              <span className="text-zinc-400">
+                ({oaCount}/{papers.length})
+              </span>
             </button>
           </div>
         ) : null}
+
+        {/* 페이지네이션 — 결과 위 (스크롤 왕복 안 해도 다음 페이지) */}
+        {paginationNode ? <div className="mb-3">{paginationNode}</div> : null}
 
         {error ? (
           <div className="mb-4 rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700 dark:border-red-900 dark:bg-red-950 dark:text-red-300">
@@ -198,7 +262,7 @@ export default function JournalPaperList({
           : null}
 
         <ResultsList
-          papers={displayPapers}
+          papers={pagedPapers}
           loading={loading}
           selectedPmid={selectedPmid}
           miniSummaries={miniSummaries}
@@ -207,7 +271,8 @@ export default function JournalPaperList({
           onLoadMini={handleLoadMini}
         />
 
-        {footer}
+        {/* 페이지네이션 — 결과 아래 */}
+        {paginationNode}
       </div>
 
       <aside

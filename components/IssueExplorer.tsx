@@ -1,10 +1,11 @@
 "use client";
 
 // 저널 호 탐색 — year/month picker + 결과 목록.
-// 결과 master-detail은 JournalPaperList로 위임 (주제 탐색·트렌드와 공통).
+// 한 호 전체(최대 200건)를 한 번에 받고 JournalPaperList가 클라 페이지네이션 +
+// OA 우선 정렬을 처리. 페이지 이동 시 server 호출 없이 즉시 + OA 토글이 전체
+// 결과 단위로 동작.
 
 import { useEffect, useMemo, useState } from "react";
-import JournalPaginationView from "@/components/JournalPagination";
 import JournalPaperList from "@/components/JournalPaperList";
 import { useFetchWithKeys } from "@/components/useFetchWithKeys";
 import type { Paper } from "@/types";
@@ -22,7 +23,8 @@ interface IssuesResponse {
   month: number;
 }
 
-const PAGE_SIZE = 20;
+// 한 번에 받을 최대치. PubMed efetch cap 200.
+const FETCH_LIMIT = 200;
 
 const NOW = new Date();
 function defaultYearMonth(): { year: number; month: number } {
@@ -58,7 +60,6 @@ export default function IssueExplorer({ issn, journalName }: Props) {
   const init = useMemo(defaultYearMonth, []);
   const [year, setYear] = useState<number>(init.year);
   const [month, setMonth] = useState<number>(init.month);
-  const [page, setPage] = useState(1);
 
   const [papers, setPapers] = useState<Paper[]>([]);
   const [total, setTotal] = useState(0);
@@ -66,17 +67,10 @@ export default function IssueExplorer({ issn, journalName }: Props) {
   const [error, setError] = useState<string | null>(null);
 
   const fetchWithKeys = useFetchWithKeys();
-  const fetchKey = `${issn}::${year}::${month}::${page}`;
+  const fetchKey = `${issn}::${year}::${month}`;
   const yearOptions = useMemo(buildYearOptions, []);
 
-  // year/month/issn 변경 시 첫 페이지로 리셋 (page는 fetch effect의 dep이라 자동 재호출)
-  useEffect(() => {
-    setPage(1);
-  }, [issn, year, month]);
-
-  // dedupe ref 가드는 의도적으로 사용하지 않는다 — React Strict Mode의 mount→cleanup→
-  // remount cycle에서 두 번째 mount가 가드에 막히면 첫 mount의 fetch는 abort되고
-  // 두 번째 fetch가 시작도 안 해 status=loading이 영원히 안 풀린다 (PaperDetailPanel 패턴).
+  // dedupe ref 가드는 의도적으로 사용하지 않는다 — Strict Mode 무한 loading 회피.
   useEffect(() => {
     let cancelled = false;
     const controller = new AbortController();
@@ -90,8 +84,7 @@ export default function IssueExplorer({ issn, journalName }: Props) {
           issn,
           year: String(year),
           month: String(month),
-          retmax: String(PAGE_SIZE),
-          retstart: String((page - 1) * PAGE_SIZE),
+          retmax: String(FETCH_LIMIT),
         });
         const res = await fetchWithKeys(
           `/api/journal/issues?${params.toString()}`,
@@ -133,11 +126,7 @@ export default function IssueExplorer({ issn, journalName }: Props) {
       cancelled = true;
       controller.abort();
     };
-  }, [fetchKey, issn, year, month, page, fetchWithKeys]);
-
-  const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
-  const showFrom = total > 0 ? (page - 1) * PAGE_SIZE + 1 : 0;
-  const showTo = total > 0 ? (page - 1) * PAGE_SIZE + papers.length : 0;
+  }, [fetchKey, issn, year, month, fetchWithKeys]);
 
   return (
     <section className="flex flex-col gap-4">
@@ -172,8 +161,8 @@ export default function IssueExplorer({ issn, journalName }: Props) {
         </label>
         {!loading && total > 0 ? (
           <span className="text-xs text-zinc-500">
-            {year}년 {month}월 호 — {total.toLocaleString()}건 중{" "}
-            {showFrom}–{showTo}건 표시
+            {year}년 {month}월 호 — PubMed 전체 {total.toLocaleString()}건
+            (받은 {papers.length}건 정렬·페이지네이션)
           </span>
         ) : null}
       </div>
@@ -191,16 +180,6 @@ export default function IssueExplorer({ issn, journalName }: Props) {
               있을 수 있습니다.
             </p>
           </div>
-        }
-        footer={
-          !loading && papers.length > 0 ? (
-            <JournalPaginationView
-              page={page}
-              totalPages={totalPages}
-              pageSize={PAGE_SIZE}
-              onChange={setPage}
-            />
-          ) : null
         }
       />
     </section>

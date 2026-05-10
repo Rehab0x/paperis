@@ -78,9 +78,11 @@ export async function GET(req: Request) {
   if (!Number.isInteger(month) || month < 1 || month > 12) {
     return jsonError("month는 1~12 정수여야 합니다.");
   }
+  // 호 전체를 한 번에 받아 client에서 OA 정렬 + 페이지네이션 (M6+ 패턴).
+  // PubMed efetch cap 200까지 허용.
   const retmax = Number.isFinite(retmaxRaw)
     ? Math.min(Math.max(Math.floor(retmaxRaw), 1), 200)
-    : 20;
+    : 200;
   const retstart = Number.isFinite(retstartRaw)
     ? Math.max(Math.floor(retstartRaw), 0)
     : 0;
