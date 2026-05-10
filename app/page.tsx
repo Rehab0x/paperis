@@ -4,7 +4,6 @@ import { Suspense, useCallback, useEffect, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import AuthMenu from "@/components/AuthMenu";
-import JournalEntryLink from "@/components/JournalEntryLink";
 import { useAutoMiniSummary } from "@/components/useAutoMiniSummary";
 import LibraryLink from "@/components/LibraryLink";
 import PaperDetailPanel from "@/components/PaperDetailPanel";
@@ -14,6 +13,8 @@ import SettingsLink from "@/components/SettingsLink";
 import SortControl from "@/components/SortControl";
 import ContinueListeningCard from "@/components/ContinueListeningCard";
 import MyJournalsNewIssues from "@/components/MyJournalsNewIssues";
+// JournalEntryLink는 홈이 이제 큐레이션 진입점이라 토픽바에서 제거 (MyJournalsNewIssues
+// 안의 "전체 보기" + 빈 상태 CTA가 같은 동선 제공). 다른 페이지의 헤더에는 그대로 유지.
 import TtsQueueBadge from "@/components/TtsQueueBadge";
 import UsageBanner from "@/components/UsageBanner";
 import { useFetchWithKeys } from "@/components/useFetchWithKeys";
@@ -361,11 +362,10 @@ function HomeInner() {
               Paperis
               <span className="text-paperis-accent">.</span>
             </Link>
-            <div className="flex items-center gap-1">
+            <div className="flex items-center gap-0.5">
               <TtsQueueBadge />
-              <JournalEntryLink className="inline-flex h-9 w-9 items-center justify-center rounded-lg text-paperis-text-2 transition hover:bg-paperis-surface-2 hover:text-paperis-text" />
-              <LibraryLink className="relative inline-flex h-9 w-9 items-center justify-center rounded-lg text-paperis-text-2 transition hover:bg-paperis-surface-2 hover:text-paperis-text" />
-              <SettingsLink className="inline-flex h-9 w-9 items-center justify-center rounded-lg text-lg text-paperis-text-2 transition hover:bg-paperis-surface-2 hover:text-paperis-text" />
+              <LibraryLink className="relative inline-flex h-8 w-8 items-center justify-center rounded-lg text-paperis-text-2 transition hover:bg-paperis-surface-2 hover:text-paperis-text" />
+              <SettingsLink className="inline-flex h-8 w-8 items-center justify-center rounded-lg text-base text-paperis-text-2 transition hover:bg-paperis-surface-2 hover:text-paperis-text" />
               <AuthMenu />
             </div>
           </div>

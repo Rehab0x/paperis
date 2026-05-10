@@ -95,7 +95,7 @@ export default function TtsQueueBadge() {
         ref={buttonRef}
         type="button"
         onClick={() => setOpen((v) => !v)}
-        className="inline-flex items-center gap-1.5 rounded-md border border-emerald-200 bg-emerald-50 px-2 py-1 text-xs text-emerald-800 hover:bg-emerald-100 dark:border-emerald-900 dark:bg-emerald-950 dark:text-emerald-300 dark:hover:bg-emerald-900/40"
+        className="inline-flex h-8 items-center gap-1.5 rounded-lg border border-paperis-accent/40 bg-paperis-accent-dim/30 px-2 text-[11px] font-medium text-paperis-accent transition hover:bg-paperis-accent-dim/50"
         title={
           running
             ? `현재 변환 중: ${running.paper.title}`
@@ -104,9 +104,9 @@ export default function TtsQueueBadge() {
         aria-haspopup="true"
         aria-expanded={open}
       >
-        <span className="inline-block h-1.5 w-1.5 animate-pulse rounded-full bg-emerald-500" />
-        {running ? "TTS 변환 중" : "TTS 대기"}
-        {queued.length > 0 ? ` · ${queued.length}편 대기` : ""}
+        <span className="inline-block h-1.5 w-1.5 animate-pulse rounded-full bg-paperis-accent" />
+        {running ? "변환 중" : "대기"}
+        {queued.length > 0 ? ` · ${queued.length}` : ""}
       </button>
 
       {open && pos ? (

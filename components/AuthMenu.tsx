@@ -32,7 +32,7 @@ export default function AuthMenu() {
     return (
       <span
         aria-label="로그인 상태 확인 중"
-        className="inline-flex h-8 w-16 animate-pulse rounded-full bg-zinc-200 dark:bg-zinc-800"
+        className="inline-flex h-8 w-8 animate-pulse rounded-full bg-paperis-surface-2"
       />
     );
   }
@@ -42,9 +42,9 @@ export default function AuthMenu() {
       <button
         type="button"
         onClick={() => signIn("google")}
-        className="inline-flex h-8 items-center gap-1.5 rounded-full border border-zinc-300 bg-white px-3 text-xs font-medium text-zinc-700 transition hover:border-zinc-500 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-300"
+        className="inline-flex h-8 items-center rounded-lg border border-paperis-border bg-paperis-surface px-3 text-xs font-medium text-paperis-text-2 transition hover:border-paperis-text-3 hover:text-paperis-text"
       >
-        Google 로그인
+        로그인
       </button>
     );
   }
@@ -63,7 +63,7 @@ export default function AuthMenu() {
         onClick={() => setOpen((v) => !v)}
         aria-label="계정 메뉴"
         aria-expanded={open}
-        className="inline-flex h-8 w-8 items-center justify-center overflow-hidden rounded-full border border-zinc-300 bg-zinc-100 text-xs font-semibold text-zinc-700 transition hover:border-zinc-500 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-200"
+        className="inline-flex h-8 w-8 items-center justify-center overflow-hidden rounded-full border border-paperis-border bg-paperis-surface-2 text-xs font-semibold text-paperis-text transition hover:border-paperis-text-3"
       >
         {user.image ? (
           // eslint-disable-next-line @next/next/no-img-element

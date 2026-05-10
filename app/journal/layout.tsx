@@ -21,22 +21,20 @@ export default function JournalLayout({
 }) {
   return (
     <div className="flex w-full flex-1 flex-col">
-      <header className="sticky top-0 z-10 border-b border-zinc-200 bg-white dark:border-zinc-800 dark:bg-zinc-950">
+      <header className="sticky top-0 z-10 border-b border-paperis-border bg-paperis-bg/85 backdrop-blur-xl">
         <div className="mx-auto flex max-w-6xl items-center justify-between gap-4 px-4 py-3 sm:py-4">
           <Link
             href="/"
-            className="text-lg font-semibold tracking-tight text-zinc-900 dark:text-zinc-100"
+            className="font-serif text-2xl font-medium tracking-tight text-paperis-text"
           >
             Paperis
-            <span className="ml-1.5 align-text-top text-[10px] font-mono text-zinc-400">
-              v3
-            </span>
+            <span className="text-paperis-accent">.</span>
           </Link>
           <Suspense fallback={null}>
-            <div className="flex items-center gap-1">
+            <div className="flex items-center gap-0.5">
               <TtsQueueBadge />
-              <LibraryLink />
-              <SettingsLink />
+              <LibraryLink className="relative inline-flex h-8 w-8 items-center justify-center rounded-lg text-paperis-text-2 transition hover:bg-paperis-surface-2 hover:text-paperis-text" />
+              <SettingsLink className="inline-flex h-8 w-8 items-center justify-center rounded-lg text-base text-paperis-text-2 transition hover:bg-paperis-surface-2 hover:text-paperis-text" />
               <AuthMenu />
             </div>
           </Suspense>
