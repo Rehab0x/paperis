@@ -1,5 +1,9 @@
 "use client";
 
+// 글로벌 PlayerBar — fixed bottom. v3 톤(warm + 컴팩트 single row).
+// 모바일에서도 단일 행으로 유지해 LibraryDrawer가 위에서 끝나는 영역을 최대화.
+// −10/+10초 버튼은 키보드(←/→)로 대체 — 모바일 화면 폭에서 제거.
+
 import { useEffect, useRef, useState } from "react";
 import { usePlayer } from "@/components/PlayerProvider";
 
@@ -22,8 +26,8 @@ export default function PlayerBar() {
     if (currentIndex < 0) setScriptOpen(false);
   }, [currentIndex]);
 
-  // PlayerBar 실제 높이를 CSS 변수로 노출 → LibraryDrawer가 그 위에서 끝나도록.
-  // ResizeObserver로 모바일 반응형(컨트롤이 두 줄로) 등 높이 변화 자동 추적.
+  // PlayerBar 실제 높이를 CSS 변수로 노출 → LibraryDrawer/페이지 padding이 정확히
+  // 그 위에서 끝나도록. ResizeObserver로 폰트 로드/리사이즈 시 자동 갱신.
   useEffect(() => {
     const el = barRef.current;
     const root = document.documentElement;
@@ -62,39 +66,57 @@ export default function PlayerBar() {
       ) : null}
       <div
         ref={barRef}
-        className="fixed inset-x-0 bottom-0 z-30 border-t border-zinc-200 bg-white dark:border-zinc-800 dark:bg-zinc-950"
+        className="fixed inset-x-0 bottom-0 z-30 border-t border-paperis-border bg-paperis-bg/95 backdrop-blur-xl"
       >
-        {/* 모바일: column 두 줄(메타+progress / 컨트롤). 데스크탑(sm+): row 한 줄.
-            네비게이션 바가 모바일에서 좁아지지 않게 컨트롤을 아래 줄로 내림. */}
-        <div className="mx-auto flex max-w-6xl flex-col gap-2 px-4 py-2 sm:flex-row sm:items-center sm:gap-3 sm:py-3">
-          <div className="min-w-0 sm:flex-1">
-            <p className="truncate text-sm font-medium text-zinc-900 dark:text-zinc-100">
+        {/* 풀너비 얇은 progress bar — 클릭 시 시크. PlayerBar 톱 라인이자 시각 액센트 */}
+        <div
+          className="relative h-[3px] cursor-pointer bg-paperis-border"
+          onClick={(e) => {
+            const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
+            const pct = (e.clientX - rect.left) / rect.width;
+            if (dur > 0) player.seekTo(pct * dur);
+          }}
+          aria-label="진행 바 (클릭해서 시크)"
+        >
+          <div
+            className="absolute inset-y-0 left-0 bg-paperis-accent transition-[width]"
+            style={{ width: `${progress}%` }}
+          />
+        </div>
+
+        <div className="mx-auto flex max-w-6xl items-center gap-2 px-3 py-2 sm:gap-3 sm:px-4">
+          {/* 큰 play 버튼 (accent) */}
+          <button
+            type="button"
+            onClick={player.togglePlay}
+            className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-paperis-accent text-paperis-bg shadow transition hover:opacity-90"
+            aria-label={isPlaying ? "일시정지 (Space)" : "재생 (Space)"}
+            title={isPlaying ? "일시정지 (Space)" : "재생 (Space)"}
+          >
+            {isPlaying ? "⏸" : "▶"}
+          </button>
+
+          {/* 메타 + 시간 */}
+          <div className="min-w-0 flex-1">
+            <p className="truncate text-sm font-medium text-paperis-text">
               {track.title}
             </p>
-            <p className="truncate text-xs text-zinc-500">
-              {track.journal} · {track.year} · 트랙 {currentIndex + 1}/
-              {queue.length}
+            <p className="flex items-center gap-2 text-[11px] text-paperis-text-3">
+              <span className="truncate">
+                {track.journal}
+                {track.year ? ` · ${track.year}` : ""}
+                <span className="ml-1.5 opacity-70">
+                  · {currentIndex + 1}/{queue.length}
+                </span>
+              </span>
+              <span className="ml-auto shrink-0 font-mono tabular-nums">
+                {formatTime(currentTimeMs)} / {formatTime(dur)}
+              </span>
             </p>
-            <div
-              className="mt-1.5 h-1 cursor-pointer rounded-full bg-zinc-200 dark:bg-zinc-800"
-              onClick={(e) => {
-                const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
-                const pct = (e.clientX - rect.left) / rect.width;
-                if (dur > 0) player.seekTo(pct * dur);
-              }}
-            >
-              <div
-                className="h-1 rounded-full bg-emerald-500"
-                style={{ width: `${progress}%` }}
-              />
-            </div>
-            <div className="mt-1 flex justify-between text-[10px] font-mono text-zinc-400">
-              <span>{formatTime(currentTimeMs)}</span>
-              <span>{formatTime(dur)}</span>
-            </div>
           </div>
 
-          <div className="flex shrink-0 items-center justify-center gap-1.5 sm:justify-start">
+          {/* 컨트롤 — 모바일에서도 컴팩트하게 단일 행 유지 */}
+          <div className="flex shrink-0 items-center gap-0.5">
             <ControlButton
               onClick={player.prev}
               label="이전 트랙 (Shift+←)"
@@ -105,23 +127,16 @@ export default function PlayerBar() {
             <ControlButton
               onClick={() => player.seekBy(-10000)}
               label="-10초 (←)"
+              extraClass="hidden sm:inline-flex"
             >
-              <span className="font-mono text-xs">−10</span>
+              <span className="font-mono text-[10px]">−10</span>
             </ControlButton>
-            <button
-              type="button"
-              onClick={player.togglePlay}
-              className="flex h-10 w-10 items-center justify-center rounded-full bg-zinc-900 text-white shadow-sm hover:bg-zinc-700 dark:bg-zinc-100 dark:text-zinc-900 dark:hover:bg-zinc-300"
-              aria-label={isPlaying ? "일시정지 (Space)" : "재생 (Space)"}
-              title={isPlaying ? "일시정지 (Space)" : "재생 (Space)"}
-            >
-              {isPlaying ? "⏸" : "▶"}
-            </button>
             <ControlButton
               onClick={() => player.seekBy(10000)}
               label="+10초 (→)"
+              extraClass="hidden sm:inline-flex"
             >
-              <span className="font-mono text-xs">+10</span>
+              <span className="font-mono text-[10px]">+10</span>
             </ControlButton>
             <ControlButton
               onClick={player.next}
@@ -135,10 +150,10 @@ export default function PlayerBar() {
               onClick={() => setScriptOpen((v) => !v)}
               disabled={!hasScript}
               className={[
-                "ml-1 inline-flex items-center gap-1 rounded-md px-2 py-1 text-xs font-medium",
+                "inline-flex h-8 w-8 items-center justify-center rounded-lg transition",
                 scriptOpen && hasScript
-                  ? "bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900"
-                  : "text-zinc-600 hover:bg-zinc-100 hover:text-zinc-900 dark:text-zinc-300 dark:hover:bg-zinc-800 dark:hover:text-zinc-100",
+                  ? "bg-paperis-accent text-paperis-bg"
+                  : "text-paperis-text-2 hover:bg-paperis-surface-2 hover:text-paperis-text",
                 !hasScript ? "cursor-not-allowed opacity-30" : "",
               ].join(" ")}
               aria-label="스크립트 보기/숨기기"
@@ -150,12 +165,12 @@ export default function PlayerBar() {
                   : "이 트랙에는 스크립트가 저장되어 있지 않습니다 (v2.0.1 이전 변환)"
               }
             >
-              📜<span className="hidden sm:inline">스크립트</span>
+              📜
             </button>
             <button
               type="button"
               onClick={player.stop}
-              className="ml-1 rounded-md px-2 py-1 text-xs text-zinc-500 hover:bg-zinc-100 hover:text-zinc-700 dark:hover:bg-zinc-800 dark:hover:text-zinc-200"
+              className="inline-flex h-8 w-8 items-center justify-center rounded-lg text-paperis-text-3 transition hover:bg-paperis-surface-2 hover:text-paperis-text"
               aria-label="플레이어 닫기"
               title="플레이어 닫기"
             >
@@ -176,34 +191,32 @@ interface ScriptPanelProps {
   onClose: () => void;
 }
 
-// PlayerBar 위로 펼쳐지는 narration 스크립트 패널.
-// PlayerBar 동적 높이(--player-bar-h)에 맞춰 위치.
 function ScriptPanel({ title, journal, year, text, onClose }: ScriptPanelProps) {
   return (
     <div
-      style={{ bottom: "var(--player-bar-h, 92px)" }}
-      className="fixed inset-x-0 z-40 border-t border-zinc-200 bg-white shadow-[0_-4px_16px_-4px_rgba(0,0,0,0.08)] dark:border-zinc-800 dark:bg-zinc-950"
+      style={{ bottom: "var(--player-bar-h, 64px)" }}
+      className="fixed inset-x-0 z-40 border-t border-paperis-border bg-paperis-bg shadow-[0_-4px_16px_-4px_rgba(0,0,0,0.18)]"
     >
       <div className="mx-auto flex max-w-3xl flex-col px-4 py-3">
         <div className="mb-2 flex items-start justify-between gap-3">
           <div className="min-w-0">
-            <p className="truncate text-sm font-medium text-zinc-900 dark:text-zinc-100">
+            <p className="truncate text-sm font-medium text-paperis-text">
               📜 {title}
             </p>
-            <p className="truncate text-xs text-zinc-500">
+            <p className="truncate text-xs text-paperis-text-3">
               {journal} · {year} · narration 스크립트
             </p>
           </div>
           <button
             type="button"
             onClick={onClose}
-            className="shrink-0 rounded-md px-2 py-1 text-xs text-zinc-500 hover:bg-zinc-100 dark:hover:bg-zinc-800"
+            className="shrink-0 rounded-md px-2 py-1 text-xs text-paperis-text-3 transition hover:bg-paperis-surface-2 hover:text-paperis-text"
             aria-label="스크립트 패널 닫기"
           >
             닫기 ✕
           </button>
         </div>
-        <div className="max-h-[45vh] overflow-auto rounded-lg border border-zinc-200 bg-zinc-50 px-4 py-3 text-[15px] leading-relaxed text-zinc-700 dark:border-zinc-800 dark:bg-zinc-900 dark:text-zinc-200">
+        <div className="max-h-[45vh] overflow-auto rounded-lg border border-paperis-border bg-paperis-surface px-4 py-3 text-[15px] leading-relaxed text-paperis-text-2">
           <p className="whitespace-pre-wrap break-words">{text}</p>
         </div>
       </div>
@@ -216,18 +229,23 @@ function ControlButton({
   label,
   disabled,
   children,
+  extraClass,
 }: {
   onClick: () => void;
   label: string;
   disabled?: boolean;
   children: React.ReactNode;
+  extraClass?: string;
 }) {
   return (
     <button
       type="button"
       onClick={onClick}
       disabled={disabled}
-      className="rounded-md px-2 py-1 text-base text-zinc-700 hover:bg-zinc-100 disabled:cursor-not-allowed disabled:opacity-30 dark:text-zinc-300 dark:hover:bg-zinc-800"
+      className={[
+        "inline-flex h-8 w-8 items-center justify-center rounded-lg text-paperis-text-2 transition hover:bg-paperis-surface-2 hover:text-paperis-text disabled:cursor-not-allowed disabled:opacity-30",
+        extraClass ?? "",
+      ].join(" ")}
       aria-label={label}
       title={label}
     >

@@ -69,7 +69,7 @@ export default function LibraryDrawer({ open, onClose }: Props) {
         onClick={onClose}
         aria-hidden="true"
         className={[
-          "fixed inset-0 z-30 bg-black/30 transition-opacity duration-200 dark:bg-black/60",
+          "fixed inset-0 z-30 bg-black/40 transition-opacity duration-200",
           open ? "opacity-100" : "pointer-events-none opacity-0",
         ].join(" ")}
       />
@@ -80,18 +80,18 @@ export default function LibraryDrawer({ open, onClose }: Props) {
         aria-hidden={!open}
         style={{ bottom: "var(--player-bar-h, 0px)" }}
         className={[
-          "fixed right-0 top-0 z-40 flex w-full max-w-5xl flex-col bg-white shadow-2xl transition-transform duration-300 ease-out dark:bg-zinc-950",
+          "fixed right-0 top-0 z-40 flex w-full max-w-5xl flex-col border-l border-paperis-border bg-paperis-bg shadow-[0_0_60px_-12px_rgba(0,0,0,0.4)] transition-transform duration-300 ease-out",
           open ? "translate-x-0" : "translate-x-full",
         ].join(" ")}
       >
-        <header className="sticky top-0 z-10 flex items-center justify-between gap-3 border-b border-zinc-200 bg-white px-5 py-3 dark:border-zinc-800 dark:bg-zinc-950">
-          <h2 className="text-base font-semibold text-zinc-900 dark:text-zinc-100">
+        <header className="sticky top-0 z-10 flex items-center justify-between gap-3 border-b border-paperis-border bg-paperis-bg/95 px-5 py-3 backdrop-blur-xl">
+          <h2 className="font-serif text-lg font-medium tracking-tight text-paperis-text">
             🎧 오디오 라이브러리
           </h2>
           <button
             type="button"
             onClick={onClose}
-            className="rounded-md px-2 py-1 text-sm text-zinc-500 hover:bg-zinc-100 dark:hover:bg-zinc-800"
+            className="rounded-lg px-2 py-1 text-sm text-paperis-text-2 transition hover:bg-paperis-surface-2 hover:text-paperis-text"
             aria-label="라이브러리 닫기 (ESC)"
             title="ESC"
           >
