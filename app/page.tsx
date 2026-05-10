@@ -12,6 +12,9 @@ import ResultsList from "@/components/ResultsList";
 import SearchBar from "@/components/SearchBar";
 import SettingsLink from "@/components/SettingsLink";
 import SortControl from "@/components/SortControl";
+import ContinueListeningCard from "@/components/ContinueListeningCard";
+import MyJournalsNewIssues from "@/components/MyJournalsNewIssues";
+import QuickAccessGrid from "@/components/QuickAccessGrid";
 import TtsQueueBadge from "@/components/TtsQueueBadge";
 import UsageBanner from "@/components/UsageBanner";
 import { useFetchWithKeys } from "@/components/useFetchWithKeys";
@@ -424,15 +427,19 @@ function HomeInner() {
             </div>
           ) : null}
           {!q.trim() && !loading ? (
-            <div className="rounded-2xl border border-dashed border-zinc-300 bg-white p-10 text-center dark:border-zinc-700 dark:bg-zinc-950">
-              <h1 className="text-2xl font-semibold text-zinc-800 dark:text-zinc-100">
-                자연어로 PubMed를 검색하세요
-              </h1>
-              <p className="mt-2 text-sm text-zinc-500">
-                질문을 그대로 입력하면 Gemini가 검색식으로 바꿔
-                돌립니다.
-              </p>
-            </div>
+            <>
+              <ContinueListeningCard />
+              <MyJournalsNewIssues />
+              <QuickAccessGrid />
+              <div className="mt-2 rounded-2xl border border-dashed border-zinc-200 bg-white/50 p-5 text-center dark:border-zinc-800 dark:bg-zinc-950/50">
+                <p className="text-sm text-zinc-600 dark:text-zinc-300">
+                  또는, 위 검색창에 자연어로 질문해 보세요.
+                </p>
+                <p className="mt-1 text-[11px] text-zinc-500">
+                  Gemini가 PubMed 검색식으로 바꿔 돌립니다.
+                </p>
+              </div>
+            </>
           ) : null}
 
           {q.trim() && !loading && papers.length === 0 && !error ? (
