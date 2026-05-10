@@ -13,6 +13,7 @@
 
 import { useEffect, useState } from "react";
 import JournalPaperList from "@/components/JournalPaperList";
+import TrendTtsButton from "@/components/TrendTtsButton";
 import { useFetchWithKeys } from "@/components/useFetchWithKeys";
 import type { Paper } from "@/types";
 
@@ -347,28 +348,36 @@ export default function TrendDigest({ issn, journalName }: Props) {
           ) : null}
 
           {trend.narrationScript ? (
-            <details className="group rounded-lg border border-zinc-200 bg-white dark:border-zinc-800 dark:bg-zinc-950">
-              <summary className="flex cursor-pointer items-center justify-between gap-2 px-3 py-2 text-sm">
-                <span className="text-zinc-700 dark:text-zinc-300">
-                  📻 트렌드 브리핑 스크립트 (
-                  {trend.narrationScript.length.toLocaleString()}자)
-                </span>
-                <span className="text-xs text-zinc-400 group-open:hidden">
-                  펼치기
-                </span>
-                <span className="hidden text-xs text-zinc-400 group-open:inline">
-                  접기
-                </span>
-              </summary>
-              <div className="border-t border-zinc-200 px-3 py-3 dark:border-zinc-800">
-                <p className="whitespace-pre-wrap text-sm leading-relaxed text-zinc-700 dark:text-zinc-300">
-                  {trend.narrationScript}
-                </p>
-                <p className="mt-3 text-[11px] text-zinc-400">
-                  TTS 청취 + 라이브러리 추가는 다음 단계에서 활성화됩니다.
-                </p>
-              </div>
-            </details>
+            <div className="space-y-3">
+              <TrendTtsButton
+                narrationScript={trend.narrationScript}
+                issn={issn}
+                journalName={journalName}
+                year={year}
+                quarter={quarter}
+                periodLabel={periodLabel}
+                headline={trend.headline}
+              />
+              <details className="group rounded-lg border border-zinc-200 bg-white dark:border-zinc-800 dark:bg-zinc-950">
+                <summary className="flex cursor-pointer items-center justify-between gap-2 px-3 py-2 text-sm">
+                  <span className="text-zinc-700 dark:text-zinc-300">
+                    📻 트렌드 브리핑 스크립트 (
+                    {trend.narrationScript.length.toLocaleString()}자)
+                  </span>
+                  <span className="text-xs text-zinc-400 group-open:hidden">
+                    펼치기
+                  </span>
+                  <span className="hidden text-xs text-zinc-400 group-open:inline">
+                    접기
+                  </span>
+                </summary>
+                <div className="border-t border-zinc-200 px-3 py-3 dark:border-zinc-800">
+                  <p className="whitespace-pre-wrap text-sm leading-relaxed text-zinc-700 dark:text-zinc-300">
+                    {trend.narrationScript}
+                  </p>
+                </div>
+              </details>
+            </div>
           ) : null}
 
           <p className="text-[11px] text-zinc-400">
