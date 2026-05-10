@@ -102,12 +102,13 @@ export async function getPlan(req: Request): Promise<Plan> {
       .where(eq(subscriptions.userId, session.user.id))
       .limit(1);
     const row = rows[0];
+    // status='active' (정상) 또는 'cancelled' (해지됐지만 expiresAt까지는 사용 가능)
     if (
       row &&
-      row.status === "active" &&
+      (row.status === "active" || row.status === "cancelled") &&
       (row.plan === "pro" || row.plan === "byok")
     ) {
-      // expiresAt 체크 (만료됐으면 free)
+      // expiresAt 체크 (만료됐으면 free). BYOK는 expiresAt=null이라 평생 통과.
       if (!row.expiresAt || row.expiresAt.getTime() > Date.now()) {
         return row.plan as Plan;
       }
