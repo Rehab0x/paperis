@@ -1,7 +1,11 @@
-// 저널 최근 트렌드 분석 — 최근 N개월 abstract 모음을 Gemini에 보내
-// "이 저널에서 요즘 다뤄지는 주제·새 흐름·논쟁"을 한 문단 + 5-7 bullet으로 요약.
+// 저널 트렌드 분석 — 한 시기(year + quarter)의 abstract corpus를 themes 단위로
+// 심층 분석. docs/TREND_IMPROVEMENT.md 기준 v2.
 //
-// 마일스톤 5에서 Upstash Redis 캐시 (키: trend:{issn}:{yyyy-mm}) 추가 예정.
+// 변경 (v1 → v2):
+//   - 결과: headline + bullets[80자] → headline + themes[direction/insight/PMIDs]
+//     + methodologyShift + clinicalImplication + narrationScript
+//   - 기간: rolling N개월 → 고정 year/quarter (의미 단위, 캐시 효율)
+//   - 환각 PMID 필터: representativePmids에 abstract corpus 외의 PMID 들어오면 제거
 
 import { Type } from "@google/genai";
 import { callWithRetry, getGeminiClient } from "@/lib/gemini";
@@ -9,24 +13,77 @@ import type { Language, Paper } from "@/types";
 
 const MODEL = "gemini-2.5-flash";
 
+export type TrendDirection = "↑ 증가" | "🆕 신규" | "⚡ 논쟁" | "→ 지속";
+
+export interface TrendTheme {
+  topic: string;
+  direction: TrendDirection;
+  /** 임상적 의미 — WHY it matters (150자 이내, 주제명 재진술 X) */
+  insight: string;
+  /** corpus 안의 대표 PMID 1-2개. 환각 PMID는 호출자가 사후 필터 */
+  representativePmids: string[];
+}
+
 export interface JournalTrend {
-  /** 한 문장 — 이 시기에 저널이 강조한 핵심 흐름 */
+  /** 이 시기 전체를 관통하는 핵심 한 문장 */
   headline: string;
-  /** 5-7개의 짧은 트렌드 항목 (각 80자 이내). 개별 논문이 아니라 *주제* 단위 */
-  bullets: string[];
+  /** 3-5개 주제 */
+  themes: TrendTheme[];
+  /** 연구 방법론 변화 (없으면 빈 문자열) */
+  methodologyShift: string;
+  /** 임상의에게 의미하는 바 (2-3문장) */
+  clinicalImplication: string;
+  /** TTS용 나레이션 스크립트 — 자연스러운 문장 흐름. 7-10분 또는 3-5분 */
+  narrationScript: string;
 }
 
 const trendSchema = {
   type: Type.OBJECT,
   properties: {
     headline: { type: Type.STRING },
-    bullets: {
+    themes: {
       type: Type.ARRAY,
-      items: { type: Type.STRING },
+      items: {
+        type: Type.OBJECT,
+        properties: {
+          topic: { type: Type.STRING },
+          direction: {
+            type: Type.STRING,
+            enum: ["↑ 증가", "🆕 신규", "⚡ 논쟁", "→ 지속"],
+          },
+          insight: { type: Type.STRING },
+          representativePmids: {
+            type: Type.ARRAY,
+            items: { type: Type.STRING },
+          },
+        },
+        required: ["topic", "direction", "insight", "representativePmids"],
+        propertyOrdering: [
+          "topic",
+          "direction",
+          "insight",
+          "representativePmids",
+        ],
+      },
     },
+    methodologyShift: { type: Type.STRING },
+    clinicalImplication: { type: Type.STRING },
+    narrationScript: { type: Type.STRING },
   },
-  required: ["headline", "bullets"],
-  propertyOrdering: ["headline", "bullets"],
+  required: [
+    "headline",
+    "themes",
+    "methodologyShift",
+    "clinicalImplication",
+    "narrationScript",
+  ],
+  propertyOrdering: [
+    "headline",
+    "themes",
+    "methodologyShift",
+    "clinicalImplication",
+    "narrationScript",
+  ],
 };
 
 function langLabel(lang: Language): string {
@@ -36,41 +93,62 @@ function langLabel(lang: Language): string {
 function trendSystemInstruction(
   language: Language,
   journalName: string,
-  periodLabel: string
+  periodLabel: string,
+  paperCount: number
 ): string {
+  const longNarration = paperCount > 60;
   return [
-    `You are a clinical research analyst who reads recent issues of biomedical journals. Output strictly in ${langLabel(language)}.`,
-    `Below are abstracts from ${journalName} for the period: ${periodLabel}.`,
-    "Identify what topics this journal has been EMPHASIZING lately — recurring themes, emerging methodologies, controversies, populations of interest. NOT a list of individual papers.",
-    "Return JSON: { headline (one sentence stating the dominant theme(s) of the period), bullets (5–7 short bullets, each <= 80 characters in the target language, capturing distinct trends) }.",
-    "Be specific. Avoid generic statements like 'many studies on stroke'. Mention concrete subtopics, populations, methods, or outcomes.",
-    "Preserve precise English medical/rehabilitation terms (spasticity, FIM, NIHSS, CIMT, FES, PRISMA, etc.) inside the target language.",
-    "Do NOT invent themes that don't appear in the abstracts. Output JSON only.",
+    `You are a senior clinical research analyst with deep expertise in rehabilitation medicine.`,
+    `Output strictly in ${langLabel(language)}, preserving English medical terms inline (e.g. spasticity, FIM, NIHSS, CIMT, FES, PRISMA, RCT, MCID).`,
+    `You will analyze ${paperCount} abstracts from "${journalName}" (${periodLabel}) as a single corpus.`,
+    `Your task: identify what this journal has been EMPHASIZING during this period — NOT a list of individual papers, but THEMATIC TRENDS with clinical meaning.`,
+    `For each theme, you MUST specify:`,
+    `- direction: is this topic newly emerging (🆕 신규), increasing in volume (↑ 증가), actively debated with conflicting evidence (⚡ 논쟁), or consistently ongoing (→ 지속)?`,
+    `- insight: WHY does this matter clinically? What should a busy physiatrist take away? Do NOT just restate the topic — state the implication.`,
+    `- representativePmids: 1-2 PMIDs from the corpus that best exemplify this theme. Only use PMIDs that actually appear in the provided abstracts.`,
+    `methodologyShift: Note if a new outcome measure, study design, or assessment tool is appearing repeatedly (e.g. "여러 연구에서 MCID 기반 반응자 분석 도입 증가"). Leave empty string if no notable shift.`,
+    `clinicalImplication: 2-3 sentences on what a busy clinician should take away from this period's literature as a whole.`,
+    `narrationScript: Write a natural spoken-word script (NOT bullet points) for TTS narration. Structure: brief intro → each theme explained conversationally → closing implication. Target length: ${longNarration ? "7–10분" : "3–5분"} when read aloud at normal pace. Tone: senior colleague briefing a busy clinician, not an academic lecture. Use Korean sentence flow naturally, embed English terms where standard.`,
+    `RULES:`,
+    `- 3 to 5 themes only.`,
+    `- Be specific. Bad: "뇌졸중 재활 연구 증가". Good: "상지 CIMT 60시간 임계값 검증(↑ 증가) — 5편의 RCT가 반복 검증하며 Modified CIMT 프로토콜 재설계 근거 강화."`,
+    `- Do NOT invent themes or PMIDs not in the abstracts.`,
+    `- Output valid JSON only, no markdown fences.`,
   ].join(" ");
 }
 
 function userPrompt(papers: Paper[]): string {
-  // Gemini 한 호출에 들어갈 입력 길이 관리. 한 abstract당 최대 800자, 최대 80편.
-  const blocks = papers.slice(0, 80).map((p, i) => {
-    const abstract = (p.abstract || "").replace(/\s+/g, " ").trim().slice(0, 800);
-    const types = p.publicationTypes.slice(0, 3).join(", ") || "";
+  // 시간순(오래된 것부터 최신 순)으로 정렬해서 입력 — Gemini가 시기별 변화를 인지
+  const sorted = [...papers].reverse();
+
+  const blocks = sorted.slice(0, 80).map((p, i) => {
+    const abstract = (p.abstract || "")
+      .replace(/\s+/g, " ")
+      .trim()
+      .slice(0, 800);
+    const types = p.publicationTypes.slice(0, 3).join(", ") || "Unknown";
+    const pubDate = p.pubDate || "";
     return [
-      `#${i + 1}`,
-      `pmid: ${p.pmid}`,
-      `title: ${p.title || "(no title)"}`,
-      types ? `types: ${types}` : "",
-      `abstract: ${abstract || "(empty)"}`,
-    ]
-      .filter(Boolean)
-      .join("\n");
+      `[${i + 1}] pmid:${p.pmid}`,
+      `date:${pubDate}`,
+      `type:${types}`,
+      `title:${p.title || "(no title)"}`,
+      `abstract:${abstract || "(empty)"}`,
+    ].join(" | ");
   });
   return [
-    "Analyze the following abstracts as a single corpus and extract the dominant themes/trends of this period. Return JSON with { headline, bullets }.",
+    `Analyze these ${blocks.length} abstracts as a corpus. Identify dominant themes and trends.`,
+    `Papers are ordered chronologically (oldest first) — note if topics shift over time.`,
+    `Return JSON matching the schema exactly.`,
     "",
-    blocks.join("\n\n---\n\n"),
+    blocks.join("\n"),
   ].join("\n");
 }
 
+/**
+ * 트렌드 분석 — 환각 PMID 필터링 포함.
+ * 반환된 themes의 representativePmids에서 corpus에 없는 PMID는 제거됨.
+ */
 export async function generateJournalTrend(
   papers: Paper[],
   journalName: string,
@@ -78,8 +156,15 @@ export async function generateJournalTrend(
   language: Language = "ko"
 ): Promise<JournalTrend> {
   if (papers.length === 0) {
-    return { headline: "", bullets: [] };
+    return {
+      headline: "",
+      themes: [],
+      methodologyShift: "",
+      clinicalImplication: "",
+      narrationScript: "",
+    };
   }
+
   const ai = getGeminiClient();
   const response = await callWithRetry(() =>
     ai.models.generateContent({
@@ -89,7 +174,8 @@ export async function generateJournalTrend(
         systemInstruction: trendSystemInstruction(
           language,
           journalName,
-          periodLabel
+          periodLabel,
+          Math.min(papers.length, 80)
         ),
         temperature: 0.4,
         responseMimeType: "application/json",
@@ -98,20 +184,75 @@ export async function generateJournalTrend(
     })
   );
   const text = response.text ?? "";
-  let parsed: { headline?: unknown; bullets?: unknown };
+  let parsed: {
+    headline?: unknown;
+    themes?: Array<{
+      topic?: unknown;
+      direction?: unknown;
+      insight?: unknown;
+      representativePmids?: unknown;
+    }>;
+    methodologyShift?: unknown;
+    clinicalImplication?: unknown;
+    narrationScript?: unknown;
+  };
   try {
     parsed = JSON.parse(text);
   } catch {
     throw new Error("Gemini 트렌드 응답을 JSON으로 파싱하지 못했습니다.");
   }
+
+  const validPmids = new Set(papers.map((p) => p.pmid));
+  const VALID_DIRECTIONS = new Set<TrendDirection>([
+    "↑ 증가",
+    "🆕 신규",
+    "⚡ 논쟁",
+    "→ 지속",
+  ]);
+
+  const themes: TrendTheme[] = [];
+  for (const t of parsed.themes ?? []) {
+    if (themes.length >= 5) break;
+    const topic = typeof t.topic === "string" ? t.topic.trim() : "";
+    const direction =
+      typeof t.direction === "string" &&
+      VALID_DIRECTIONS.has(t.direction as TrendDirection)
+        ? (t.direction as TrendDirection)
+        : "→ 지속";
+    const insight = typeof t.insight === "string" ? t.insight.trim() : "";
+    if (!topic || !insight) continue;
+    const pmids = Array.isArray(t.representativePmids)
+      ? t.representativePmids
+          .filter(
+            (p): p is string =>
+              typeof p === "string" && validPmids.has(p.trim())
+          )
+          .map((p) => p.trim())
+          .slice(0, 2)
+      : [];
+    themes.push({ topic, direction, insight, representativePmids: pmids });
+  }
+
   const headline =
     typeof parsed.headline === "string" ? parsed.headline.trim() : "";
-  const bullets = Array.isArray(parsed.bullets)
-    ? parsed.bullets
-        .filter((b): b is string => typeof b === "string")
-        .map((b) => b.trim())
-        .filter(Boolean)
-        .slice(0, 7)
-    : [];
-  return { headline, bullets };
+  const methodologyShift =
+    typeof parsed.methodologyShift === "string"
+      ? parsed.methodologyShift.trim()
+      : "";
+  const clinicalImplication =
+    typeof parsed.clinicalImplication === "string"
+      ? parsed.clinicalImplication.trim()
+      : "";
+  const narrationScript =
+    typeof parsed.narrationScript === "string"
+      ? parsed.narrationScript.trim()
+      : "";
+
+  return {
+    headline,
+    themes,
+    methodologyShift,
+    clinicalImplication,
+    narrationScript,
+  };
 }

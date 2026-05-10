@@ -1,12 +1,14 @@
-// /api/journal/trend — 저널 최근 N개월(default 6)의 abstract 모음 → Gemini가
-// "요즘 핫한 주제" headline + 5-7 bullet 분석. 같이 분석된 논문 목록도 반환해
-// 사용자가 트렌드 항목 → 실제 논문으로 즉시 점프할 수 있다.
+// /api/journal/trend — 저널의 한 시기(year + quarter) abstract corpus를 themes 단위로
+// 심층 분석. v2 — docs/TREND_IMPROVEMENT.md 기준.
 //
-// M5: Redis 캐시. 키 `trend:{issn}:{months}m:{yyyy-mm}:{language}` — 매달 자연 갱신.
-// Gemini 호출이 가장 비싸므로 캐시 hit 시 절감 효과가 크다. TTL 24h.
+// 변경:
+//   - rolling N개월 → 고정 year/quarter (Q1~Q4 또는 all)
+//   - 캐시 키: trend:{issn}:{year}:{quarter}:{language}
+//   - isComplete(기간 종료됨)면 ∞ TTL, 진행 중이면 24h TTL
+//   - JournalTrend 타입 v2 (themes 등)
 
 import { friendlyErrorMessage } from "@/lib/gemini";
-import { TTL_24H, getCached, setCached, trendKey } from "@/lib/journal-cache";
+import { TTL_24H, getCached, setCached } from "@/lib/journal-cache";
 import { enrichPapers } from "@/lib/openalex";
 import { searchPubMed } from "@/lib/pubmed";
 import { generateJournalTrend, type JournalTrend } from "@/lib/trend";
@@ -20,7 +22,9 @@ import { applyUserKeysToEnv } from "@/lib/user-keys";
 import type { ApiError, Paper } from "@/types";
 
 export const runtime = "nodejs";
-export const maxDuration = 120; // Gemini analyze + PubMed/enrich 모두 합쳐 안전 마진
+export const maxDuration = 120;
+
+export type TrendQuarter = "all" | "Q1" | "Q2" | "Q3" | "Q4";
 
 interface TrendResponse {
   query: string;
@@ -28,8 +32,11 @@ interface TrendResponse {
   total: number;
   trend: JournalTrend;
   issn: string;
-  months: number;
+  year: number;
+  quarter: TrendQuarter;
   periodLabel: string;
+  /** 기간이 이미 끝났으면 true (캐시 ∞ TTL). 진행 중이면 false (24h TTL) */
+  isComplete: boolean;
 }
 
 function jsonError(error: string, status = 400) {
@@ -50,45 +57,79 @@ function lastDayOf(year: number, month: number): number {
   return new Date(year, month, 0).getDate();
 }
 
-/**
- * 끝 날짜를 기준으로 N개월 전까지의 PDAT range를 만든다.
- * 끝 날짜는 "지난 달 마지막 날"로 잡아 PubMed 인덱싱 지연 회피.
- */
-function buildPeriod(months: number): {
+interface PeriodInfo {
   fromYear: number;
   fromMonth: number;
+  fromDay: number;
   toYear: number;
   toMonth: number;
   toDay: number;
   label: string;
-} {
-  const now = new Date();
-  // 지난 달 마지막 날
-  const toMonth = now.getMonth() === 0 ? 12 : now.getMonth();
-  const toYear = now.getMonth() === 0 ? now.getFullYear() - 1 : now.getFullYear();
-  const toDay = lastDayOf(toYear, toMonth);
+  isComplete: boolean;
+}
 
-  // months-1만큼 더 빼면 from = (지난 달) - (months-1)
-  let fromMonth = toMonth - (months - 1);
-  let fromYear = toYear;
-  while (fromMonth <= 0) {
-    fromMonth += 12;
-    fromYear -= 1;
+function parseQuarter(raw: string): TrendQuarter {
+  const v = raw.trim().toLowerCase();
+  if (v === "1" || v === "q1") return "Q1";
+  if (v === "2" || v === "q2") return "Q2";
+  if (v === "3" || v === "q3") return "Q3";
+  if (v === "4" || v === "q4") return "Q4";
+  return "all";
+}
+
+function buildPeriod(year: number, quarter: TrendQuarter): PeriodInfo {
+  let fromMonth = 1;
+  let toMonth = 12;
+  let label = `${year}년 연간`;
+  switch (quarter) {
+    case "Q1":
+      fromMonth = 1;
+      toMonth = 3;
+      label = `${year}년 Q1 (1–3월)`;
+      break;
+    case "Q2":
+      fromMonth = 4;
+      toMonth = 6;
+      label = `${year}년 Q2 (4–6월)`;
+      break;
+    case "Q3":
+      fromMonth = 7;
+      toMonth = 9;
+      label = `${year}년 Q3 (7–9월)`;
+      break;
+    case "Q4":
+      fromMonth = 10;
+      toMonth = 12;
+      label = `${year}년 Q4 (10–12월)`;
+      break;
+    case "all":
+      // 위 default
+      break;
   }
-  const label = `${fromYear}-${pad2(fromMonth)} ~ ${toYear}-${pad2(toMonth)}`;
-  return { fromYear, fromMonth, toYear, toMonth, toDay, label };
+  const toDay = lastDayOf(year, toMonth);
+
+  // 기간 완료 여부 — 끝 날짜 + 7일(인덱싱 지연 안전마진)이 지났으면 완료로 간주
+  const endMs = new Date(year, toMonth, toDay + 1).getTime() - 1; // 그 달 마지막 날 23:59
+  const safeEndMs = endMs + 7 * 24 * 60 * 60 * 1000;
+  const isComplete = Date.now() > safeEndMs;
+
+  return {
+    fromYear: year,
+    fromMonth,
+    fromDay: 1,
+    toYear: year,
+    toMonth,
+    toDay,
+    label,
+    isComplete,
+  };
 }
 
-function buildTrendTerm(
-  issn: string,
-  fromYear: number,
-  fromMonth: number,
-  toYear: number,
-  toMonth: number,
-  toDay: number
-): string {
-  return `${issn}[ISSN] AND ("${fromYear}/${pad2(fromMonth)}/01"[PDAT] : "${toYear}/${pad2(toMonth)}/${pad2(toDay)}"[PDAT])`;
+function buildTrendTerm(issn: string, p: PeriodInfo): string {
+  return `${issn}[ISSN] AND ("${p.fromYear}/${pad2(p.fromMonth)}/${pad2(p.fromDay)}"[PDAT] : "${p.toYear}/${pad2(p.toMonth)}/${pad2(p.toDay)}"[PDAT])`;
 }
+
+const MIN_PAPERS_FOR_TREND = 10;
 
 export async function GET(req: Request) {
   applyUserKeysToEnv(req);
@@ -97,27 +138,22 @@ export async function GET(req: Request) {
   const issn = (searchParams.get("issn") ?? "").trim();
   const journalName = (searchParams.get("journalName") ?? "").trim();
   const language = searchParams.get("language") === "en" ? "en" : "ko";
-  const monthsRaw = Number(searchParams.get("months") ?? "6");
+  const yearRaw = Number(searchParams.get("year"));
+  const quarter = parseQuarter(searchParams.get("quarter") ?? "all");
 
   if (!ISSN_RE.test(issn)) {
     return jsonError("issn 형식이 올바르지 않습니다 (예: 0028-3878).");
   }
-  const months = Number.isFinite(monthsRaw)
-    ? Math.min(Math.max(Math.floor(monthsRaw), 1), 12)
-    : 6;
+  if (!Number.isInteger(yearRaw) || yearRaw < 2000 || yearRaw > 2100) {
+    return jsonError("year는 2000~2100 사이 정수여야 합니다.");
+  }
+  const year = yearRaw;
 
-  const period = buildPeriod(months);
-  const term = buildTrendTerm(
-    issn,
-    period.fromYear,
-    period.fromMonth,
-    period.toYear,
-    period.toMonth,
-    period.toDay
-  );
+  const period = buildPeriod(year, quarter);
+  const term = buildTrendTerm(issn, period);
 
-  // 캐시 hit이면 PubMed/OpenAlex/Gemini 호출 모두 스킵 — usage 카운트도 안 함
-  const cacheKey = `${trendKey(issn, months)}:${language}`;
+  // 캐시 hit이면 PubMed/OpenAlex/Gemini 호출 모두 스킵
+  const cacheKey = `trend:${issn}:${year}:${quarter}:${language}`;
   const cached = await getCached<TrendResponse>(cacheKey);
   if (cached) {
     return new Response(JSON.stringify(cached), {
@@ -130,18 +166,22 @@ export async function GET(req: Request) {
     });
   }
 
-  // 캐시 miss → Free 한도 체크 (curation 카테고리)
+  // Free 한도 — 트렌드는 큐레이션 카테고리 (호/주제와 동일)
   const identityKey = await getIdentityKey(req);
   const plan = await getPlan(req);
   const usage = await checkAndIncrement(identityKey, "curation", plan);
   if (!usage.allowed) {
     return jsonError(
-      limitExceededMessage("curation", usage, identityKey?.startsWith("anon:") === false),
+      limitExceededMessage(
+        "curation",
+        usage,
+        identityKey?.startsWith("anon:") === false
+      ),
       429
     );
   }
 
-  // 1) PubMed로 최근 호 abstract 모음. recency 정렬, retmax 80으로 분석 입력 절제.
+  // 1) PubMed로 해당 기간 abstract 모음. recency 정렬, retmax 80.
   let papers: Paper[];
   let total: number;
   try {
@@ -153,6 +193,36 @@ export async function GET(req: Request) {
       err instanceof Error ? err.message : "PubMed 트렌드 검색 실패",
       502
     );
+  }
+
+  // 논문이 너무 적으면 트렌드 분석 무의미 — 안내만 반환
+  if (papers.length < MIN_PAPERS_FOR_TREND) {
+    const body: TrendResponse = {
+      query: term,
+      papers,
+      total,
+      trend: {
+        headline: "",
+        themes: [],
+        methodologyShift: "",
+        clinicalImplication: "",
+        narrationScript: "",
+      },
+      issn,
+      year,
+      quarter,
+      periodLabel: period.label,
+      isComplete: period.isComplete,
+    };
+    return new Response(JSON.stringify(body), {
+      status: 200,
+      headers: {
+        "content-type": "application/json; charset=utf-8",
+        "x-cache": "miss",
+        "x-trend-skipped": `papers<${MIN_PAPERS_FOR_TREND}`,
+        "cache-control": "public, max-age=0, s-maxage=3600",
+      },
+    });
   }
 
   // 2) enrichment (인용수). soft-fail.
@@ -171,19 +241,23 @@ export async function GET(req: Request) {
     }
   }
 
-  // 3) Gemini 트렌드 분석. abstract 모음을 요약.
-  let trend: JournalTrend = { headline: "", bullets: [] };
-  if (papers.length > 0) {
-    try {
-      trend = await generateJournalTrend(
-        papers,
-        journalName || "이 저널",
-        period.label,
-        language
-      );
-    } catch (err) {
-      return jsonError(friendlyErrorMessage(err, language), 502);
-    }
+  // 3) Gemini 트렌드 분석.
+  let trend: JournalTrend = {
+    headline: "",
+    themes: [],
+    methodologyShift: "",
+    clinicalImplication: "",
+    narrationScript: "",
+  };
+  try {
+    trend = await generateJournalTrend(
+      papers,
+      journalName || "이 저널",
+      period.label,
+      language
+    );
+  } catch (err) {
+    return jsonError(friendlyErrorMessage(err, language), 502);
   }
 
   const body: TrendResponse = {
@@ -192,16 +266,17 @@ export async function GET(req: Request) {
     total,
     trend,
     issn,
-    months,
+    year,
+    quarter,
     periodLabel: period.label,
+    isComplete: period.isComplete,
   };
 
-  // 트렌드 결과 비어있으면(papers 0건 or trend.bullets 비어있음) 캐시하지 않음 —
-  // 다음 호출에서 다시 시도할 기회를 줌.
-  // await으로 set 보장 — Vercel serverless가 응답 후 종료해 fire-and-forget이
-  // 미완료되는 문제 방지.
-  if (papers.length > 0 && trend.bullets.length > 0) {
-    await setCached(cacheKey, body, { ttlSeconds: TTL_24H });
+  // 의미 있는 결과만 캐시 — 빈 trend는 다음 호출에서 재시도 기회
+  if (trend.themes.length > 0) {
+    // 완료된 기간은 ∞ TTL (결과 불변), 진행 중이면 24h
+    const ttl = period.isComplete ? undefined : TTL_24H;
+    await setCached(cacheKey, body, { ttlSeconds: ttl });
   }
 
   return new Response(JSON.stringify(body), {
