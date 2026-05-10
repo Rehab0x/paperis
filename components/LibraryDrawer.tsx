@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
+import { createPortal } from "react-dom";
 import { useRouter, useSearchParams } from "next/navigation";
 import AudioLibrary from "@/components/AudioLibrary";
 import type { AudioTrackMeta } from "@/types";
@@ -26,6 +27,12 @@ interface Props {
 export default function LibraryDrawer({ open, onClose }: Props) {
   const router = useRouter();
   const searchParams = useSearchParams();
+  // SSR-safe portal target — 헤더의 backdrop-filter가 fixed 자식의 containing block이
+  // 되어 드로어가 헤더 영역 안에 갇히는 CSS 사양 회피용. body에 직접 마운트한다.
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   useEffect(() => {
     if (!open) return;
@@ -62,7 +69,9 @@ export default function LibraryDrawer({ open, onClose }: Props) {
     onClose();
   }
 
-  return (
+  if (!mounted) return null;
+
+  return createPortal(
     <>
       {/* backdrop — 페이드 */}
       <div
@@ -102,6 +111,7 @@ export default function LibraryDrawer({ open, onClose }: Props) {
           <AudioLibrary onOpenPaper={handleOpenPaper} />
         </div>
       </aside>
-    </>
+    </>,
+    document.body
   );
 }

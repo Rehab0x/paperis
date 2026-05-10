@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import {
   API_KEY_LABELS,
   useApiKeys,
@@ -75,6 +76,13 @@ export default function SettingsDrawer({ open, onClose }: Props) {
     setSpeakingRate,
   } = useTtsProviderPreference();
 
+  // SSR-safe portal target — 헤더의 backdrop-filter가 fixed 자식의 containing block이
+  // 되어 드로어가 헤더 영역 안에 갇히는 CSS 사양 회피용. body에 직접 마운트한다.
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
   useEffect(() => {
     if (!open) return;
     function onKey(e: KeyboardEvent) {
@@ -92,7 +100,9 @@ export default function SettingsDrawer({ open, onClose }: Props) {
   const currentVoice =
     voiceByProvider[provider] ?? PROVIDER_DEFAULT_VOICE[provider];
 
-  return (
+  if (!mounted) return null;
+
+  return createPortal(
     <>
       <div
         onClick={onClose}
@@ -229,7 +239,8 @@ export default function SettingsDrawer({ open, onClose }: Props) {
           </Section>
         </div>
       </aside>
-    </>
+    </>,
+    document.body
   );
 }
 
