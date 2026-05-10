@@ -16,7 +16,7 @@ export default function JournalEntryLink({ className }: { className?: string }) 
       title="저널 탐색"
       className={
         className ??
-        "inline-flex items-center justify-center rounded-md p-1.5 text-lg text-zinc-700 hover:bg-zinc-100 dark:text-zinc-200 dark:hover:bg-zinc-800"
+        "inline-flex items-center justify-center rounded-lg p-1.5 text-lg text-paperis-text-2 transition hover:bg-paperis-surface-2 hover:text-paperis-text"
       }
     >
       📚

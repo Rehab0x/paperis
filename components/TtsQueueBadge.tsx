@@ -113,17 +113,17 @@ export default function TtsQueueBadge() {
         <div
           ref={popoverRef}
           style={pos}
-          className="fixed z-50 overflow-hidden rounded-lg border border-zinc-200 bg-white shadow-xl sm:w-80 dark:border-zinc-800 dark:bg-zinc-950"
+          className="fixed z-50 overflow-hidden rounded-lg border border-paperis-border bg-paperis-surface shadow-xl sm:w-80"
         >
-          <div className="border-b border-zinc-200 bg-zinc-50 px-3 py-2 text-[11px] uppercase tracking-wide text-zinc-500 dark:border-zinc-800 dark:bg-zinc-900">
+          <div className="border-b border-paperis-border bg-paperis-surface-2 px-3 py-2 text-[11px] uppercase tracking-[0.06em] text-paperis-text-2">
             TTS 작업
           </div>
-          <ul className="max-h-[60vh] divide-y divide-zinc-100 overflow-auto dark:divide-zinc-900">
+          <ul className="max-h-[60vh] divide-y divide-paperis-border overflow-auto">
             {running ? (
               <JobRow
                 job={running}
                 badge="변환 중"
-                badgeClass="bg-emerald-100 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300"
+                badgeClass="bg-paperis-accent-dim/60 text-paperis-accent"
                 onClick={() => handleOpenPaper(running)}
               />
             ) : null}
@@ -132,12 +132,12 @@ export default function TtsQueueBadge() {
                 key={j.id}
                 job={j}
                 badge={`대기 ${i + 1}`}
-                badgeClass="bg-zinc-100 text-zinc-600 dark:bg-zinc-800 dark:text-zinc-300"
+                badgeClass="bg-paperis-surface-2 text-paperis-text-2"
                 onClick={() => handleOpenPaper(j)}
               />
             ))}
           </ul>
-          <div className="border-t border-zinc-200 px-3 py-2 text-[10px] text-zinc-400 dark:border-zinc-800">
+          <div className="border-t border-paperis-border px-3 py-2 text-[10px] text-paperis-text-3">
             항목을 클릭하면 해당 논문 디테일 패널이 열립니다. 변환은 그대로
             계속됩니다.
           </div>
@@ -163,7 +163,7 @@ function JobRow({
       <button
         type="button"
         onClick={onClick}
-        className="flex w-full items-start gap-2 px-3 py-2 text-left hover:bg-zinc-50 dark:hover:bg-zinc-900"
+        className="flex w-full items-start gap-2 px-3 py-2 text-left transition hover:bg-paperis-surface-2"
       >
         <span
           className={`shrink-0 rounded px-1.5 py-0.5 text-[10px] font-medium ${badgeClass}`}
@@ -171,10 +171,10 @@ function JobRow({
           {badge}
         </span>
         <span className="min-w-0 flex-1">
-          <span className="block truncate text-sm text-zinc-900 dark:text-zinc-100">
+          <span className="block truncate text-sm text-paperis-text">
             {job.paper.title}
           </span>
-          <span className="block truncate text-[11px] text-zinc-500">
+          <span className="block truncate text-[11px] text-paperis-text-3">
             {job.paper.journal} · {job.paper.year}
           </span>
         </span>

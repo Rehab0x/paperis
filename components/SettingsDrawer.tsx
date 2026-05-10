@@ -118,18 +118,18 @@ export default function SettingsDrawer({ open, onClose }: Props) {
         aria-hidden={!open}
         style={{ bottom: "var(--player-bar-h, 0px)" }}
         className={[
-          "fixed right-0 top-0 z-40 flex w-full max-w-md flex-col bg-white shadow-2xl transition-transform duration-300 ease-out dark:bg-zinc-950",
+          "fixed right-0 top-0 z-40 flex w-full max-w-md flex-col border-l border-paperis-border bg-paperis-bg shadow-[0_0_60px_-12px_rgba(0,0,0,0.4)] transition-transform duration-300 ease-out",
           open ? "translate-x-0" : "translate-x-full",
         ].join(" ")}
       >
-        <header className="sticky top-0 z-10 flex items-center justify-between gap-3 border-b border-zinc-200 bg-white px-5 py-3 dark:border-zinc-800 dark:bg-zinc-950">
-          <h2 className="text-base font-semibold text-zinc-900 dark:text-zinc-100">
+        <header className="sticky top-0 z-10 flex items-center justify-between gap-3 border-b border-paperis-border bg-paperis-bg/95 px-5 py-3 backdrop-blur-xl">
+          <h2 className="font-serif text-lg font-medium tracking-tight text-paperis-text">
             ⚙ 설정
           </h2>
           <button
             type="button"
             onClick={onClose}
-            className="rounded-md px-2 py-1 text-sm text-zinc-500 hover:bg-zinc-100 dark:hover:bg-zinc-800"
+            className="rounded-lg px-2 py-1 text-sm text-paperis-text-2 transition hover:bg-paperis-surface-2 hover:text-paperis-text"
             aria-label="설정 닫기 (ESC)"
             title="ESC"
           >
@@ -164,11 +164,11 @@ export default function SettingsDrawer({ open, onClose }: Props) {
             description={`현재 provider(${provider})의 화자 + 재생 속도`}
           >
             <label className="mb-3 block">
-              <span className="mb-1 block text-xs text-zinc-500">화자</span>
+              <span className="mb-1 block text-xs text-paperis-text-3">화자</span>
               <select
                 value={currentVoice}
                 onChange={(e) => setVoice(provider, e.target.value)}
-                className="w-full rounded-md border border-zinc-200 bg-white px-2 py-1.5 text-sm dark:border-zinc-800 dark:bg-zinc-900"
+                className="w-full rounded-lg border border-paperis-border bg-paperis-surface px-2 py-1.5 text-sm text-paperis-text"
               >
                 {PROVIDER_VOICES[provider].map((v) => (
                   <option key={v} value={v}>
@@ -177,7 +177,7 @@ export default function SettingsDrawer({ open, onClose }: Props) {
                 ))}
               </select>
             </label>
-            <span className="mb-1 block text-xs text-zinc-500">속도</span>
+            <span className="mb-1 block text-xs text-paperis-text-3">속도</span>
             <RadioGroup
               name="speed"
               value={speakingRate}
@@ -185,7 +185,7 @@ export default function SettingsDrawer({ open, onClose }: Props) {
               onChange={(v) => setSpeakingRate(v as SpeakingRate)}
             />
             {provider === "gemini" ? (
-              <p className="mt-2 text-[11px] text-zinc-500">
+              <p className="mt-2 text-[11px] text-paperis-text-3">
                 Gemini는 속도 옵션을 받지 않아 “보통”으로 합성됩니다.
               </p>
             ) : null}
@@ -255,11 +255,11 @@ function Section({
 }) {
   return (
     <section>
-      <h3 className="text-sm font-semibold text-zinc-900 dark:text-zinc-100">
+      <h3 className="text-sm font-semibold text-paperis-text">
         {title}
       </h3>
       {description ? (
-        <p className="mt-0.5 text-xs text-zinc-500">{description}</p>
+        <p className="mt-0.5 text-xs text-paperis-text-3">{description}</p>
       ) : null}
       <div className="mt-2.5">{children}</div>
     </section>
@@ -293,8 +293,8 @@ function RadioGroup<T extends string | number>({
             className={[
               "flex cursor-pointer items-start gap-3 rounded-lg border px-3 py-2 transition",
               active
-                ? "border-zinc-900 bg-zinc-50 dark:border-zinc-100 dark:bg-zinc-900"
-                : "border-zinc-200 hover:border-zinc-400 dark:border-zinc-800 dark:hover:border-zinc-600",
+                ? "border-paperis-accent bg-paperis-accent-dim/40"
+                : "border-paperis-border hover:border-paperis-text-3",
             ].join(" ")}
           >
             <input
@@ -306,11 +306,11 @@ function RadioGroup<T extends string | number>({
               className="mt-1"
             />
             <span className="min-w-0 flex-1">
-              <span className="block text-sm font-medium text-zinc-900 dark:text-zinc-100">
+              <span className="block text-sm font-medium text-paperis-text">
                 {opt.label}
               </span>
               {opt.hint ? (
-                <span className="block text-xs text-zinc-500">{opt.hint}</span>
+                <span className="block text-xs text-paperis-text-3">{opt.hint}</span>
               ) : null}
             </span>
           </label>
@@ -408,13 +408,13 @@ function VoicePreview({
         type="button"
         onClick={handlePreview}
         disabled={busy}
-        className="rounded-md border border-zinc-200 px-3 py-1.5 text-sm hover:bg-zinc-100 disabled:cursor-not-allowed disabled:opacity-50 dark:border-zinc-800 dark:hover:bg-zinc-800"
+        className="rounded-lg border border-paperis-border px-3 py-1.5 text-sm text-paperis-text-2 transition hover:bg-paperis-surface-2 hover:text-paperis-text disabled:cursor-not-allowed disabled:opacity-50"
       >
         {busy ? "합성 중…" : "🔊 이 화자/속도로 미리듣기"}
       </button>
       <audio ref={audioRef} controls className="w-full" />
       {error ? (
-        <p className="rounded-md border border-red-200 bg-red-50 px-2.5 py-1.5 text-xs text-red-700 dark:border-red-900 dark:bg-red-950 dark:text-red-300">
+        <p className="rounded-lg border border-paperis-accent/40 bg-paperis-accent-dim/40 px-2.5 py-1.5 text-xs text-paperis-accent">
           {error}
         </p>
       ) : null}
@@ -427,7 +427,7 @@ function AutoMiniSummaryToggle() {
   // SSR/hydrate 시점에 false default. 사용자 토글 즉시 localStorage + 모든 사용처에
   // CustomEvent로 broadcast.
   return (
-    <label className="flex cursor-pointer items-start gap-3 rounded-lg border border-zinc-200 px-3 py-2 transition hover:border-zinc-400 dark:border-zinc-800 dark:hover:border-zinc-600">
+    <label className="flex cursor-pointer items-start gap-3 rounded-lg border border-paperis-border px-3 py-2 transition hover:border-paperis-text-3">
       <input
         type="checkbox"
         checked={enabled}
@@ -435,10 +435,10 @@ function AutoMiniSummaryToggle() {
         className="mt-1"
       />
       <span className="min-w-0 flex-1">
-        <span className="block text-sm font-medium text-zinc-900 dark:text-zinc-100">
+        <span className="block text-sm font-medium text-paperis-text">
           {enabled ? "켜짐 — 결과 도착 시 상위 3건 자동 요약" : "꺼짐 — 카드 클릭 시만 요약"}
         </span>
-        <span className="block text-xs text-zinc-500">
+        <span className="block text-xs text-paperis-text-3">
           출퇴근 청취 전 빠르게 스캔하는 패턴이면 켜세요. 검색을 자주 다시 하거나
           페이지를 자주 넘기면 끄는 편이 Gemini 응답 시간을 아껴줍니다.
           {enabled
@@ -476,21 +476,21 @@ function NotificationPermission() {
 
   if (status === "unsupported") {
     return (
-      <p className="text-xs text-zinc-500">
+      <p className="text-xs text-paperis-text-3">
         이 브라우저는 알림 API를 지원하지 않습니다.
       </p>
     );
   }
   if (status === "granted") {
     return (
-      <p className="rounded-md border border-emerald-200 bg-emerald-50 px-2.5 py-1.5 text-xs text-emerald-700 dark:border-emerald-900 dark:bg-emerald-950 dark:text-emerald-300">
+      <p className="rounded-lg border border-paperis-accent/40 bg-paperis-accent-dim/40 px-2.5 py-1.5 text-xs text-paperis-accent">
         ✓ 알림 허용됨 — TTS 변환 끝나면 브라우저 알림이 표시됩니다.
       </p>
     );
   }
   if (status === "denied") {
     return (
-      <p className="text-xs text-zinc-500">
+      <p className="text-xs text-paperis-text-3">
         알림이 차단되어 있습니다. 브라우저 주소창의 자물쇠 아이콘에서 권한을
         다시 열어주세요.
       </p>
@@ -500,7 +500,7 @@ function NotificationPermission() {
     <button
       type="button"
       onClick={request}
-      className="rounded-md border border-zinc-200 px-3 py-1.5 text-sm hover:bg-zinc-100 dark:border-zinc-800 dark:hover:bg-zinc-800"
+      className="rounded-lg border border-paperis-border px-3 py-1.5 text-sm text-paperis-text-2 transition hover:bg-paperis-surface-2 hover:text-paperis-text"
     >
       알림 권한 요청
     </button>
@@ -529,7 +529,7 @@ function ApiKeysSection() {
 
   return (
     <div className="space-y-2.5">
-      <p className="rounded-md border border-amber-200 bg-amber-50 px-2.5 py-1.5 text-[11px] text-amber-800 dark:border-amber-900 dark:bg-amber-950 dark:text-amber-300">
+      <p className="rounded-lg border border-paperis-accent/40 bg-paperis-accent-dim/40 px-2.5 py-1.5 text-[11px] text-paperis-accent">
         ⚠ 키는 브라우저 localStorage에 저장됩니다. XSS 위험을 인지하시고 본인
         브라우저에서만 사용하세요.
       </p>
@@ -538,7 +538,7 @@ function ApiKeysSection() {
         const visible = reveal[name];
         return (
           <label key={name} className="block">
-            <span className="mb-1 block font-mono text-[10px] uppercase tracking-wide text-zinc-500">
+            <span className="mb-1 block font-mono text-[10px] uppercase tracking-wide text-paperis-text-3">
               {API_KEY_LABELS[name]}
             </span>
             <div className="flex gap-1">
@@ -547,7 +547,7 @@ function ApiKeysSection() {
                 value={v}
                 onChange={(e) => setKey(name, e.target.value)}
                 placeholder="(미설정 시 .env.local 키 사용)"
-                className="min-w-0 flex-1 rounded-md border border-zinc-200 bg-white px-2 py-1 text-xs dark:border-zinc-800 dark:bg-zinc-900"
+                className="min-w-0 flex-1 rounded-lg border border-paperis-border bg-paperis-surface px-2 py-1 text-xs text-paperis-text"
                 autoComplete="off"
                 spellCheck={false}
               />
@@ -556,7 +556,7 @@ function ApiKeysSection() {
                 onClick={() =>
                   setReveal((prev) => ({ ...prev, [name]: !prev[name] }))
                 }
-                className="rounded-md border border-zinc-200 px-2 text-xs text-zinc-500 hover:bg-zinc-100 dark:border-zinc-800 dark:hover:bg-zinc-800"
+                className="rounded-lg border border-paperis-border px-2 text-xs text-paperis-text-3 transition hover:bg-paperis-surface-2 hover:text-paperis-text"
                 aria-label={visible ? "숨기기" : "보이기"}
                 title={visible ? "숨기기" : "보이기"}
               >
@@ -566,7 +566,7 @@ function ApiKeysSection() {
                 <button
                   type="button"
                   onClick={() => clearKey(name)}
-                  className="rounded-md border border-zinc-200 px-2 text-xs text-zinc-500 hover:bg-zinc-100 dark:border-zinc-800 dark:hover:bg-zinc-800"
+                  className="rounded-lg border border-paperis-border px-2 text-xs text-paperis-text-3 transition hover:bg-paperis-surface-2 hover:text-paperis-text"
                   aria-label="삭제"
                   title="삭제"
                 >
@@ -645,7 +645,7 @@ function LibraryBackup() {
           type="button"
           onClick={handleExport}
           disabled={busy !== "idle"}
-          className="rounded-md border border-zinc-200 px-3 py-1.5 text-sm hover:bg-zinc-100 disabled:cursor-not-allowed disabled:opacity-50 dark:border-zinc-800 dark:hover:bg-zinc-800"
+          className="rounded-lg border border-paperis-border px-3 py-1.5 text-sm text-paperis-text-2 transition hover:bg-paperis-surface-2 hover:text-paperis-text disabled:cursor-not-allowed disabled:opacity-50"
         >
           {busy === "exporting" ? "내보내는 중…" : "📤 백업 내보내기"}
         </button>
@@ -653,7 +653,7 @@ function LibraryBackup() {
           type="button"
           onClick={() => inputRef.current?.click()}
           disabled={busy !== "idle"}
-          className="rounded-md border border-zinc-200 px-3 py-1.5 text-sm hover:bg-zinc-100 disabled:cursor-not-allowed disabled:opacity-50 dark:border-zinc-800 dark:hover:bg-zinc-800"
+          className="rounded-lg border border-paperis-border px-3 py-1.5 text-sm text-paperis-text-2 transition hover:bg-paperis-surface-2 hover:text-paperis-text disabled:cursor-not-allowed disabled:opacity-50"
         >
           {busy === "importing" ? "복원 중…" : "📥 백업 복원"}
         </button>
@@ -669,9 +669,9 @@ function LibraryBackup() {
         />
       </div>
       {message ? (
-        <p className="text-xs text-zinc-600 dark:text-zinc-300">{message}</p>
+        <p className="text-xs text-paperis-text-2">{message}</p>
       ) : null}
-      <p className="text-[11px] text-zinc-400">
+      <p className="text-[11px] text-paperis-text-3">
         오디오 데이터까지 포함하므로 트랙 수에 따라 파일이 클 수 있습니다 (트랙
         하나당 보통 1–5MB).
       </p>

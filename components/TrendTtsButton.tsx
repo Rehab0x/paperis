@@ -129,23 +129,23 @@ export default function TrendTtsButton({
         type="button"
         onClick={handleClick}
         disabled={status.kind === "running"}
-        className="inline-flex items-center gap-2 rounded-md bg-emerald-600 px-3 py-1.5 text-sm font-medium text-white shadow-sm hover:bg-emerald-500 disabled:cursor-not-allowed disabled:bg-zinc-300 dark:disabled:bg-zinc-700"
+        className="inline-flex items-center gap-2 rounded-lg bg-paperis-accent px-3 py-1.5 text-sm font-medium text-paperis-bg transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
       >
         {label}
       </button>
       {status.kind === "running" ? (
-        <p className="text-xs text-zinc-500">
+        <p className="text-xs text-paperis-text-3">
           음성 합성에 30~120초 정도 걸립니다 (스크립트 길이에 따라). 변환 동안
           탐색을 계속하셔도 됩니다.
         </p>
       ) : null}
       {status.kind === "done" ? (
-        <p className="rounded-md border border-emerald-200 bg-emerald-50 px-2.5 py-1.5 text-xs text-emerald-700 dark:border-emerald-900 dark:bg-emerald-950 dark:text-emerald-300">
+        <p className="rounded-lg border border-paperis-accent/40 bg-paperis-accent-dim/40 px-2.5 py-1.5 text-xs text-paperis-accent">
           🎉 라이브러리 끝에 추가됨 — 헤더의 라이브러리에서 들으세요
         </p>
       ) : null}
       {status.kind === "error" ? (
-        <pre className="whitespace-pre-wrap break-words rounded-md border border-red-200 bg-red-50 px-2.5 py-1.5 font-sans text-xs leading-relaxed text-red-700 dark:border-red-900 dark:bg-red-950 dark:text-red-300">
+        <pre className="whitespace-pre-wrap break-words rounded-lg border border-paperis-accent/40 bg-paperis-accent-dim/40 px-2.5 py-1.5 font-sans text-xs leading-relaxed text-paperis-accent">
           {status.message}
         </pre>
       ) : null}

@@ -37,12 +37,12 @@ export default function LibraryLink({ className }: { className?: string }) {
         title="오디오 라이브러리"
         className={
           className ??
-          "relative inline-flex items-center justify-center rounded-md p-1.5 text-lg text-zinc-700 hover:bg-zinc-100 dark:text-zinc-200 dark:hover:bg-zinc-800"
+          "relative inline-flex items-center justify-center rounded-lg p-1.5 text-lg text-paperis-text-2 transition hover:bg-paperis-surface-2 hover:text-paperis-text"
         }
       >
         🎧
         {typeof count === "number" && count > 0 ? (
-          <span className="absolute -right-1 -top-1 rounded-full bg-zinc-900 px-1 py-0.5 text-[9px] font-medium leading-none text-white dark:bg-zinc-100 dark:text-zinc-900">
+          <span className="absolute -right-1 -top-1 rounded-full bg-paperis-accent px-1 py-0.5 text-[9px] font-medium leading-none text-paperis-bg">
             {count}
           </span>
         ) : null}
