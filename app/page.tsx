@@ -13,6 +13,7 @@ import SettingsLink from "@/components/SettingsLink";
 import SortControl from "@/components/SortControl";
 import ContinueListeningCard from "@/components/ContinueListeningCard";
 import MyJournalsNewIssues from "@/components/MyJournalsNewIssues";
+import MySpecialtiesPicker from "@/components/MySpecialtiesPicker";
 // JournalEntryLink는 홈이 이제 큐레이션 진입점이라 토픽바에서 제거 (MyJournalsNewIssues
 // 안의 "전체 보기" + 빈 상태 CTA가 같은 동선 제공). 다른 페이지의 헤더에는 그대로 유지.
 import TtsQueueBadge from "@/components/TtsQueueBadge";
@@ -444,6 +445,7 @@ function HomeInner() {
           {!q.trim() && !loading ? (
             <div className="paperis-stagger">
               <ContinueListeningCard />
+              <MySpecialtiesPicker />
               <MyJournalsNewIssues />
               <div className="mt-2 rounded-2xl border border-dashed border-paperis-border bg-paperis-surface/50 p-5 text-center">
                 <p className="text-sm text-paperis-text-2">
