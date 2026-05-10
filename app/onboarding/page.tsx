@@ -7,6 +7,7 @@
 // 않는다 — 사용자는 /journal 페이지의 "내 임상과" 인프라(localStorage)를 그대로
 // 쓰면 됨. 온보딩은 휴대폰 + 약관만 명확히.
 
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { useSession } from "next-auth/react";
@@ -86,7 +87,13 @@ export default function OnboardingPage() {
 
   return (
     <main className="mx-auto w-full max-w-2xl flex-1 px-4 py-10 pb-32">
-      <header className="mb-7">
+      <Link
+        href="/"
+        className="inline-flex h-7 items-center gap-1 text-xs text-zinc-500 transition hover:text-zinc-900 dark:hover:text-zinc-100"
+      >
+        ← 홈으로
+      </Link>
+      <header className="mt-2 mb-7">
         <h1 className="text-2xl font-semibold tracking-tight text-zinc-900 dark:text-zinc-100">
           프로필 완성
         </h1>

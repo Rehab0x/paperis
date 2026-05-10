@@ -81,6 +81,12 @@ function FailInner() {
 export default function BillingFailPage() {
   return (
     <main className="mx-auto w-full max-w-3xl flex-1 px-4 py-10 pb-32">
+      <Link
+        href="/"
+        className="mb-3 inline-flex h-7 items-center gap-1 text-xs text-zinc-500 transition hover:text-zinc-900 dark:hover:text-zinc-100"
+      >
+        ← 홈으로
+      </Link>
       <Suspense
         fallback={
           <div className="h-32 animate-pulse rounded-xl bg-zinc-100 dark:bg-zinc-900" />
