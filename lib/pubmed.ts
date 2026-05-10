@@ -48,12 +48,22 @@ async function esearch(
   // 종종 NCBI가 점검·요청 오류 시 HTML/플레인 텍스트로 응답해 res.json()이
   // "Bad control character ..."로 throw 한다. text로 받아서 안전하게 parse.
   const rawText = await res.text();
-  let data: { esearchresult?: { idlist?: string[]; count?: string } };
+  let data: {
+    esearchresult?: { idlist?: string[]; count?: string; ERROR?: string };
+  };
   try {
     data = JSON.parse(rawText);
   } catch {
     throw new Error(
       `PubMed esearch 응답이 JSON이 아닙니다: ${rawText.slice(0, 160)}`
+    );
+  }
+  // NCBI는 장애 시에도 200 + ERROR 필드로 응답 (e.g. "Search Backend failed: ...")
+  // 이 경우 idlist는 undefined → 0건으로 silent fallback되어 사용자가 "0건"만 보고
+  // 원인을 모름. 명시적 throw로 라우트가 502 + 친절 메시지를 띄우도록 한다.
+  if (data.esearchresult?.ERROR) {
+    throw new Error(
+      `PubMed 일시 장애 (NCBI): ${data.esearchresult.ERROR}. 잠시 후 다시 시도해 주세요.`
     );
   }
   const idlist = data.esearchresult?.idlist ?? [];
