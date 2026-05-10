@@ -46,14 +46,9 @@ export default function BillingPage() {
       router.push("/onboarding");
       return;
     }
-    if (plan === "pro") {
-      setError("Pro 월 구독은 곧 오픈됩니다 (M7 PR3).");
-      return;
-    }
-
     setLoading(true);
     try {
-      // 1. 서버에서 orderId 발급
+      // 1. 서버에서 orderId/customerKey 발급
       const checkoutRes = await fetch("/api/billing/checkout", {
         method: "POST",
         headers: { "content-type": "application/json" },
@@ -70,18 +65,28 @@ export default function BillingPage() {
       }
       const checkout = (await checkoutRes.json()) as CheckoutResponse;
 
-      // 2. Toss SDK 결제창 호출
+      // 2. Toss SDK
       const tossPayments = await loadTossPayments(TOSS_CLIENT_KEY);
-      await tossPayments.requestPayment("카드", {
-        amount: checkout.amount,
-        orderId: checkout.orderId,
-        orderName: checkout.orderName,
-        customerEmail: checkout.customerEmail,
-        customerName: checkout.customerName,
-        successUrl: `${window.location.origin}/billing/success`,
-        failUrl: `${window.location.origin}/billing/fail`,
-      });
-      // requestPayment는 redirect로 이동하므로 여기 도달 X (성공 시)
+      if (plan === "byok") {
+        // 1회 결제 — 카드창
+        await tossPayments.requestPayment("카드", {
+          amount: checkout.amount,
+          orderId: checkout.orderId,
+          orderName: checkout.orderName,
+          customerEmail: checkout.customerEmail,
+          customerName: checkout.customerName,
+          successUrl: `${window.location.origin}/billing/success?flow=byok`,
+          failUrl: `${window.location.origin}/billing/fail`,
+        });
+      } else {
+        // Pro 구독 — 빌링키 인증
+        await tossPayments.requestBillingAuth("카드", {
+          customerKey: checkout.customerKey,
+          successUrl: `${window.location.origin}/billing/success?flow=pro`,
+          failUrl: `${window.location.origin}/billing/fail`,
+        });
+      }
+      // 위 두 메서드 모두 redirect로 이동하므로 여기 도달 X (성공 시)
     } catch (err) {
       console.warn("[billing] start failed", err);
       const msg =
@@ -157,8 +162,8 @@ export default function BillingPage() {
           </button>
         </div>
 
-        {/* Pro — PR3에서 활성화 */}
-        <div className="flex flex-col rounded-2xl border border-zinc-200 bg-zinc-50 p-5 opacity-70 dark:border-zinc-800 dark:bg-zinc-900">
+        {/* Pro */}
+        <div className="flex flex-col rounded-2xl border border-violet-200 bg-violet-50/50 p-5 dark:border-violet-900 dark:bg-violet-950/20">
           <div className="text-xs font-medium text-violet-600 dark:text-violet-400">
             월 구독
           </div>
@@ -176,10 +181,11 @@ export default function BillingPage() {
           </ul>
           <button
             type="button"
-            disabled
-            className="mt-6 inline-flex h-10 w-full cursor-not-allowed items-center justify-center rounded-lg border border-zinc-300 bg-white text-sm font-medium text-zinc-500 dark:border-zinc-700 dark:bg-zinc-950 dark:text-zinc-400"
+            onClick={() => startPayment("pro")}
+            disabled={loading || !FEATURE_AUTH}
+            className="mt-6 inline-flex h-10 w-full items-center justify-center rounded-lg bg-violet-600 text-sm font-medium text-white transition hover:bg-violet-700 disabled:cursor-not-allowed disabled:opacity-50"
           >
-            곧 오픈
+            {loading ? "결제 준비 중…" : "Pro 구독하기"}
           </button>
         </div>
       </div>
