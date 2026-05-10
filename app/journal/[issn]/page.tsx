@@ -14,7 +14,28 @@ export const revalidate = 3600;
 
 interface Props {
   params: Promise<{ issn: string }>;
-  searchParams: Promise<{ tab?: string; from?: string }>;
+  searchParams: Promise<{
+    tab?: string;
+    from?: string;
+    /** trend 탭에 들어올 때 라이브러리에서 점프한 거면 year/quarter 미리 채워줌 */
+    year?: string;
+    quarter?: string;
+  }>;
+}
+
+function parseTrendInitial(searchParams: {
+  year?: string;
+  quarter?: string;
+}): { year: number | null; quarter: "all" | "Q1" | "Q2" | "Q3" | "Q4" | null } {
+  const yRaw = Number(searchParams.year);
+  const year =
+    Number.isInteger(yRaw) && yRaw >= 2000 && yRaw <= 2100 ? yRaw : null;
+  const q = searchParams.quarter;
+  const quarter =
+    q === "all" || q === "Q1" || q === "Q2" || q === "Q3" || q === "Q4"
+      ? q
+      : null;
+  return { year, quarter };
 }
 
 const ISSN_RE = /^\d{4}-\d{3}[\dXx]$/;
@@ -42,7 +63,9 @@ export default async function JournalHomePage({
   searchParams,
 }: Props) {
   const { issn: rawIssn } = await params;
-  const { tab: tabRaw, from: fromRaw } = await searchParams;
+  const sp = await searchParams;
+  const { tab: tabRaw, from: fromRaw } = sp;
+  const trendInitial = parseTrendInitial(sp);
   const issn = decodeURIComponent(rawIssn);
   if (!ISSN_RE.test(issn)) notFound();
 
@@ -117,7 +140,12 @@ export default async function JournalHomePage({
           specialtyName={specialtyName}
         />
       ) : (
-        <TrendDigest issn={queryIssn} journalName={journal.name} />
+        <TrendDigest
+          issn={queryIssn}
+          journalName={journal.name}
+          initialYear={trendInitial.year}
+          initialQuarter={trendInitial.quarter}
+        />
       )}
     </main>
   );

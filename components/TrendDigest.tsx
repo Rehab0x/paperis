@@ -20,6 +20,9 @@ import type { Paper } from "@/types";
 interface Props {
   issn: string;
   journalName: string;
+  /** 라이브러리에서 점프 등으로 들어올 때 초기값. null이면 default(현재 연도/all) */
+  initialYear?: number | null;
+  initialQuarter?: "all" | "Q1" | "Q2" | "Q3" | "Q4" | null;
 }
 
 type Quarter = "all" | "Q1" | "Q2" | "Q3" | "Q4";
@@ -135,9 +138,14 @@ const DIRECTION_COLOR: Record<Direction, string> = {
     "border-zinc-300 bg-zinc-50 text-zinc-800 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-300",
 };
 
-export default function TrendDigest({ issn, journalName }: Props) {
-  const [year, setYear] = useState<number>(NOW.getFullYear());
-  const [quarter, setQuarter] = useState<Quarter>("all");
+export default function TrendDigest({
+  issn,
+  journalName,
+  initialYear,
+  initialQuarter,
+}: Props) {
+  const [year, setYear] = useState<number>(initialYear ?? NOW.getFullYear());
+  const [quarter, setQuarter] = useState<Quarter>(initialQuarter ?? "all");
 
   const [papers, setPapers] = useState<Paper[]>([]);
   const [total, setTotal] = useState(0);

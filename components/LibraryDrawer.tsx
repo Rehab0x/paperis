@@ -42,6 +42,20 @@ export default function LibraryDrawer({ open, onClose }: Props) {
   }, [open, onClose]);
 
   function handleOpenPaper(track: AudioTrackMeta) {
+    // 트렌드 브리핑 트랙은 PaperDetailPanel이 아니라 원래 트렌드 페이지로 — pmid
+    // 형식 "trend:{issn}:{year}:{quarter}"를 파싱해 /journal/{issn}?tab=trend&...로.
+    // 그 페이지가 Redis 캐시 hit이면 Gemini 호출 0으로 즉시 결과 표시.
+    const trendMatch = /^trend:([^:]+):(\d{4}):(all|Q[1-4])$/.exec(track.pmid);
+    if (trendMatch) {
+      const [, issn, year, quarter] = trendMatch;
+      const qs = new URLSearchParams({ tab: "trend", year, quarter });
+      router.push(`/journal/${encodeURIComponent(issn)}?${qs.toString()}`, {
+        scroll: false,
+      });
+      onClose();
+      return;
+    }
+    // 일반 paper 트랙 — 메인 페이지의 PaperDetailPanel이 paperSnapshot fallback으로 띄움
     const params = new URLSearchParams(searchParams.toString());
     params.set("pmid", track.pmid);
     router.push(`/?${params.toString()}`, { scroll: false });

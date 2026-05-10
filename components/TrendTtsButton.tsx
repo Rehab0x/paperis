@@ -84,7 +84,9 @@ export default function TrendTtsButton({
       const ttsVoice = res.headers.get("x-tts-voice") ?? effectiveVoice;
 
       // 트렌드용 fake paper — audio-library AudioTrack의 paperSnapshot 필수 충족.
-      // pmid는 "trend:..." prefix로 PubMed paper와 충돌 회피.
+      // pmid 형식 "trend:{issn}:{year}:{quarter}"는 LibraryDrawer가 파싱해 트렌드
+      // 페이지로 라우팅. url도 정확한 ?tab=trend&year=&quarter= 박아 백업/공유 시
+      // 직접 점프 가능 + Redis 캐시 hit이면 즉시 결과 노출.
       const fakePaper: Paper = {
         pmid: `trend:${issn}:${year}:${quarter}`,
         title: `${journalName} — ${periodLabel} 트렌드 브리핑`,
@@ -97,7 +99,7 @@ export default function TrendTtsButton({
         pmcId: null,
         publicationTypes: ["Trend Briefing"],
         access: "open",
-        url: `/journal/${encodeURIComponent(issn)}?tab=trend&from=`,
+        url: `/journal/${encodeURIComponent(issn)}?tab=trend&year=${year}&quarter=${quarter}`,
       };
 
       await appendTrack({
