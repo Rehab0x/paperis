@@ -37,47 +37,45 @@ export default function JournalCard({
   const inner = (
     <div
       className={[
-        "h-full rounded-2xl border border-zinc-200 bg-white p-4 transition dark:border-zinc-800 dark:bg-zinc-950",
-        href
-          ? "hover:border-zinc-400 hover:shadow-sm dark:hover:border-zinc-600"
-          : "",
+        "h-full rounded-2xl border border-paperis-border bg-paperis-surface p-4 transition",
+        href ? "hover:-translate-y-0.5 hover:border-paperis-text-3" : "",
       ].join(" ")}
     >
-      <h3 className="pr-14 pt-3 text-sm font-semibold leading-snug text-zinc-900 dark:text-zinc-100">
+      <h3 className="pr-14 pt-3 font-serif text-base font-medium leading-snug tracking-tight text-paperis-text">
         {journal.name}
       </h3>
       {journal.publisher ? (
-        <p className="mt-0.5 text-xs text-zinc-500">{journal.publisher}</p>
+        <p className="mt-0.5 text-xs text-paperis-text-3">{journal.publisher}</p>
       ) : null}
       <dl className="mt-3 grid grid-cols-2 gap-x-3 gap-y-1.5 text-xs">
         {journal.issnL ? (
           <>
-            <dt className="text-zinc-400">ISSN-L</dt>
-            <dd className="font-mono text-zinc-700 dark:text-zinc-300">
+            <dt className="text-paperis-text-3">ISSN-L</dt>
+            <dd className="font-mono tabular-nums text-paperis-text-2">
               {journal.issnL}
             </dd>
           </>
         ) : null}
         {typeof journal.twoYearMeanCitedness === "number" ? (
           <>
-            <dt className="text-zinc-400">2yr 인용도</dt>
-            <dd className="text-zinc-700 dark:text-zinc-300">
+            <dt className="text-paperis-text-3">2yr 인용도</dt>
+            <dd className="tabular-nums text-paperis-text-2">
               {journal.twoYearMeanCitedness.toFixed(2)}
             </dd>
           </>
         ) : null}
         {journal.worksCount > 0 ? (
           <>
-            <dt className="text-zinc-400">논문 수</dt>
-            <dd className="text-zinc-700 dark:text-zinc-300">
+            <dt className="text-paperis-text-3">논문 수</dt>
+            <dd className="tabular-nums text-paperis-text-2">
               {journal.worksCount.toLocaleString()}
             </dd>
           </>
         ) : null}
         {journal.citedByCount > 0 ? (
           <>
-            <dt className="text-zinc-400">총 인용</dt>
-            <dd className="text-zinc-700 dark:text-zinc-300">
+            <dt className="text-paperis-text-3">총 인용</dt>
+            <dd className="tabular-nums text-paperis-text-2">
               {journal.citedByCount.toLocaleString()}
             </dd>
           </>
@@ -109,8 +107,8 @@ export default function JournalCard({
       className={[
         "inline-flex h-6 w-6 items-center justify-center rounded-md text-sm transition",
         isFavorite
-          ? "text-amber-500 hover:bg-amber-50 dark:text-amber-400 dark:hover:bg-amber-950/40"
-          : "text-zinc-300 hover:bg-zinc-100 hover:text-amber-500 dark:text-zinc-700 dark:hover:bg-zinc-800 dark:hover:text-amber-400",
+          ? "text-paperis-accent hover:bg-paperis-accent-dim/40"
+          : "text-paperis-text-3 hover:bg-paperis-surface-2 hover:text-paperis-accent",
       ].join(" ")}
     >
       {isFavorite ? "★" : "☆"}
@@ -127,7 +125,7 @@ export default function JournalCard({
       }}
       aria-label={onActionLabel ?? "삭제"}
       title={onActionLabel ?? "삭제"}
-      className="inline-flex h-6 w-6 items-center justify-center rounded-md text-xs text-zinc-300 hover:bg-zinc-100 hover:text-zinc-700 dark:text-zinc-700 dark:hover:bg-zinc-800 dark:hover:text-zinc-200"
+      className="inline-flex h-6 w-6 items-center justify-center rounded-md text-xs text-paperis-text-3 transition hover:bg-paperis-surface-2 hover:text-paperis-text"
     >
       ✕
     </button>
@@ -142,7 +140,7 @@ export default function JournalCard({
     ) : null;
 
   const badgeNode = badge ? (
-    <span className="absolute left-2 top-2 rounded-full border border-emerald-200 bg-emerald-50 px-1.5 py-0.5 text-[9px] font-medium text-emerald-700 dark:border-emerald-900 dark:bg-emerald-950 dark:text-emerald-300">
+    <span className="absolute left-2 top-2 rounded-full border border-paperis-accent/40 bg-paperis-accent-dim/40 px-1.5 py-0.5 text-[9px] font-medium text-paperis-accent">
       {badge}
     </span>
   ) : null;

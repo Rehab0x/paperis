@@ -85,7 +85,7 @@ export default function MySpecialtiesEditor() {
   return (
     <div className="space-y-2">
       {isUsingDefault ? (
-        <p className="rounded-md border border-zinc-200 bg-zinc-50 px-2.5 py-1.5 text-[11px] text-zinc-500 dark:border-zinc-800 dark:bg-zinc-900">
+        <p className="rounded-lg border border-paperis-border bg-paperis-surface-2 px-2.5 py-1.5 text-[11px] text-paperis-text-3">
           기본 임상과(처음 {visible.length}개)를 보고 있습니다. 추가·삭제·순서
           변경하면 자동으로 내 선택이 됩니다.
         </p>
@@ -95,16 +95,16 @@ export default function MySpecialtiesEditor() {
         {visible.map((s, i) => (
           <li
             key={s.id}
-            className="flex items-center gap-1 rounded-md border border-zinc-200 bg-white px-2 py-1.5 dark:border-zinc-800 dark:bg-zinc-950"
+            className="flex items-center gap-1 rounded-lg border border-paperis-border bg-paperis-surface px-2 py-1.5"
           >
-            <span className="font-mono text-[10px] text-zinc-400">
+            <span className="font-mono text-[10px] tabular-nums text-paperis-text-3">
               {String(i + 1).padStart(2, "0")}
             </span>
             <div className="min-w-0 flex-1">
-              <span className="block truncate text-sm font-medium text-zinc-900 dark:text-zinc-100">
+              <span className="block truncate text-sm font-medium text-paperis-text">
                 {s.name}
               </span>
-              <span className="block truncate text-[11px] text-zinc-500">
+              <span className="block truncate text-[11px] text-paperis-text-3">
                 {s.nameEn}
               </span>
             </div>
@@ -114,7 +114,7 @@ export default function MySpecialtiesEditor() {
               disabled={i === 0}
               aria-label="위로"
               title="위로"
-              className="rounded p-1 text-xs text-zinc-500 hover:bg-zinc-100 disabled:cursor-not-allowed disabled:opacity-30 dark:hover:bg-zinc-800"
+              className="rounded p-1 text-xs text-paperis-text-3 transition hover:bg-paperis-surface-2 hover:text-paperis-text disabled:cursor-not-allowed disabled:opacity-30"
             >
               ↑
             </button>
@@ -124,7 +124,7 @@ export default function MySpecialtiesEditor() {
               disabled={i === visible.length - 1}
               aria-label="아래로"
               title="아래로"
-              className="rounded p-1 text-xs text-zinc-500 hover:bg-zinc-100 disabled:cursor-not-allowed disabled:opacity-30 dark:hover:bg-zinc-800"
+              className="rounded p-1 text-xs text-paperis-text-3 transition hover:bg-paperis-surface-2 hover:text-paperis-text disabled:cursor-not-allowed disabled:opacity-30"
             >
               ↓
             </button>
@@ -133,7 +133,7 @@ export default function MySpecialtiesEditor() {
               onClick={() => handleRemove(s.id)}
               aria-label="삭제"
               title="삭제"
-              className="rounded p-1 text-xs text-zinc-400 hover:bg-zinc-100 hover:text-zinc-700 dark:hover:bg-zinc-800 dark:hover:text-zinc-200"
+              className="rounded p-1 text-xs text-paperis-text-3 transition hover:bg-paperis-surface-2 hover:text-paperis-text"
             >
               ✕
             </button>
@@ -146,7 +146,7 @@ export default function MySpecialtiesEditor() {
           <button
             type="button"
             onClick={() => setAdding((v) => !v)}
-            className="rounded-md border border-zinc-200 px-2.5 py-1 text-xs text-zinc-600 hover:bg-zinc-100 dark:border-zinc-800 dark:text-zinc-300 dark:hover:bg-zinc-800"
+            className="rounded-lg border border-paperis-border px-2.5 py-1 text-xs text-paperis-text-2 transition hover:bg-paperis-surface-2 hover:text-paperis-text"
           >
             {adding ? "닫기" : `+ 임상과 추가 (${candidates.length}개 가능)`}
           </button>
@@ -157,14 +157,14 @@ export default function MySpecialtiesEditor() {
                   <button
                     type="button"
                     onClick={() => handleAdd(s.id)}
-                    className="flex w-full items-center gap-2 rounded-md border border-zinc-100 bg-white px-2 py-1.5 text-left transition hover:border-zinc-300 hover:bg-zinc-50 dark:border-zinc-900 dark:bg-zinc-950 dark:hover:border-zinc-700 dark:hover:bg-zinc-900"
+                    className="flex w-full items-center gap-2 rounded-lg border border-paperis-border bg-paperis-surface px-2 py-1.5 text-left transition hover:border-paperis-text-3 hover:bg-paperis-surface-2"
                   >
-                    <span className="text-xs text-zinc-400">＋</span>
+                    <span className="text-xs text-paperis-accent">＋</span>
                     <span className="min-w-0 flex-1">
-                      <span className="block truncate text-sm text-zinc-900 dark:text-zinc-100">
+                      <span className="block truncate text-sm text-paperis-text">
                         {s.name}
                       </span>
-                      <span className="block truncate text-[11px] text-zinc-500">
+                      <span className="block truncate text-[11px] text-paperis-text-3">
                         {s.nameEn}
                       </span>
                     </span>
@@ -175,7 +175,7 @@ export default function MySpecialtiesEditor() {
           ) : null}
         </div>
       ) : (
-        <p className="pt-1 text-[11px] text-zinc-400">
+        <p className="pt-1 text-[11px] text-paperis-text-3">
           카탈로그의 모든 임상과({catalog.specialties.length}개)를 추가했습니다.
         </p>
       )}

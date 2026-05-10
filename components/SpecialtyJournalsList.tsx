@@ -207,7 +207,7 @@ export default function SpecialtyJournalsList({
   return (
     <>
       <div className="mb-3 flex items-center justify-between gap-2">
-        <p className="text-xs text-zinc-500">
+        <p className="text-xs text-paperis-text-3">
           {favoriteCount > 0 ? `⭐ ${favoriteCount} · ` : ""}
           {added.length > 0 ? `내 추가 ${added.length}개 + ` : ""}
           추천 {recommendedJournals.length}개
@@ -216,7 +216,7 @@ export default function SpecialtyJournalsList({
         <button
           type="button"
           onClick={() => setAdderOpen((v) => !v)}
-          className="rounded-md border border-zinc-200 px-3 py-1 text-xs text-zinc-700 hover:bg-zinc-100 dark:border-zinc-800 dark:text-zinc-300 dark:hover:bg-zinc-800"
+          className="rounded-lg border border-paperis-border px-3 py-1 text-xs text-paperis-text-2 transition hover:bg-paperis-surface-2 hover:text-paperis-text"
         >
           {adderOpen ? "닫기" : "+ 저널 추가"}
         </button>
@@ -259,7 +259,7 @@ export default function SpecialtyJournalsList({
       </ul>
 
       {hiddenInCandidates > 0 ? (
-        <p className="mt-4 text-xs text-zinc-400">
+        <p className="mt-4 text-xs text-paperis-text-3">
           이 임상과에서 {hiddenInCandidates}개 저널이 숨겨져 있습니다 — 빈 자리는
           다음 후보로 채워졌어요.
         </p>
@@ -270,7 +270,7 @@ export default function SpecialtyJournalsList({
           role="status"
           aria-live="polite"
           style={{ bottom: "calc(var(--player-bar-h, 0px) + 16px)" }}
-          className="fixed left-1/2 z-30 max-w-md -translate-x-1/2 rounded-lg border border-zinc-200 bg-white px-4 py-2.5 text-sm text-zinc-700 shadow-lg dark:border-zinc-800 dark:bg-zinc-950 dark:text-zinc-300"
+          className="fixed left-1/2 z-30 max-w-md -translate-x-1/2 rounded-lg border border-paperis-border bg-paperis-surface px-4 py-2.5 text-sm text-paperis-text shadow-lg"
         >
           {toast}
         </div>

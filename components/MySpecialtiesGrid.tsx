@@ -56,14 +56,14 @@ export default function MySpecialtiesGrid({ catalog }: Props) {
           <li key={s.id}>
             <Link
               href={`/journal/specialty/${s.id}`}
-              className="block h-full rounded-2xl border border-zinc-200 bg-white p-5 transition hover:border-zinc-400 hover:shadow-sm dark:border-zinc-800 dark:bg-zinc-950 dark:hover:border-zinc-600"
+              className="block h-full rounded-2xl border border-paperis-border bg-paperis-surface p-5 transition hover:-translate-y-0.5 hover:border-paperis-text-3"
             >
-              <h2 className="text-lg font-semibold text-zinc-900 dark:text-zinc-100">
+              <h2 className="font-serif text-lg font-medium tracking-tight text-paperis-text">
                 {s.name}
               </h2>
-              <p className="mt-0.5 text-xs text-zinc-500">{s.nameEn}</p>
+              <p className="mt-0.5 text-xs text-paperis-text-3">{s.nameEn}</p>
               {s.suggestedTopics.length > 0 ? (
-                <p className="mt-3 text-xs leading-relaxed text-zinc-500">
+                <p className="mt-3 text-xs leading-relaxed text-paperis-text-3">
                   추천 주제 ·{" "}
                   {s.suggestedTopics.slice(0, 3).join(" / ")}
                   {s.suggestedTopics.length > 3 ? " …" : ""}
@@ -73,7 +73,7 @@ export default function MySpecialtiesGrid({ catalog }: Props) {
           </li>
         ))}
       </ul>
-      <p className="mt-6 text-[11px] text-zinc-400">
+      <p className="mt-6 text-[11px] text-paperis-text-3">
         {usingDefault
           ? "기본 임상과를 보고 있어요. 헤더 ⚙ 설정 → 내 임상과에서 추가·삭제·순서를 바꿀 수 있습니다."
           : "내 임상과 목록입니다. 변경하려면 헤더 ⚙ 설정 → 내 임상과로 가세요."}

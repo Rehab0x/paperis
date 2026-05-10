@@ -98,7 +98,7 @@ export default function JournalSearchAdder({
   }
 
   return (
-    <div className="rounded-2xl border border-zinc-200 bg-white p-4 dark:border-zinc-800 dark:bg-zinc-950">
+    <div className="rounded-2xl border border-paperis-border bg-paperis-surface p-4">
       <div className="flex items-center gap-2">
         <input
           ref={inputRef}
@@ -106,14 +106,14 @@ export default function JournalSearchAdder({
           value={query}
           onChange={(e) => setQuery(e.target.value)}
           placeholder="저널 이름으로 검색 — 예: 'Lancet', 'Stroke'"
-          className="min-w-0 flex-1 rounded-md border border-zinc-200 bg-white px-3 py-2 text-sm dark:border-zinc-800 dark:bg-zinc-900"
+          className="min-w-0 flex-1 rounded-lg border border-paperis-border bg-paperis-surface px-3 py-2 text-sm text-paperis-text placeholder:text-paperis-text-3"
           autoComplete="off"
           spellCheck={false}
         />
         <button
           type="button"
           onClick={onClose}
-          className="rounded-md px-2 py-1 text-xs text-zinc-500 hover:bg-zinc-100 dark:hover:bg-zinc-800"
+          className="rounded-lg px-2 py-1 text-xs text-paperis-text-3 transition hover:bg-paperis-surface-2 hover:text-paperis-text"
           aria-label="닫기 (ESC)"
         >
           닫기
@@ -121,17 +121,17 @@ export default function JournalSearchAdder({
       </div>
 
       {error ? (
-        <p className="mt-3 rounded-md border border-red-200 bg-red-50 px-2.5 py-1.5 text-xs text-red-700 dark:border-red-900 dark:bg-red-950 dark:text-red-300">
+        <p className="mt-3 rounded-lg border border-paperis-accent/40 bg-paperis-accent-dim/40 px-2.5 py-1.5 text-xs text-paperis-accent">
           {error}
         </p>
       ) : null}
 
       {loading ? (
-        <p className="mt-3 text-xs text-zinc-400">검색 중…</p>
+        <p className="mt-3 text-xs text-paperis-text-3">검색 중…</p>
       ) : null}
 
       {!loading && query.trim() && results.length === 0 && !error ? (
-        <p className="mt-3 text-xs text-zinc-400">
+        <p className="mt-3 text-xs text-paperis-text-3">
           매칭되는 저널이 없습니다. 영어 표기로 시도해 보세요.
         </p>
       ) : null}
@@ -150,18 +150,18 @@ export default function JournalSearchAdder({
                   }}
                   disabled={already}
                   className={[
-                    "flex w-full items-center gap-2 rounded-md border border-zinc-100 bg-white px-3 py-2 text-left transition dark:border-zinc-900 dark:bg-zinc-950",
+                    "flex w-full items-center gap-2 rounded-lg border border-paperis-border bg-paperis-surface px-3 py-2 text-left transition",
                     already
                       ? "cursor-not-allowed opacity-50"
-                      : "hover:border-zinc-300 hover:bg-zinc-50 dark:hover:border-zinc-700 dark:hover:bg-zinc-900",
+                      : "hover:border-paperis-text-3 hover:bg-paperis-surface-2",
                   ].join(" ")}
                 >
-                  <span className="text-xs text-zinc-400">＋</span>
+                  <span className="text-xs text-paperis-accent">＋</span>
                   <span className="min-w-0 flex-1">
-                    <span className="block truncate text-sm font-medium text-zinc-900 dark:text-zinc-100">
+                    <span className="block truncate font-serif text-sm font-medium text-paperis-text">
                       {j.name}
                     </span>
-                    <span className="block truncate text-[11px] text-zinc-500">
+                    <span className="block truncate text-[11px] text-paperis-text-3">
                       {[
                         j.publisher,
                         j.issnL ? `ISSN-L ${j.issnL}` : null,
@@ -174,7 +174,7 @@ export default function JournalSearchAdder({
                     </span>
                   </span>
                   {already ? (
-                    <span className="shrink-0 text-[10px] text-zinc-400">
+                    <span className="shrink-0 text-[10px] text-paperis-text-3">
                       이미 있음
                     </span>
                   ) : null}
@@ -186,7 +186,7 @@ export default function JournalSearchAdder({
       ) : null}
 
       {!query.trim() ? (
-        <p className="mt-3 text-[11px] text-zinc-400">
+        <p className="mt-3 text-[11px] text-paperis-text-3">
           OpenAlex 카탈로그에서 검색 — 영문 저널명이 가장 정확합니다.
         </p>
       ) : null}

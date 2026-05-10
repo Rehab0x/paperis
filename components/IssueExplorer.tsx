@@ -130,13 +130,13 @@ export default function IssueExplorer({ issn, journalName }: Props) {
 
   return (
     <section className="flex flex-col gap-4">
-      <div className="flex flex-wrap items-center gap-3 rounded-2xl border border-zinc-200 bg-white p-3 dark:border-zinc-800 dark:bg-zinc-950">
-        <label className="flex items-center gap-2 text-xs text-zinc-500">
+      <div className="flex flex-wrap items-center gap-3 rounded-2xl border border-paperis-border bg-paperis-surface p-3">
+        <label className="flex items-center gap-2 text-xs text-paperis-text-3">
           <span>연도</span>
           <select
             value={year}
             onChange={(e) => setYear(Number(e.target.value))}
-            className="rounded-md border border-zinc-200 bg-white px-2 py-1 text-sm dark:border-zinc-800 dark:bg-zinc-900"
+            className="rounded-md border border-paperis-border bg-paperis-surface px-2 py-1 text-sm text-paperis-text"
           >
             {yearOptions.map((y) => (
               <option key={y} value={y}>
@@ -145,12 +145,12 @@ export default function IssueExplorer({ issn, journalName }: Props) {
             ))}
           </select>
         </label>
-        <label className="flex items-center gap-2 text-xs text-zinc-500">
+        <label className="flex items-center gap-2 text-xs text-paperis-text-3">
           <span>월</span>
           <select
             value={month}
             onChange={(e) => setMonth(Number(e.target.value))}
-            className="rounded-md border border-zinc-200 bg-white px-2 py-1 text-sm dark:border-zinc-800 dark:bg-zinc-900"
+            className="rounded-md border border-paperis-border bg-paperis-surface px-2 py-1 text-sm text-paperis-text"
           >
             {MONTH_OPTIONS.map((m) => (
               <option key={m.v} value={m.v}>
@@ -160,7 +160,7 @@ export default function IssueExplorer({ issn, journalName }: Props) {
           </select>
         </label>
         {!loading && total > 0 ? (
-          <span className="text-xs text-zinc-500">
+          <span className="text-xs text-paperis-text-3">
             {year}년 {month}월 호 — PubMed 전체 {total.toLocaleString()}건
             (받은 {papers.length}건 정렬·페이지네이션)
           </span>
@@ -173,9 +173,9 @@ export default function IssueExplorer({ issn, journalName }: Props) {
         error={error}
         fetchKey={fetchKey}
         emptyMessage={
-          <div className="rounded-2xl border border-dashed border-zinc-300 bg-white p-8 text-center text-sm text-zinc-500 dark:border-zinc-700 dark:bg-zinc-950">
+          <div className="rounded-2xl border border-dashed border-paperis-border bg-paperis-surface p-8 text-center text-sm text-paperis-text-3">
             <p>이 달({year}년 {month}월)에는 PubMed 인덱스에 논문이 없습니다.</p>
-            <p className="mt-1 text-xs text-zinc-400">
+            <p className="mt-1 text-xs text-paperis-text-3">
               {journalName}는 발행 주기 또는 PubMed 인덱싱 지연으로 결과가 비어
               있을 수 있습니다.
             </p>

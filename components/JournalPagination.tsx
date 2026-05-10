@@ -23,24 +23,24 @@ export default function JournalPagination({
   return (
     <nav
       aria-label="페이지 이동"
-      className="mt-6 flex items-center justify-between gap-3 border-t border-zinc-200 pt-4 dark:border-zinc-800"
+      className="mt-6 flex items-center justify-between gap-3 border-t border-paperis-border pt-4"
     >
       <button
         type="button"
         onClick={() => onChange(page - 1)}
         disabled={isFirst}
-        className="rounded-md border border-zinc-200 px-3 py-1.5 text-sm text-zinc-700 hover:bg-zinc-100 disabled:cursor-not-allowed disabled:opacity-30 dark:border-zinc-800 dark:text-zinc-300 dark:hover:bg-zinc-800"
+        className="rounded-lg border border-paperis-border px-3 py-1.5 text-sm text-paperis-text-2 transition hover:bg-paperis-surface-2 hover:text-paperis-text disabled:cursor-not-allowed disabled:opacity-30"
       >
         ← 이전 {pageSize}건
       </button>
-      <span className="text-xs text-zinc-500">
+      <span className="text-xs text-paperis-text-3">
         {page.toLocaleString()} / {safeTotal.toLocaleString()} 페이지
       </span>
       <button
         type="button"
         onClick={() => onChange(page + 1)}
         disabled={isLast}
-        className="rounded-md border border-zinc-200 px-3 py-1.5 text-sm text-zinc-700 hover:bg-zinc-100 disabled:cursor-not-allowed disabled:opacity-30 dark:border-zinc-800 dark:text-zinc-300 dark:hover:bg-zinc-800"
+        className="rounded-lg border border-paperis-border px-3 py-1.5 text-sm text-paperis-text-2 transition hover:bg-paperis-surface-2 hover:text-paperis-text disabled:cursor-not-allowed disabled:opacity-30"
       >
         다음 {pageSize}건 →
       </button>

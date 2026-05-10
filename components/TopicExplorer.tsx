@@ -122,7 +122,7 @@ export default function TopicExplorer({
 
   return (
     <section className="flex flex-col gap-4">
-      <div className="rounded-2xl border border-zinc-200 bg-white p-4 dark:border-zinc-800 dark:bg-zinc-950">
+      <div className="rounded-2xl border border-paperis-border bg-paperis-surface p-4">
         <form onSubmit={handleSubmit} className="flex flex-wrap gap-2">
           <input
             type="text"
@@ -130,19 +130,19 @@ export default function TopicExplorer({
             onChange={(e) => setInput(e.target.value)}
             placeholder="예: spasticity, post-stroke gait, Botox"
             maxLength={200}
-            className="min-w-0 flex-1 rounded-md border border-zinc-200 bg-white px-3 py-2 text-sm dark:border-zinc-800 dark:bg-zinc-900"
+            className="min-w-0 flex-1 rounded-lg border border-paperis-border bg-paperis-surface px-3 py-2 text-sm text-paperis-text placeholder:text-paperis-text-3"
           />
           <button
             type="submit"
             disabled={loading || !input.trim()}
-            className="rounded-md bg-zinc-900 px-4 py-2 text-sm font-medium text-white hover:bg-zinc-700 disabled:cursor-not-allowed disabled:bg-zinc-300 dark:bg-zinc-100 dark:text-zinc-900 dark:hover:bg-zinc-300 dark:disabled:bg-zinc-700"
+            className="rounded-lg bg-paperis-accent px-4 py-2 text-sm font-medium text-paperis-bg transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
           >
             {loading ? "검색 중…" : "주제 검색"}
           </button>
         </form>
         {suggestedTopics.length > 0 ? (
           <div className="mt-3 flex flex-wrap gap-1.5">
-            <span className="self-center text-xs text-zinc-400">
+            <span className="self-center text-xs text-paperis-text-3">
               {specialtyName ? `${specialtyName} 추천:` : "추천:"}
             </span>
             {suggestedTopics.map((t) => (
@@ -153,8 +153,8 @@ export default function TopicExplorer({
                 className={[
                   "rounded-full border px-2.5 py-0.5 text-xs transition",
                   submittedTopic === t
-                    ? "border-zinc-900 bg-zinc-900 text-white dark:border-zinc-100 dark:bg-zinc-100 dark:text-zinc-900"
-                    : "border-zinc-200 text-zinc-600 hover:border-zinc-400 dark:border-zinc-800 dark:text-zinc-300 dark:hover:border-zinc-600",
+                    ? "border-paperis-accent bg-paperis-accent text-paperis-bg"
+                    : "border-paperis-border text-paperis-text-2 hover:border-paperis-text-3",
                 ].join(" ")}
               >
                 {t}
@@ -163,7 +163,7 @@ export default function TopicExplorer({
           </div>
         ) : null}
         {!loading && submittedTopic && total > 0 ? (
-          <p className="mt-3 text-xs text-zinc-500">
+          <p className="mt-3 text-xs text-paperis-text-3">
             {journalName} · 주제 “{submittedTopic}” — PubMed 전체{" "}
             {total.toLocaleString()}건 (받은 {papers.length}건 정렬·페이지네이션)
           </p>
@@ -171,7 +171,7 @@ export default function TopicExplorer({
       </div>
 
       {!submittedTopic ? (
-        <div className="rounded-2xl border border-dashed border-zinc-300 bg-white p-8 text-center text-sm text-zinc-500 dark:border-zinc-700 dark:bg-zinc-950">
+        <div className="rounded-2xl border border-dashed border-paperis-border bg-paperis-surface p-8 text-center text-sm text-paperis-text-3">
           위 입력창에 키워드를 넣거나 추천 태그를 누르세요.
         </div>
       ) : (
@@ -181,9 +181,9 @@ export default function TopicExplorer({
           error={error}
           fetchKey={fetchKey}
           emptyMessage={
-            <div className="rounded-2xl border border-dashed border-zinc-300 bg-white p-8 text-center text-sm text-zinc-500 dark:border-zinc-700 dark:bg-zinc-950">
+            <div className="rounded-2xl border border-dashed border-paperis-border bg-paperis-surface p-8 text-center text-sm text-paperis-text-3">
               <p>“{submittedTopic}” 주제로 매칭되는 논문이 없습니다.</p>
-              <p className="mt-1 text-xs text-zinc-400">
+              <p className="mt-1 text-xs text-paperis-text-3">
                 다른 키워드를 시도하거나 추천 태그를 눌러보세요.
               </p>
             </div>
