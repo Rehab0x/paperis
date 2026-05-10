@@ -366,7 +366,7 @@ export function limitExceededMessage(
     fulltext: "풀텍스트 요약",
   };
   const cta = isLoggedIn
-    ? "Pro 업그레이드(준비 중) 또는 본인 Gemini API 키를 설정 → API 키에 입력하면 무제한입니다."
+    ? "BYOK(9,900원·평생) 또는 Pro(4,900원/월) 업그레이드, 또는 본인 Gemini API 키를 설정 → API 키에 입력하면 무제한입니다."
     : "로그인하면 사용자 단위로 카운트되고, 본인 Gemini API 키를 설정 → API 키에 입력하면 무제한입니다.";
   return `이번 달 ${kindLabel[kind]} 무료 한도(${result.limit}회)를 모두 사용했습니다. ${cta}`;
 }

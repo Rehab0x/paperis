@@ -13,6 +13,7 @@ import SearchBar from "@/components/SearchBar";
 import SettingsLink from "@/components/SettingsLink";
 import SortControl from "@/components/SortControl";
 import TtsQueueBadge from "@/components/TtsQueueBadge";
+import UsageBanner from "@/components/UsageBanner";
 import { useFetchWithKeys } from "@/components/useFetchWithKeys";
 import { getTrackByPmid } from "@/lib/audio-library";
 import {
@@ -406,6 +407,8 @@ function HomeInner() {
           ) : null}
         </div>
       </header>
+
+      <UsageBanner />
 
       <main className="mx-auto flex w-full max-w-6xl flex-1 gap-6 px-4 py-6 pb-32">
         {/* 결과 목록: lg 미만에서 패널이 떠 있을 땐 숨김 (단일 컬럼 흐름) */}

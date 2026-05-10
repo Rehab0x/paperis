@@ -4,6 +4,7 @@ import AuthMenu from "@/components/AuthMenu";
 import LibraryLink from "@/components/LibraryLink";
 import SettingsLink from "@/components/SettingsLink";
 import TtsQueueBadge from "@/components/TtsQueueBadge";
+import UsageBanner from "@/components/UsageBanner";
 
 // /journal/* 라우트의 공통 헤더. 메인(/) 헤더와 똑같은 라이브러리/설정/큐 배지를
 // 그대로 노출 — 저널 큐레이션 흐름에서도 청취/큐 상태가 끊김 없이 보여야 한다.
@@ -41,6 +42,7 @@ export default function JournalLayout({
           </Suspense>
         </div>
       </header>
+      <UsageBanner />
       {children}
     </div>
   );
