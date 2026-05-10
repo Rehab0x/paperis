@@ -10,30 +10,28 @@ export default function LegalLayout({
 }) {
   return (
     <div className="flex w-full flex-1 flex-col">
-      <header className="border-b border-zinc-200 bg-white dark:border-zinc-800 dark:bg-zinc-950">
+      <header className="border-b border-paperis-border bg-paperis-bg/85 backdrop-blur-xl">
         <div className="mx-auto flex max-w-3xl items-center justify-between gap-4 px-4 py-3 sm:py-4">
           <Link
             href="/"
-            className="text-lg font-semibold tracking-tight text-zinc-900 dark:text-zinc-100"
+            className="font-serif text-2xl font-medium tracking-tight text-paperis-text"
           >
             Paperis
-            <span className="ml-1.5 align-text-top text-[10px] font-mono text-zinc-400">
-              v3
-            </span>
+            <span className="text-paperis-accent">.</span>
           </Link>
-          <nav className="flex items-center gap-3 text-xs text-zinc-500">
-            <Link href="/legal/terms" className="hover:text-zinc-700 dark:hover:text-zinc-300">
+          <nav className="flex items-center gap-3 text-xs text-paperis-text-3">
+            <Link href="/legal/terms" className="transition hover:text-paperis-text">
               이용약관
             </Link>
             <Link
               href="/legal/privacy"
-              className="hover:text-zinc-700 dark:hover:text-zinc-300"
+              className="transition hover:text-paperis-text"
             >
               개인정보처리방침
             </Link>
             <Link
               href="/legal/refund"
-              className="hover:text-zinc-700 dark:hover:text-zinc-300"
+              className="transition hover:text-paperis-text"
             >
               환불 정책
             </Link>

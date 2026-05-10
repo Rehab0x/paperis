@@ -106,14 +106,14 @@ function jumpToPaper(pmid: string): void {
     // 짧게 ring highlight — 사용자가 어느 카드인지 즉시 인지
     el.classList.add(
       "ring-2",
-      "ring-amber-400",
+      "ring-paperis-accent",
       "ring-offset-2",
       "transition"
     );
     setTimeout(() => {
       el.classList.remove(
         "ring-2",
-        "ring-amber-400",
+        "ring-paperis-accent",
         "ring-offset-2",
         "transition"
       );

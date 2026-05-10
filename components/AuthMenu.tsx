@@ -81,23 +81,23 @@ export default function AuthMenu() {
       {open ? (
         <div
           role="menu"
-          className="absolute right-0 z-30 mt-2 w-56 origin-top-right rounded-xl border border-zinc-200 bg-white p-2 shadow-lg dark:border-zinc-800 dark:bg-zinc-900"
+          className="absolute right-0 z-30 mt-2 w-56 origin-top-right rounded-xl border border-paperis-border bg-paperis-surface p-2 shadow-lg"
         >
           <div className="px-2 py-1.5">
-            <div className="truncate text-sm font-medium text-zinc-900 dark:text-zinc-100">
+            <div className="truncate text-sm font-medium text-paperis-text">
               {user.name ?? "(이름 없음)"}
             </div>
-            <div className="truncate text-[11px] text-zinc-500 dark:text-zinc-400">
+            <div className="truncate text-[11px] text-paperis-text-3">
               {user.email}
             </div>
           </div>
-          <div className="my-1 h-px bg-zinc-100 dark:bg-zinc-800" />
+          <div className="my-1 h-px bg-paperis-border" />
           {!user.onboardingDone ? (
             <Link
               href="/onboarding"
               role="menuitem"
               onClick={() => setOpen(false)}
-              className="mb-1 flex items-start gap-2 rounded-lg border border-amber-200 bg-amber-50 px-2 py-1.5 text-xs text-amber-800 transition hover:bg-amber-100 dark:border-amber-900 dark:bg-amber-950 dark:text-amber-300 dark:hover:bg-amber-900/40"
+              className="mb-1 flex items-start gap-2 rounded-lg border border-paperis-accent/40 bg-paperis-accent-dim/40 px-2 py-1.5 text-xs text-paperis-accent transition hover:bg-paperis-accent-dim/60"
             >
               <span>📝</span>
               <span className="min-w-0 flex-1">
@@ -114,7 +114,7 @@ export default function AuthMenu() {
                 href="/account"
                 role="menuitem"
                 onClick={() => setOpen(false)}
-                className="flex items-center gap-2 rounded-lg px-2 py-1.5 text-xs font-medium text-zinc-700 transition hover:bg-zinc-100 dark:text-zinc-300 dark:hover:bg-zinc-800"
+                className="flex items-center gap-2 rounded-lg px-2 py-1.5 text-xs font-medium text-paperis-text-2 transition hover:bg-paperis-surface-2 hover:text-paperis-text"
               >
                 <span>👤</span>
                 <span>계정 · 구독</span>
@@ -123,14 +123,14 @@ export default function AuthMenu() {
                 href="/billing"
                 role="menuitem"
                 onClick={() => setOpen(false)}
-                className="mb-1 flex items-center gap-2 rounded-lg px-2 py-1.5 text-xs font-medium text-zinc-700 transition hover:bg-zinc-100 dark:text-zinc-300 dark:hover:bg-zinc-800"
+                className="mb-1 flex items-center gap-2 rounded-lg px-2 py-1.5 text-xs font-medium text-paperis-text-2 transition hover:bg-paperis-surface-2 hover:text-paperis-text"
               >
                 <span>💎</span>
                 <span>업그레이드</span>
               </Link>
             </>
           ) : null}
-          <div className="px-2 pb-1 text-[11px] text-zinc-500 dark:text-zinc-400">
+          <div className="px-2 pb-1 text-[11px] text-paperis-text-3">
             내 임상과·저널 설정이 디바이스 간 동기화됩니다.
           </div>
           <button
@@ -140,7 +140,7 @@ export default function AuthMenu() {
               setOpen(false);
               signOut();
             }}
-            className="mt-1 inline-flex h-8 w-full items-center justify-start rounded-lg px-2 text-xs font-medium text-zinc-700 transition hover:bg-zinc-100 dark:text-zinc-300 dark:hover:bg-zinc-800"
+            className="mt-1 inline-flex h-8 w-full items-center justify-start rounded-lg px-2 text-xs font-medium text-paperis-text-2 transition hover:bg-paperis-surface-2 hover:text-paperis-text"
           >
             로그아웃
           </button>

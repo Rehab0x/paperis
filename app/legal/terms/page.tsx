@@ -8,10 +8,10 @@ export const metadata = {
 export default function TermsPage() {
   return (
     <main className="mx-auto w-full max-w-3xl flex-1 px-4 py-10 pb-32">
-      <h1 className="text-2xl font-semibold tracking-tight text-zinc-900 dark:text-zinc-100">
+      <h1 className="font-serif text-3xl font-medium tracking-tight text-paperis-text">
         이용약관
       </h1>
-      <p className="mt-2 text-xs text-zinc-500">
+      <p className="mt-2 text-xs text-paperis-text-3">
         시행일: 2026-05-01 · 최근 갱신: 2026-05-11 (sandbox 단계)
       </p>
 

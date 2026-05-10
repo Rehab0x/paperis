@@ -248,14 +248,14 @@ export default function JournalPaperList({
         {paginationNode ? <div className="mb-3">{paginationNode}</div> : null}
 
         {error ? (
-          <div className="mb-4 rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700 dark:border-red-900 dark:bg-red-950 dark:text-red-300">
+          <div className="mb-4 rounded-lg border border-paperis-accent/40 bg-paperis-accent-dim/40 p-3 text-sm text-paperis-accent">
             {error}
           </div>
         ) : null}
 
         {!loading && papers.length === 0 && !error
           ? emptyMessage ?? (
-              <div className="rounded-2xl border border-dashed border-zinc-300 bg-white p-8 text-center text-sm text-zinc-500 dark:border-zinc-700 dark:bg-zinc-950">
+              <div className="rounded-2xl border border-dashed border-paperis-border bg-paperis-surface p-8 text-center text-sm text-paperis-text-3">
                 결과가 없습니다.
               </div>
             )
@@ -288,7 +288,7 @@ export default function JournalPaperList({
             onBack={() => setSelectedPmid(null)}
           />
         ) : (
-          <div className="sticky top-32 hidden rounded-2xl border border-dashed border-zinc-300 bg-white p-6 text-sm text-zinc-500 dark:border-zinc-700 dark:bg-zinc-950 lg:block">
+          <div className="sticky top-32 hidden rounded-2xl border border-dashed border-paperis-border bg-paperis-surface p-6 text-sm text-paperis-text-3 lg:block">
             왼쪽 카드를 클릭하면 풀텍스트·요약·TTS가 여기에 표시됩니다.
           </div>
         )}
