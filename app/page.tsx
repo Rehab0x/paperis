@@ -438,7 +438,7 @@ function HomeInner() {
           ].join(" ")}
         >
           {error ? (
-            <div className="mb-4 rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700 dark:border-red-900 dark:bg-red-950 dark:text-red-300">
+            <div className="mb-4 rounded-lg border border-paperis-accent/40 bg-paperis-accent-dim/40 p-3 text-sm text-paperis-accent">
               {error}
             </div>
           ) : null}
@@ -459,7 +459,7 @@ function HomeInner() {
           ) : null}
 
           {q.trim() && !loading && papers.length === 0 && !error ? (
-            <p className="text-sm text-zinc-500">검색 결과가 없습니다.</p>
+            <p className="text-sm text-paperis-text-3">검색 결과가 없습니다.</p>
           ) : null}
 
           {(papers.length > 0 || loading) && (
@@ -528,7 +528,7 @@ function HomeInner() {
               onBack={() => updateUrl({ pmid: null })}
             />
           ) : (
-            <div className="sticky top-32 rounded-2xl border border-dashed border-zinc-300 bg-white p-6 text-sm text-zinc-500 dark:border-zinc-700 dark:bg-zinc-950">
+            <div className="sticky top-32 rounded-2xl border border-dashed border-paperis-border bg-paperis-surface p-6 text-sm text-paperis-text-3">
               왼쪽 카드를 클릭하면 상세 정보가 여기에 표시됩니다.
             </div>
           )}
@@ -553,24 +553,24 @@ function Pagination({
   return (
     <nav
       aria-label="페이지 이동"
-      className="mt-6 flex items-center justify-between gap-3 border-t border-zinc-200 pt-4 dark:border-zinc-800"
+      className="mt-6 flex items-center justify-between gap-3 border-t border-paperis-border pt-4"
     >
       <button
         type="button"
         onClick={() => onChange(page - 1)}
         disabled={isFirst}
-        className="rounded-md border border-zinc-200 px-3 py-1.5 text-sm text-zinc-700 hover:bg-zinc-100 disabled:cursor-not-allowed disabled:opacity-30 dark:border-zinc-800 dark:text-zinc-300 dark:hover:bg-zinc-800"
+        className="rounded-lg border border-paperis-border px-3 py-1.5 text-sm text-paperis-text-2 transition hover:bg-paperis-surface-2 hover:text-paperis-text disabled:cursor-not-allowed disabled:opacity-30"
       >
         ← 이전 20건
       </button>
-      <span className="text-xs text-zinc-500">
+      <span className="text-xs text-paperis-text-3">
         {page.toLocaleString()} / {safeTotal.toLocaleString()} 페이지
       </span>
       <button
         type="button"
         onClick={() => onChange(page + 1)}
         disabled={isLast}
-        className="rounded-md border border-zinc-200 px-3 py-1.5 text-sm text-zinc-700 hover:bg-zinc-100 disabled:cursor-not-allowed disabled:opacity-30 dark:border-zinc-800 dark:text-zinc-300 dark:hover:bg-zinc-800"
+        className="rounded-lg border border-paperis-border px-3 py-1.5 text-sm text-paperis-text-2 transition hover:bg-paperis-surface-2 hover:text-paperis-text disabled:cursor-not-allowed disabled:opacity-30"
       >
         다음 20건 →
       </button>

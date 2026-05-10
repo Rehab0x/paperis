@@ -177,20 +177,20 @@ export default function PaperDetailPanel({ paper, onBack }: Props) {
   }
 
   return (
-    <div className="rounded-2xl border border-zinc-200 bg-white p-5 dark:border-zinc-800 dark:bg-zinc-950 lg:sticky lg:top-32 lg:max-h-[calc(100vh-9rem)] lg:overflow-auto">
+    <div className="rounded-2xl border border-paperis-border bg-paperis-surface p-5 lg:sticky lg:top-32 lg:max-h-[calc(100vh-9rem)] lg:overflow-auto">
       {onBack ? (
         <button
           type="button"
           onClick={onBack}
-          className="mb-3 inline-flex items-center gap-1 rounded-md border border-zinc-200 px-2 py-1 text-xs text-zinc-600 hover:bg-zinc-100 dark:border-zinc-800 dark:text-zinc-300 dark:hover:bg-zinc-800 lg:hidden"
+          className="mb-3 inline-flex items-center gap-1 rounded-lg border border-paperis-border px-2 py-1 text-xs text-paperis-text-2 transition hover:bg-paperis-surface-2 hover:text-paperis-text lg:hidden"
         >
           ← 결과 목록으로
         </button>
       ) : null}
-      <h2 className="text-base font-semibold leading-snug text-zinc-900 dark:text-zinc-100">
+      <h2 className="font-serif text-lg font-medium leading-snug tracking-tight text-paperis-text">
         {paper.title}
       </h2>
-      <p className="mt-1 text-xs text-zinc-500">
+      <p className="mt-1 text-xs text-paperis-text-3">
         {paper.journal} · {paper.year} · PMID {paper.pmid}
       </p>
       <div className="mt-2 flex flex-wrap items-center gap-2 text-xs">
@@ -198,7 +198,7 @@ export default function PaperDetailPanel({ paper, onBack }: Props) {
           href={paper.url}
           target="_blank"
           rel="noopener noreferrer"
-          className="rounded-md border border-zinc-200 px-2 py-1 text-zinc-600 hover:bg-zinc-100 dark:border-zinc-800 dark:text-zinc-300 dark:hover:bg-zinc-800"
+          className="rounded-lg border border-paperis-border px-2 py-1 text-paperis-text-2 transition hover:bg-paperis-surface-2 hover:text-paperis-text"
         >
           PubMed ↗
         </a>
@@ -207,7 +207,7 @@ export default function PaperDetailPanel({ paper, onBack }: Props) {
             href={`https://doi.org/${paper.doi}`}
             target="_blank"
             rel="noopener noreferrer"
-            className="rounded-md border border-zinc-200 px-2 py-1 text-zinc-600 hover:bg-zinc-100 dark:border-zinc-800 dark:text-zinc-300 dark:hover:bg-zinc-800"
+            className="rounded-lg border border-paperis-border px-2 py-1 text-paperis-text-2 transition hover:bg-paperis-surface-2 hover:text-paperis-text"
           >
             DOI ↗
           </a>
@@ -215,11 +215,11 @@ export default function PaperDetailPanel({ paper, onBack }: Props) {
       </div>
 
       <section className="mt-4 space-y-2">
-        <h3 className="text-xs font-medium uppercase tracking-wide text-zinc-500">
+        <h3 className="text-[11px] font-semibold uppercase tracking-[0.06em] text-paperis-text-2">
           풀텍스트
         </h3>
         {ft.status === "loading" ? (
-          <div className="rounded-lg border border-zinc-200 bg-zinc-50 p-3 text-xs text-zinc-500 dark:border-zinc-800 dark:bg-zinc-900">
+          <div className="rounded-lg border border-paperis-border bg-paperis-surface-2 p-3 text-xs text-paperis-text-3">
             Unpaywall → Europe PMC → PMC 순으로 본문을 찾는 중…
           </div>
         ) : ft.status === "ready" ? (
@@ -239,29 +239,29 @@ export default function PaperDetailPanel({ paper, onBack }: Props) {
 
       <section className="mt-5 space-y-2">
         <div className="flex items-center justify-between">
-          <h3 className="text-xs font-medium uppercase tracking-wide text-zinc-500">
+          <h3 className="text-[11px] font-semibold uppercase tracking-[0.06em] text-paperis-text-2">
             긴 요약
           </h3>
           <button
             type="button"
             onClick={handleSummarize}
             disabled={summarizing}
-            className="rounded-md bg-zinc-900 px-2.5 py-1 text-xs font-medium text-white hover:bg-zinc-700 disabled:cursor-not-allowed disabled:opacity-50 dark:bg-zinc-100 dark:text-zinc-900 dark:hover:bg-zinc-300"
+            className="rounded-lg bg-paperis-accent px-2.5 py-1 text-xs font-medium text-paperis-bg transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
           >
             {summarizing ? "요약 중…" : summary ? "다시 생성" : "요약 시작"}
           </button>
         </div>
         {summaryError ? (
-          <div className="rounded-lg border border-red-200 bg-red-50 p-2 text-xs text-red-700 dark:border-red-900 dark:bg-red-950 dark:text-red-300">
+          <div className="rounded-lg border border-paperis-accent/40 bg-paperis-accent-dim/30 p-2 text-xs text-paperis-accent">
             {summaryError}
           </div>
         ) : null}
         {summary ? (
-          <pre className="whitespace-pre-wrap break-words rounded-lg border border-zinc-200 bg-zinc-50 p-3 font-sans text-[13px] leading-relaxed text-zinc-700 dark:border-zinc-800 dark:bg-zinc-900 dark:text-zinc-200">
+          <pre className="whitespace-pre-wrap break-words rounded-lg border border-paperis-border bg-paperis-surface-2 p-3 font-sans text-[13px] leading-relaxed text-paperis-text">
             {summary}
           </pre>
         ) : !summarizing ? (
-          <p className="text-xs text-zinc-500">
+          <p className="text-xs text-paperis-text-3">
             {ft.status === "ready"
               ? `${SOURCE_LABEL[ft.source as FullTextSource]} 기반으로 요약합니다.`
               : "Abstract만으로 요약합니다 (전체 본문 미확보)."}
@@ -270,7 +270,7 @@ export default function PaperDetailPanel({ paper, onBack }: Props) {
       </section>
 
       <section className="mt-5">
-        <h3 className="text-xs font-medium uppercase tracking-wide text-zinc-500">
+        <h3 className="text-[11px] font-semibold uppercase tracking-[0.06em] text-paperis-text-2">
           청취
         </h3>
         <div className="mt-2">
@@ -284,7 +284,7 @@ export default function PaperDetailPanel({ paper, onBack }: Props) {
                 : undefined
             }
           />
-          <p className="mt-2 text-[11px] text-zinc-400">
+          <p className="mt-2 text-[11px] text-paperis-text-3">
             변환된 트랙은 라이브러리 끝에 조용히 추가됩니다 (자동 재생 X).
           </p>
         </div>
@@ -296,23 +296,23 @@ export default function PaperDetailPanel({ paper, onBack }: Props) {
 function FullTextDiagnostic({ attempts }: { attempts: FullTextAttempt[] }) {
   if (attempts.length === 0) return null;
   return (
-    <div className="rounded-lg border border-zinc-200 bg-zinc-50 p-3 text-xs dark:border-zinc-800 dark:bg-zinc-900">
-      <p className="mb-1.5 font-medium text-zinc-700 dark:text-zinc-200">
+    <div className="rounded-lg border border-paperis-border bg-paperis-surface-2 p-3 text-xs">
+      <p className="mb-1.5 font-medium text-paperis-text">
         풀텍스트 자동 확보 실패 — 단계별 결과:
       </p>
-      <ul className="space-y-1 text-zinc-500">
+      <ul className="space-y-1 text-paperis-text-3">
         {attempts.map((a, i) => (
           <li key={i} className="flex gap-2">
-            <span className="font-mono text-[10px] uppercase text-zinc-400">
+            <span className="font-mono text-[10px] uppercase text-paperis-text-3">
               {SOURCE_LABEL[a.source]}
             </span>
             <span className="flex-1">
               {a.skipReason ? (
-                <span className="text-zinc-500">⊘ {a.skipReason}</span>
+                <span>⊘ {a.skipReason}</span>
               ) : a.failReason ? (
-                <span className="text-zinc-500">× {a.failReason}</span>
+                <span>× {a.failReason}</span>
               ) : (
-                <span className="text-zinc-400">—</span>
+                <span>—</span>
               )}
             </span>
           </li>
