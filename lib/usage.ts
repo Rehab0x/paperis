@@ -4,10 +4,12 @@
 //   - 로그인: session.user.id
 //   - 비로그인: "anon:{anonymousId}" — 클라가 X-Paperis-Anon-Id 헤더로 전달
 //
-// plan 판정 (우선순위):
-//   1. subscriptions.plan === "pro" || "byok" + status active → 무제한
-//   2. X-Paperis-Keys로 자기 GEMINI_API_KEY 보냈으면 "byok-effective" → 무제한
-//   3. 그 외 → "free" → 한도 적용
+// plan 판정 (2026-05-11 단순화):
+//   1. subscriptions.plan === "pro" || "byok" + status active/cancelled → 무제한
+//   2. 그 외 → "free" → 한도 적용
+//
+// X-Paperis-Keys 헤더는 더 이상 plan 판정에 영향 X — 키 입력은 BYOK 결제자에
+// 한해 applyUserKeysToEnv가 process.env override (lib/user-keys.ts)
 //
 // yearMonth는 KST(UTC+9) 기준 "YYYY-MM" — 매달 자연 분리되어 cron 없이 reset.
 
@@ -15,10 +17,9 @@ import { and, eq, sql } from "drizzle-orm";
 import { auth } from "@/auth";
 import { getDb, hasDb } from "@/lib/db";
 import { subscriptions, usageMonthly } from "@/lib/db/schema";
-import { readUserKeys } from "@/lib/user-keys";
 
 export type UsageKind = "curation" | "tts" | "fulltext";
-export type Plan = "free" | "byok-effective" | "byok" | "pro";
+export type Plan = "free" | "byok" | "pro";
 
 /** Free 플랜 월별 한도 */
 export const FREE_LIMITS: Record<UsageKind, number> = {
@@ -83,14 +84,11 @@ export async function getIdentityKey(req: Request): Promise<string | null> {
 }
 
 /**
- * plan 판정. DB 호출은 로그인 사용자만 (anon은 항상 free + BYOK 우회 가능).
+ * plan 판정 — 순수 DB 기반 (2026-05-11 변경).
+ * 헤더 키 우회 ("byok-effective")는 제거 — 키 입력은 BYOK 결제자만 가능 정책 반영.
  */
 export async function getPlan(req: Request): Promise<Plan> {
-  // BYOK 우회 — 사용자 자기 Gemini 키가 있으면 "byok-effective" (DB 조회 X, 비로그인도 동작)
-  const userKeys = readUserKeys(req);
-  if (userKeys.gemini) return "byok-effective";
-
-  // 로그인 사용자 → subscriptions 조회
+  void req;
   if (!hasDb()) return "free";
   const session = await auth();
   if (!session?.user?.id) return "free";

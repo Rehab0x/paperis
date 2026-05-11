@@ -57,7 +57,7 @@ function buildTopicTerm(issn: string, topic: string): string {
 }
 
 export async function GET(req: Request) {
-  applyUserKeysToEnv(req);
+  await applyUserKeysToEnv(req);
 
   const { searchParams } = new URL(req.url);
   const issn = (searchParams.get("issn") ?? "").trim();

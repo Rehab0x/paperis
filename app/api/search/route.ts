@@ -35,7 +35,7 @@ function clampInt(value: unknown, min: number, max: number, fallback: number): n
 }
 
 export async function POST(req: Request) {
-  applyUserKeysToEnv(req);
+  await applyUserKeysToEnv(req);
   let body: Partial<SearchRequest>;
   try {
     body = (await req.json()) as Partial<SearchRequest>;

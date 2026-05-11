@@ -11,7 +11,7 @@ export const runtime = "nodejs";
 export const maxDuration = 60;
 
 export async function POST(req: Request) {
-  applyUserKeysToEnv(req);
+  await applyUserKeysToEnv(req);
   let body: Partial<FullTextRequest>;
   try {
     body = (await req.json()) as Partial<FullTextRequest>;

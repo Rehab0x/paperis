@@ -42,7 +42,7 @@ const MIN_TEXT = 20;
 const MAX_TEXT = 30000;
 
 export async function POST(req: Request) {
-  applyUserKeysToEnv(req);
+  await applyUserKeysToEnv(req);
 
   let body: TtsTextBody;
   try {

@@ -60,7 +60,7 @@ function buildIssueTerm(issn: string, year: number, month: number): string {
 const ISSN_RE = /^\d{4}-\d{3}[\dXx]$/;
 
 export async function GET(req: Request) {
-  applyUserKeysToEnv(req);
+  await applyUserKeysToEnv(req);
 
   const { searchParams } = new URL(req.url);
   const issn = (searchParams.get("issn") ?? "").trim();

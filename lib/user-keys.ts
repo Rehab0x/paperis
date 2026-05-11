@@ -1,5 +1,14 @@
 // 라우트가 요청 헤더 X-Paperis-Keys (base64 JSON)에서 사용자 입력 키를 추출.
-// 헤더에 키가 있으면 process.env 보다 우선 사용 → 사용자가 자기 키로 prod 키 우회 가능.
+//
+// 정책 (2026-05-11 변경):
+//   - 헤더 키 적용은 BYOK 결제자(subscriptions.plan='byok')에 한해 허용
+//   - Free/Pro/익명은 헤더가 와도 무시 → 우리 env 키 사용 + Free 한도 적용
+//   - "BYOK = 본인 API 키 입력 권한" 정책에 따른 강제 게이트
+
+import { eq } from "drizzle-orm";
+import { auth } from "@/auth";
+import { getDb, hasDb } from "@/lib/db";
+import { subscriptions } from "@/lib/db/schema";
 
 export interface UserApiKeys {
   gemini?: string;
@@ -14,11 +23,9 @@ const HEADER_NAME = "x-paperis-keys";
 
 function decodeBase64Utf8(b64: string): string {
   try {
-    // Node.js
     if (typeof Buffer !== "undefined") {
       return Buffer.from(b64, "base64").toString("utf-8");
     }
-    // 브라우저 fallback (서버에선 사용 안 됨)
     const bin = atob(b64);
     const bytes = Uint8Array.from(bin, (c) => c.charCodeAt(0));
     return new TextDecoder("utf-8").decode(bytes);
@@ -50,14 +57,54 @@ export function readUserKeys(req: Request): UserApiKeys {
 }
 
 /**
- * 라우트 시작에 한 번 호출 → 사용자 헤더 키를 process.env에 반영.
- * Node.js 모듈은 단일 프로세스라 process.env 변경이 동시 요청에 영향 줄 수 있어
- * "이 요청에서만" 안전하게 하려면 각 provider가 ctx에서 키를 받도록 하는 편이
- * 이론적으로 더 깨끗하다. 다만 코드 변경 폭을 줄이기 위해 v2.0.4에선 process.env
- * override 방식을 사용. 동시성 충돌은 dev 단일 사용자 환경에선 사실상 무시 가능.
+ * 현재 요청 사용자가 BYOK 결제자인지 확인.
+ * - 익명/Free/Pro: false
+ * - subscriptions.plan='byok' + status active/cancelled: true (cancelled도 expiresAt 만료 전까지는 유지)
  */
-export function applyUserKeysToEnv(req: Request): void {
+async function userHasByokPlan(): Promise<boolean> {
+  if (!hasDb()) return false;
+  const session = await auth();
+  if (!session?.user?.id) return false;
+  try {
+    const db = getDb();
+    const rows = await db
+      .select()
+      .from(subscriptions)
+      .where(eq(subscriptions.userId, session.user.id))
+      .limit(1);
+    const row = rows[0];
+    if (!row) return false;
+    if (row.plan !== "byok") return false;
+    // BYOK는 expiresAt=null = 평생. cancelled는 의미 없지만 일관성 위해 같이 허용.
+    if (row.status === "active" || row.status === "cancelled") return true;
+    return false;
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * 라우트 시작에 await로 호출. 사용자가 BYOK 결제자면 헤더 키를 process.env에 반영.
+ * 비-BYOK 사용자의 헤더는 무시 (우리 env 키로 진행 + Free 한도 적용).
+ *
+ * Node.js 모듈은 단일 프로세스라 process.env 변경이 동시 요청에 영향 줄 수 있으나
+ * 단일 사용자 dev 환경에선 실용상 문제 없음. prod에선 BYOK 사용자 본인 키이므로
+ * 다른 사용자에게 잘못 새지 않도록 라우트가 await로 순차 처리.
+ */
+export async function applyUserKeysToEnv(req: Request): Promise<void> {
   const keys = readUserKeys(req);
+  const hasAny =
+    keys.gemini ||
+    keys.googleCloud ||
+    keys.clovaId ||
+    keys.clovaSecret ||
+    keys.pubmed ||
+    keys.unpaywall;
+  if (!hasAny) return;
+
+  const allowed = await userHasByokPlan();
+  if (!allowed) return; // 비-BYOK 사용자 헤더는 무시
+
   if (keys.gemini) process.env.GEMINI_API_KEY = keys.gemini;
   if (keys.googleCloud)
     process.env.GOOGLE_CLOUD_TTS_API_KEY = keys.googleCloud;

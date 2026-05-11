@@ -13,7 +13,7 @@ export const maxDuration = 120;
 const MAX_BYTES = 30 * 1024 * 1024; // 30MB
 
 export async function POST(req: Request) {
-  applyUserKeysToEnv(req);
+  await applyUserKeysToEnv(req);
   let form: FormData;
   try {
     form = await req.formData();

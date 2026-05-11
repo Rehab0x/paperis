@@ -246,7 +246,7 @@ export default function AccountPage() {
           </p>
         ) : usage ? (
           <p className="mt-3 text-xs text-paperis-text-3">
-            {usage.plan === "byok" || usage.plan === "byok-effective"
+            {usage.plan === "byok"
               ? "BYOK 권한 — 한도 없음."
               : "Pro 권한 — 한도 없음."}
           </p>

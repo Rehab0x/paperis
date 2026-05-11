@@ -137,7 +137,7 @@ export default function SettingsDrawer({ open, onClose }: Props) {
           </button>
         </header>
 
-        <div className="flex-1 space-y-7 overflow-auto px-5 py-5 pb-12">
+        <div className="flex-1 space-y-2 overflow-auto px-5 py-5 pb-12">
           <Section title="화면 테마" description="라이트/다크/시스템 중에서 선택">
             <RadioGroup
               name="theme"
@@ -211,8 +211,9 @@ export default function SettingsDrawer({ open, onClose }: Props) {
           </Section>
 
           <Section
-            title="API 키"
-            description="입력한 키는 브라우저(localStorage)에 저장되어 fetch 시 헤더로 전송 → 서버가 .env 키 대신 사용"
+            title="API 키 (BYOK)"
+            description="본인 API 키 입력 — BYOK 결제 후에만 활성화. 입력한 키로 모든 호출이 무제한으로 동작."
+            badge={<ByokGateBadge />}
           >
             <ApiKeysSection />
           </Section>
@@ -244,24 +245,59 @@ export default function SettingsDrawer({ open, onClose }: Props) {
   );
 }
 
+/**
+ * Section — 접고 펴는 아코디언. <details>는 브라우저 native지만 스타일링과 화살표
+ * 일관성 위해 상태 직접 관리. 첫 진입은 모두 접힘 (정보 과부하 방지) + 사용자가
+ * 원하는 섹션만 펼침.
+ */
 function Section({
   title,
   description,
+  badge,
   children,
+  defaultOpen = false,
 }: {
   title: string;
   description?: string;
+  badge?: React.ReactNode;
   children?: React.ReactNode;
+  defaultOpen?: boolean;
 }) {
+  const [open, setOpen] = useState(defaultOpen);
   return (
-    <section>
-      <h3 className="text-sm font-semibold text-paperis-text">
-        {title}
-      </h3>
-      {description ? (
-        <p className="mt-0.5 text-xs text-paperis-text-3">{description}</p>
+    <section className="rounded-xl border border-paperis-border bg-paperis-surface">
+      <button
+        type="button"
+        onClick={() => setOpen((v) => !v)}
+        aria-expanded={open}
+        className="flex w-full items-center justify-between gap-3 px-4 py-3 text-left"
+      >
+        <span className="min-w-0 flex-1">
+          <span className="flex items-center gap-2 text-sm font-semibold text-paperis-text">
+            {title}
+            {badge}
+          </span>
+          {description ? (
+            <span className="mt-0.5 block text-xs text-paperis-text-3">
+              {description}
+            </span>
+          ) : null}
+        </span>
+        <span
+          className={[
+            "shrink-0 text-paperis-text-3 transition-transform",
+            open ? "rotate-90" : "",
+          ].join(" ")}
+          aria-hidden
+        >
+          ›
+        </span>
+      </button>
+      {open ? (
+        <div className="border-t border-paperis-border px-4 pb-4 pt-3">
+          {children}
+        </div>
       ) : null}
-      <div className="mt-2.5">{children}</div>
     </section>
   );
 }
@@ -507,8 +543,50 @@ function NotificationPermission() {
   );
 }
 
+function ByokGateBadge() {
+  const { isByok, loading } = useByokStatus();
+  if (loading) return null;
+  return isByok ? (
+    <span className="rounded-full bg-paperis-accent-dim/60 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.06em] text-paperis-accent">
+      활성
+    </span>
+  ) : (
+    <span className="rounded-full bg-paperis-surface-2 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.06em] text-paperis-text-3">
+      잠김
+    </span>
+  );
+}
+
+function useByokStatus(): { isByok: boolean; loading: boolean } {
+  const [state, setState] = useState<{ isByok: boolean; loading: boolean }>({
+    isByok: false,
+    loading: true,
+  });
+  useEffect(() => {
+    let cancelled = false;
+    fetch("/api/account/subscription", { cache: "no-store" })
+      .then((r) => (r.ok ? r.json() : null))
+      .then((j) => {
+        if (cancelled) return;
+        const isByok =
+          j && j.plan === "byok" &&
+          (j.status === "active" || j.status === "cancelled");
+        setState({ isByok: Boolean(isByok), loading: false });
+      })
+      .catch(() => {
+        if (cancelled) return;
+        setState({ isByok: false, loading: false });
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+  return state;
+}
+
 function ApiKeysSection() {
   const { keys, setKey, clearKey } = useApiKeys();
+  const { isByok, loading } = useByokStatus();
   const [reveal, setReveal] = useState<Record<ApiKeyName, boolean>>({
     gemini: false,
     googleCloud: false,
@@ -526,6 +604,33 @@ function ApiKeysSection() {
     "pubmed",
     "unpaywall",
   ];
+
+  if (loading) {
+    return (
+      <div className="h-20 animate-pulse rounded-lg bg-paperis-surface-2" />
+    );
+  }
+
+  if (!isByok) {
+    return (
+      <div className="space-y-3">
+        <p className="rounded-lg border border-paperis-border bg-paperis-surface-2 px-2.5 py-2 text-xs text-paperis-text-2">
+          본인 API 키 입력은 <strong>BYOK 결제자</strong>만 가능합니다. BYOK는
+          평생 1회 결제로 자신의 키로 모든 호출을 무제한 이용하는 권한입니다.
+        </p>
+        <a
+          href="/billing"
+          className="inline-flex h-9 items-center rounded-lg bg-paperis-accent px-3 text-xs font-medium text-paperis-bg transition hover:opacity-90"
+        >
+          BYOK 결제 페이지로 →
+        </a>
+        <p className="text-[11px] text-paperis-text-3">
+          Free 사용자는 월별 무료 한도(큐레이션 3 / TTS 5 / 풀텍스트 3) 안에서
+          서비스를 이용할 수 있고, Pro 구독자는 우리 키로 무제한 이용합니다.
+        </p>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-2.5">

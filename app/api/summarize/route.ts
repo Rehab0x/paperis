@@ -30,7 +30,7 @@ function isPaper(value: unknown): value is Paper {
 }
 
 export async function POST(req: Request) {
-  applyUserKeysToEnv(req);
+  await applyUserKeysToEnv(req);
   let body: Partial<SummarizeMiniRequest>;
   try {
     body = (await req.json()) as Partial<SummarizeMiniRequest>;

@@ -26,7 +26,7 @@ function jsonError(error: string, status = 400) {
 }
 
 export async function POST(req: Request) {
-  applyUserKeysToEnv(req);
+  await applyUserKeysToEnv(req);
   let body: PreviewBody;
   try {
     body = (await req.json()) as PreviewBody;
