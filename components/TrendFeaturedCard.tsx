@@ -45,33 +45,56 @@ function currentYearQuarter(): { year: number; quarter: "Q1" | "Q2" | "Q3" | "Q4
   return { year: y, quarter: q };
 }
 
+/**
+ * KST 기준 "epoch day" — 1970-01-01부터 며칠 지났는지.
+ * 매일 다른 저널을 보여줄 때 안정적인 인덱스로 사용.
+ * 같은 날 안에서는 항상 같은 값 → 캐시 친화적 (같은 저널/날짜는 캐시 hit).
+ */
+function kstEpochDay(): number {
+  const now = Date.now();
+  const kstMs = now + 9 * 60 * 60 * 1000;
+  return Math.floor(kstMs / (24 * 60 * 60 * 1000));
+}
+
 export default function TrendFeaturedCard() {
   const [meta, setMeta] = useState<JournalSummary | null>(null);
   const [brief, setBrief] = useState<TrendBrief | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
 
-  // 1) favorites 중 첫 번째 저널 선택 (사용자 우선순위 반영)
+  // 1) favorites 중 하나를 선택. 여러 개면 매일 다른 저널로 로테이션.
+  //    epoch day % length 인덱스 → 같은 날 안에선 안정적(캐시 hit) + 매일 다음 저널.
+  //    dedupe by openAlexId. 메타 캐시 hit인 것만 후보 (사용자가 한 번이라도 본 저널).
   useEffect(() => {
     function pick() {
       const favsBySpecialty = getAllJournalFavorites();
+      const seen = new Set<string>();
       const favIds: string[] = [];
       for (const ids of Object.values(favsBySpecialty)) {
-        for (const id of ids) favIds.push(id);
+        for (const id of ids) {
+          if (seen.has(id)) continue;
+          seen.add(id);
+          favIds.push(id);
+        }
       }
       if (favIds.length === 0) {
         setMeta(null);
         setLoading(false);
         return;
       }
-      // 메타 캐시 hit인 것만 사용 (없으면 fetch가 불가능 — 사용자가 /journal 한 번도 진입 안 한 경우)
       const metas = getJournalMetas(favIds);
       if (metas.length === 0) {
         setMeta(null);
         setLoading(false);
         return;
       }
-      setMeta(metas[0]);
+      // 안정적 정렬 (openAlexId) — favorites 객체 키 순서가 환경마다 다를 수 있어
+      // 결정성 보장. 그 다음 epoch day로 인덱스 계산.
+      const sorted = [...metas].sort((a, b) =>
+        a.openAlexId.localeCompare(b.openAlexId)
+      );
+      const idx = kstEpochDay() % sorted.length;
+      setMeta(sorted[idx]);
     }
     pick();
     return subscribeJournalFavorites(pick);
