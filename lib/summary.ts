@@ -1,28 +1,21 @@
-// 미니 요약 — 카드에 한눈에 보여줄 4-5개 bullet.
-// 논문 타입(research / review)별로 강조점을 달리해 프롬프트가 분기된다.
-// 한 번의 Gemini 호출로 여러 편을 batch 처리(JSON 모드 + responseSchema).
+// 미니 요약 — provider-agnostic. JSON batch (한 번에 여러 편).
 
-import { Type } from "@google/genai";
-import { callWithRetry, getGeminiClient } from "@/lib/gemini";
+import { getAiProvider } from "@/lib/ai/registry";
+import type { AiJsonSchema, AiProvider } from "@/lib/ai/types";
 import { classifyPaperType } from "@/lib/paper-type";
 import type { Language, MiniSummary, Paper } from "@/types";
 
-const MODEL = "gemini-2.5-flash";
-
-const summarySchema = {
-  type: Type.OBJECT,
+const summarySchema: AiJsonSchema = {
+  type: "object",
   properties: {
     summaries: {
-      type: Type.ARRAY,
+      type: "array",
       items: {
-        type: Type.OBJECT,
+        type: "object",
         properties: {
-          pmid: { type: Type.STRING },
-          paperType: { type: Type.STRING }, // "research" | "review"
-          bullets: {
-            type: Type.ARRAY,
-            items: { type: Type.STRING },
-          },
+          pmid: { type: "string" },
+          paperType: { type: "string" },
+          bullets: { type: "array", items: { type: "string" } },
         },
         required: ["pmid", "paperType", "bullets"],
         propertyOrdering: ["pmid", "paperType", "bullets"],
@@ -79,39 +72,27 @@ function userPrompt(papers: Paper[]): string {
 
 export async function generateMiniSummaries(
   papers: Paper[],
-  language: Language = "ko"
+  language: Language = "ko",
+  provider?: AiProvider
 ): Promise<MiniSummary[]> {
   if (papers.length === 0) return [];
 
-  const ai = getGeminiClient();
+  const p = provider ?? getAiProvider("gemini");
   const validPmids = new Set(papers.map((p) => p.pmid));
 
-  const response = await callWithRetry(() =>
-    ai.models.generateContent({
-      model: MODEL,
-      contents: [{ role: "user", parts: [{ text: userPrompt(papers) }] }],
-      config: {
-        systemInstruction: systemInstruction(language),
-        temperature: 0.3,
-        responseMimeType: "application/json",
-        responseSchema: summarySchema,
-      },
-    })
-  );
-
-  const text = response.text ?? "";
-  let parsed: {
+  const parsed = await p.generateJson<{
     summaries?: Array<{
       pmid?: unknown;
       paperType?: unknown;
       bullets?: unknown;
     }>;
-  };
-  try {
-    parsed = JSON.parse(text);
-  } catch {
-    throw new Error("Gemini 미니 요약 응답을 JSON으로 파싱하지 못했습니다.");
-  }
+  }>({
+    systemInstruction: systemInstruction(language),
+    userPrompt: userPrompt(papers),
+    temperature: 0.3,
+    tier: "balanced",
+    jsonSchema: summarySchema,
+  });
 
   const out: MiniSummary[] = [];
   for (const item of parsed.summaries ?? []) {

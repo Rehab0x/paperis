@@ -7,6 +7,7 @@
 //   - isComplete(기간 종료됨)면 ∞ TTL, 진행 중이면 24h TTL
 //   - JournalTrend 타입 v2 (themes 등)
 
+import { getEffectiveAiProvider } from "@/lib/ai/registry";
 import { friendlyErrorMessage } from "@/lib/gemini";
 import { TTL_24H, getCached, setCached } from "@/lib/journal-cache";
 import { enrichPapers } from "@/lib/openalex";
@@ -250,11 +251,13 @@ export async function GET(req: Request) {
     narrationScript: "",
   };
   try {
+    const aiProvider = await getEffectiveAiProvider(req);
     trend = await generateJournalTrend(
       papers,
       journalName || "이 저널",
       period.label,
-      language
+      language,
+      aiProvider
     );
   } catch (err) {
     return jsonError(friendlyErrorMessage(err, language), 502);

@@ -1,19 +1,14 @@
-// 자연어 → PubMed 검색식 변환 (Gemini 2.0 Flash + responseSchema).
-// 결정론적 변환 작업이라 작은 모델로 충분하고, 응답을 JSON으로 강제해 파싱 실패 위험을 낮춘다.
-// 캐시는 lib/query-cache.ts에서 처리하고 이 모듈은 순수 변환만 책임진다.
+// 자연어 → PubMed 검색식 변환. provider-agnostic (gemini/claude/...).
+// 결정론적 변환이라 fast tier 모델로 충분.
 
-import { Type } from "@google/genai";
-import { callWithRetry, getGeminiClient } from "@/lib/gemini";
+import { getAiProvider } from "@/lib/ai/registry";
+import type { AiJsonSchema, AiProvider } from "@/lib/ai/types";
 
-// gemini-2.0-flash는 신규 사용자 대상 retire됨. 같은 "작고 빠른 결정론적 변환" 자리에는
-// gemini-2.5-flash-lite(GA)를 사용. 요약/TTS의 gemini-2.5-flash와는 의도적으로 분리.
-const QUERY_TRANSLATOR_MODEL = "gemini-2.5-flash-lite";
-
-const querySchema = {
-  type: Type.OBJECT,
+const querySchema: AiJsonSchema = {
+  type: "object",
   properties: {
-    query: { type: Type.STRING },
-    note: { type: Type.STRING },
+    query: { type: "string" },
+    note: { type: "string" },
   },
   required: ["query", "note"],
   propertyOrdering: ["query", "note"],
@@ -43,38 +38,24 @@ export interface TranslationResult {
 }
 
 export async function translateNaturalLanguage(
-  nl: string
+  nl: string,
+  provider?: AiProvider
 ): Promise<TranslationResult> {
   const trimmed = nl.trim();
   if (!trimmed) {
     throw new Error("자연어 검색어가 비어 있습니다.");
   }
 
-  const ai = getGeminiClient();
-  const response = await callWithRetry(() =>
-    ai.models.generateContent({
-      model: QUERY_TRANSLATOR_MODEL,
-      contents: [{ role: "user", parts: [{ text: trimmed }] }],
-      config: {
-        systemInstruction: SYSTEM_INSTRUCTION,
-        temperature: 0.2,
-        responseMimeType: "application/json",
-        responseSchema: querySchema,
-      },
-    })
-  );
+  const p = provider ?? getAiProvider("gemini");
+  const parsed = await p.generateJson<{ query?: unknown; note?: unknown }>({
+    systemInstruction: SYSTEM_INSTRUCTION,
+    userPrompt: trimmed,
+    temperature: 0.2,
+    tier: "fast",
+    jsonSchema: querySchema,
+  });
 
-  const text = response.text ?? "";
-  let parsed: { query?: unknown; note?: unknown };
-  try {
-    parsed = JSON.parse(text);
-  } catch {
-    throw new Error("Gemini 검색식 응답을 JSON으로 파싱하지 못했습니다.");
-  }
-
-  // Gemini가 가끔 query에 raw 제어문자(\n, \r, \t 등)를 섞어 반환한다 — 그대로
-  // PubMed esearch URL에 넣으면 NCBI가 HTML 에러 페이지를 돌려주고 res.json()이
-  // "Bad control character ..."로 throw한다. 여기서 제거.
+  // Gemini가 가끔 query에 raw 제어문자(\n, \r, \t)를 섞어 반환 — sanitize
   const sanitize = (s: string) =>
     s.replace(/[\x00-\x1f\x7f]/g, " ").replace(/\s+/g, " ").trim();
   const query = typeof parsed.query === "string" ? sanitize(parsed.query) : "";

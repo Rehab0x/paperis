@@ -9,6 +9,7 @@
 //
 // 예상 응답 시간: 캐시 hit ~100ms / miss ~5–10s.
 
+import { getEffectiveAiProvider } from "@/lib/ai/registry";
 import { friendlyErrorMessage } from "@/lib/gemini";
 import { TTL_24H, getCached, setCached } from "@/lib/journal-cache";
 import { searchPubMed } from "@/lib/pubmed";
@@ -185,14 +186,16 @@ export async function GET(req: Request) {
     });
   }
 
-  // 2) Gemini Flash Lite — 한 문장만
+  // 2) AI provider로 한 문장만 추출 (fast tier)
   let headline: string;
   try {
+    const aiProvider = await getEffectiveAiProvider(req);
     headline = await generateTrendHeadline(
       papers,
       journalName || "이 저널",
       period.label,
-      language
+      language,
+      aiProvider
     );
   } catch (err) {
     return jsonError(friendlyErrorMessage(err, language), 502);

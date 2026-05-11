@@ -2,6 +2,7 @@
 // 응답: { query, note, papers, total, sort, cached }
 
 import { NextResponse } from "next/server";
+import { getEffectiveAiProvider } from "@/lib/ai/registry";
 import { friendlyErrorMessage } from "@/lib/gemini";
 import { enrichPapers } from "@/lib/openalex";
 import { searchPubMed } from "@/lib/pubmed";
@@ -62,7 +63,8 @@ export async function POST(req: Request) {
   const cached = translated !== null;
   if (!translated) {
     try {
-      translated = await translateNaturalLanguage(q);
+      const provider = await getEffectiveAiProvider(req);
+      translated = await translateNaturalLanguage(q, provider);
       setCachedQuery(q, translated.query, translated.note);
     } catch (err) {
       return NextResponse.json<ApiError>(

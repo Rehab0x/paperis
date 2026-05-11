@@ -197,7 +197,8 @@ function userPromptForSummary(paper: Paper, sourceLabel?: string): string {
 }
 
 export async function* streamSummary(
-  input: SummarizeStreamInput
+  input: SummarizeStreamInput,
+  provider?: import("@/lib/ai/types").AiProvider
 ): AsyncGenerator<string, void, void> {
   const { paper, mode } = input;
   const language: Language = input.language ?? "ko";
@@ -208,7 +209,8 @@ export async function* streamSummary(
     return;
   }
 
-  const ai = getGeminiClient();
+  const { getAiProvider } = await import("@/lib/ai/registry");
+  const p = provider ?? getAiProvider("gemini");
   const sourceLabel = input.sourceLabel?.trim() || undefined;
   const hasFullText = Boolean(sourceLabel);
   const systemInstruction =
@@ -217,39 +219,18 @@ export async function* streamSummary(
       : narrationSystemInstruction(language, hasFullText);
   const userPrompt = userPromptForSummary(paper, sourceLabel);
 
-  // 503/UNAVAILABLE 같은 일시 오류는 첫 청크가 나오기 전까지만 재시도 가능.
-  // 스트림 중간에 끊어지면 부분 출력을 이미 소비했을 수 있어 그대로 실패로 올린다.
-  let lastErr: unknown;
-  for (let attempt = 1; attempt <= MAX_RETRY_ATTEMPTS; attempt++) {
-    let yielded = false;
-    try {
-      const response = await ai.models.generateContentStream({
-        model: SUMMARY_MODEL,
-        contents: [{ role: "user", parts: [{ text: userPrompt }] }],
-        config: {
-          systemInstruction,
-          temperature: mode === "read" ? 0.4 : 0.7,
-        },
-      });
-      for await (const chunk of response) {
-        const text = chunk.text;
-        if (text) {
-          yielded = true;
-          yield text;
-        }
-      }
-      return;
-    } catch (err) {
-      lastErr = err;
-      if (yielded || !isRetryableApiError(err) || attempt === MAX_RETRY_ATTEMPTS) {
-        throw new Error(friendlyErrorMessage(err, language));
-      }
-      const delay =
-        500 * Math.pow(2, attempt - 1) + Math.floor(Math.random() * 250);
-      await sleep(delay);
+  try {
+    for await (const chunk of p.generateStream({
+      systemInstruction,
+      userPrompt,
+      temperature: mode === "read" ? 0.4 : 0.7,
+      tier: "balanced",
+    })) {
+      if (chunk) yield chunk;
     }
+  } catch (err) {
+    throw new Error(friendlyErrorMessage(err, language));
   }
-  throw new Error(friendlyErrorMessage(lastErr, language));
 }
 
 // 비-스트리밍 narration 텍스트 (TTS provider에 던질 스크립트 한 번에 생성).
@@ -257,15 +238,14 @@ export async function* streamSummary(
 export async function generateNarrationText(
   paper: Paper,
   language: Language = "ko",
-  sourceLabel?: string
+  sourceLabel?: string,
+  provider?: import("@/lib/ai/types").AiProvider
 ): Promise<string> {
   const chunks: string[] = [];
-  for await (const c of streamSummary({
-    paper,
-    mode: "narration",
-    language,
-    sourceLabel,
-  })) {
+  for await (const c of streamSummary(
+    { paper, mode: "narration", language, sourceLabel },
+    provider
+  )) {
     chunks.push(c);
   }
   return chunks.join("").trim();
@@ -275,24 +255,26 @@ export async function generateNarrationText(
 // 논문 제목 한국어 번역 (TTS 트랙 라이브러리 표시용)
 // ─────────────────────────────────────────────
 
-const TITLE_TRANSLATE_MODEL = "gemini-2.5-flash-lite";
-
 /**
- * 영어 논문 제목을 한국어로 번역. 의학 용어(spasticity, RCT, FIM 등)는 원어 유지,
- * 가독성 위해 자연스러운 한국어 구성. 1줄, 따옴표 없이 본문만.
+ * 영어 논문 제목을 한국어로 번역. 의학 용어(spasticity, RCT, FIM 등)는 원어 유지.
+ * 1줄, 따옴표 없이 본문만. 실패 시 원본 그대로.
  *
- * 실패 시 원본 title을 그대로 반환 (라이브러리가 깨지지 않게).
+ * provider 매개변수 — 미지정 시 default(Gemini Flash Lite). Phase D 이후 라우트가
+ * getEffectiveAiProvider(req)로 BYOK 선택 provider 주입.
  */
 export async function translateTitleToKorean(
-  title: string
+  title: string,
+  provider?: import("@/lib/ai/types").AiProvider
 ): Promise<string> {
   const trimmed = title.trim();
   if (!trimmed) return trimmed;
-  // 이미 한국어 위주면 번역 안 함 (한글 비율 30%↑이면 그대로)
+  // 이미 한국어 위주면 번역 안 함
   const hangul = trimmed.match(/[가-힣]/g)?.length ?? 0;
   if (hangul / trimmed.length > 0.3) return trimmed;
 
-  const client = getGeminiClient();
+  const { getAiProvider } = await import("@/lib/ai/registry");
+  const p = provider ?? getAiProvider("gemini");
+
   const systemInstruction = [
     "You translate biomedical paper titles from English to Korean for a Korean physician.",
     "Output ONE line — only the translated title. No quotes, no labels, no explanation.",
@@ -301,21 +283,14 @@ export async function translateTitleToKorean(
   ].join(" ");
 
   try {
-    const result = await callWithRetry(
-      () =>
-        client.models.generateContent({
-          model: TITLE_TRANSLATE_MODEL,
-          contents: trimmed,
-          config: {
-            systemInstruction,
-            temperature: 0.2,
-            maxOutputTokens: 200,
-          },
-        }),
-      MAX_RETRY_ATTEMPTS
-    );
-    const out = (result.text ?? "").trim().replace(/^["「"']|["」"']$/g, "");
-    return out || trimmed;
+    const out = await p.generateText({
+      systemInstruction,
+      userPrompt: trimmed,
+      temperature: 0.2,
+      maxOutputTokens: 200,
+      tier: "fast",
+    });
+    return out.replace(/^["「"']|["」"']$/g, "") || trimmed;
   } catch {
     return trimmed;
   }

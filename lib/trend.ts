@@ -7,11 +7,9 @@
 //   - 기간: rolling N개월 → 고정 year/quarter (의미 단위, 캐시 효율)
 //   - 환각 PMID 필터: representativePmids에 abstract corpus 외의 PMID 들어오면 제거
 
-import { Type } from "@google/genai";
-import { callWithRetry, getGeminiClient } from "@/lib/gemini";
+import { getAiProvider } from "@/lib/ai/registry";
+import type { AiJsonSchema, AiProvider } from "@/lib/ai/types";
 import type { Language, Paper } from "@/types";
-
-const MODEL = "gemini-2.5-flash";
 
 // Gemini schema enum에 이모지 포함된 한글 문자열을 그대로 넣으면 응답 파싱이
 // 가끔 깨진다 (LLM이 정확한 토큰 일치를 못 맞춤). 코드(영문)로 받고 클라가 라벨로
@@ -47,24 +45,24 @@ export interface JournalTrend {
   narrationScript: string;
 }
 
-const trendSchema = {
-  type: Type.OBJECT,
+const trendSchema: AiJsonSchema = {
+  type: "object",
   properties: {
-    headline: { type: Type.STRING },
+    headline: { type: "string" },
     themes: {
-      type: Type.ARRAY,
+      type: "array",
       items: {
-        type: Type.OBJECT,
+        type: "object",
         properties: {
-          topic: { type: Type.STRING },
+          topic: { type: "string" },
           direction: {
-            type: Type.STRING,
+            type: "string",
             enum: ["increasing", "new", "debated", "ongoing"],
           },
-          insight: { type: Type.STRING },
+          insight: { type: "string" },
           representativePmids: {
-            type: Type.ARRAY,
-            items: { type: Type.STRING },
+            type: "array",
+            items: { type: "string" },
           },
         },
         required: ["topic", "direction", "insight", "representativePmids"],
@@ -76,9 +74,9 @@ const trendSchema = {
         ],
       },
     },
-    methodologyShift: { type: Type.STRING },
-    clinicalImplication: { type: Type.STRING },
-    narrationScript: { type: Type.STRING },
+    methodologyShift: { type: "string" },
+    clinicalImplication: { type: "string" },
+    narrationScript: { type: "string" },
   },
   required: [
     "headline",
@@ -156,20 +154,19 @@ function userPrompt(papers: Paper[]): string {
 }
 
 /**
- * 라이트 헤드라인 전용 — Flash Lite + 짧은 프롬프트로 한 문장 추출.
+ * 라이트 헤드라인 전용 — fast tier + 짧은 프롬프트로 한 문장 추출.
  * 홈 피처드 카드용 (전체 trend는 30~90초 vs 이건 3~8초).
  */
-const HEADLINE_MODEL = "gemini-2.5-flash-lite";
-
 export async function generateTrendHeadline(
   papers: Paper[],
   journalName: string,
   periodLabel: string,
-  language: Language = "ko"
+  language: Language = "ko",
+  provider?: AiProvider
 ): Promise<string> {
   if (papers.length === 0) return "";
 
-  // 헤드라인용은 상위 ~20편 abstract만 — 더 많으면 입력 토큰만 늘고 품질엔 큰 차이 없음
+  // 헤드라인용은 상위 ~20편 abstract만
   const sorted = [...papers].reverse().slice(0, 20);
   const blocks = sorted.map((p, i) => {
     const abstract = (p.abstract || "").replace(/\s+/g, " ").trim().slice(0, 500);
@@ -186,23 +183,15 @@ export async function generateTrendHeadline(
     `Maximum 60 Korean characters or 80 English characters.`,
   ].join(" ");
 
-  const ai = getGeminiClient();
-  const response = await callWithRetry(() =>
-    ai.models.generateContent({
-      model: HEADLINE_MODEL,
-      contents: blocks.join("\n"),
-      config: {
-        systemInstruction,
-        temperature: 0.4,
-        maxOutputTokens: 300,
-      },
-    })
-  );
-  return (response.text ?? "")
-    .trim()
-    .replace(/^["「"']|["」"']$/g, "")
-    .split("\n")[0]
-    .trim();
+  const p = provider ?? getAiProvider("gemini");
+  const out = await p.generateText({
+    systemInstruction,
+    userPrompt: blocks.join("\n"),
+    temperature: 0.4,
+    maxOutputTokens: 300,
+    tier: "fast",
+  });
+  return out.replace(/^["「"']|["」"']$/g, "").split("\n")[0].trim();
 }
 
 /**
@@ -213,7 +202,8 @@ export async function generateJournalTrend(
   papers: Paper[],
   journalName: string,
   periodLabel: string,
-  language: Language = "ko"
+  language: Language = "ko",
+  provider?: AiProvider
 ): Promise<JournalTrend> {
   if (papers.length === 0) {
     return {
@@ -225,26 +215,8 @@ export async function generateJournalTrend(
     };
   }
 
-  const ai = getGeminiClient();
-  const response = await callWithRetry(() =>
-    ai.models.generateContent({
-      model: MODEL,
-      contents: [{ role: "user", parts: [{ text: userPrompt(papers) }] }],
-      config: {
-        systemInstruction: trendSystemInstruction(
-          language,
-          journalName,
-          periodLabel,
-          Math.min(papers.length, 80)
-        ),
-        temperature: 0.4,
-        responseMimeType: "application/json",
-        responseSchema: trendSchema,
-      },
-    })
-  );
-  const text = response.text ?? "";
-  let parsed: {
+  const p = provider ?? getAiProvider("gemini");
+  const parsed = await p.generateJson<{
     headline?: unknown;
     themes?: Array<{
       topic?: unknown;
@@ -255,12 +227,18 @@ export async function generateJournalTrend(
     methodologyShift?: unknown;
     clinicalImplication?: unknown;
     narrationScript?: unknown;
-  };
-  try {
-    parsed = JSON.parse(text);
-  } catch {
-    throw new Error("Gemini 트렌드 응답을 JSON으로 파싱하지 못했습니다.");
-  }
+  }>({
+    systemInstruction: trendSystemInstruction(
+      language,
+      journalName,
+      periodLabel,
+      Math.min(papers.length, 80)
+    ),
+    userPrompt: userPrompt(papers),
+    temperature: 0.4,
+    tier: "heavy",
+    jsonSchema: trendSchema,
+  });
 
   const validPmids = new Set(papers.map((p) => p.pmid));
   const VALID_DIRECTIONS = new Set<TrendDirection>([

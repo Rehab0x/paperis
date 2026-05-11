@@ -2,6 +2,7 @@
 // 단일/다중 모두 같은 라우트로. 호출자가 papers 배열 길이로 결정.
 
 import { NextResponse } from "next/server";
+import { getEffectiveAiProvider } from "@/lib/ai/registry";
 import { friendlyErrorMessage } from "@/lib/gemini";
 import { generateMiniSummaries } from "@/lib/summary";
 import { applyUserKeysToEnv } from "@/lib/user-keys";
@@ -53,7 +54,8 @@ export async function POST(req: Request) {
   const language: Language = body.language === "en" ? "en" : "ko";
 
   try {
-    const summaries = await generateMiniSummaries(papers, language);
+    const provider = await getEffectiveAiProvider(req);
+    const summaries = await generateMiniSummaries(papers, language, provider);
     const payload: SummarizeMiniResponse = { summaries };
     return NextResponse.json(payload);
   } catch (err) {

@@ -1,6 +1,7 @@
 // /api/summarize/read — 디테일 패널용 긴 요약을 SSE 형식으로 스트리밍.
 // 클라이언트는 chunk 단위로 받아 Markdown처럼 점진 렌더.
 
+import { getEffectiveAiProvider } from "@/lib/ai/registry";
 import { friendlyErrorMessage, streamSummary } from "@/lib/gemini";
 import {
   checkAndIncrement,
@@ -64,16 +65,15 @@ export async function POST(req: Request) {
     return new Response(msg, { status: 429 });
   }
 
+  const provider = await getEffectiveAiProvider(req);
   const encoder = new TextEncoder();
   const stream = new ReadableStream<Uint8Array>({
     async start(controller) {
       try {
-        for await (const chunk of streamSummary({
-          paper,
-          mode: "read",
-          language,
-          sourceLabel,
-        })) {
+        for await (const chunk of streamSummary(
+          { paper, mode: "read", language, sourceLabel },
+          provider
+        )) {
           controller.enqueue(encoder.encode(chunk));
         }
         controller.close();

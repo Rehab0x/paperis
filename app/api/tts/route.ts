@@ -1,6 +1,7 @@
 // /api/tts — paper + (선택) full text를 받아 narration 텍스트를 만들고 provider로 합성.
 // 응답: audio/wav 바이너리 + 트랙 메타는 헤더로 동봉.
 
+import { getEffectiveAiProvider } from "@/lib/ai/registry";
 import {
   friendlyErrorMessage,
   generateNarrationText,
@@ -93,14 +94,15 @@ export async function POST(req: Request) {
   // 요청 provider가 사용자가 명시한 voice 라인업과 다르면 voice 무시 (provider별 voice가 다름)
   const voiceForProvider = resolved.degraded ? undefined : voice;
 
-  // 1) Gemini로 narration 텍스트 + 제목 한국어 번역 (병렬, 한국어 출력일 때만 번역)
+  // 1) AI provider로 narration + 제목 번역 (병렬, 한국어 출력일 때만 번역)
+  const aiProvider = await getEffectiveAiProvider(req);
   let narration: string;
   let titleKo = "";
   try {
     const [n, t] = await Promise.all([
-      generateNarrationText(sourcePaper, language, sourceLabel),
+      generateNarrationText(sourcePaper, language, sourceLabel, aiProvider),
       language === "ko"
-        ? translateTitleToKorean(body.paper.title)
+        ? translateTitleToKorean(body.paper.title, aiProvider)
         : Promise.resolve(""),
     ]);
     narration = n;
