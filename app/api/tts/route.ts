@@ -4,6 +4,7 @@
 import {
   friendlyErrorMessage,
   generateNarrationText,
+  translateTitleToKorean,
 } from "@/lib/gemini";
 import { resolveTtsProvider } from "@/lib/tts";
 import {
@@ -38,7 +39,7 @@ function jsonError(error: string, status = 400) {
 }
 
 export async function POST(req: Request) {
-  applyUserKeysToEnv(req);
+  await applyUserKeysToEnv(req);
   let body: Partial<TtsRequestBody> & { fullText?: unknown };
   try {
     body = (await req.json()) as Partial<TtsRequestBody> & {
@@ -92,10 +93,18 @@ export async function POST(req: Request) {
   // 요청 provider가 사용자가 명시한 voice 라인업과 다르면 voice 무시 (provider별 voice가 다름)
   const voiceForProvider = resolved.degraded ? undefined : voice;
 
-  // 1) Gemini로 narration 텍스트 생성
+  // 1) Gemini로 narration 텍스트 + 제목 한국어 번역 (병렬, 한국어 출력일 때만 번역)
   let narration: string;
+  let titleKo = "";
   try {
-    narration = await generateNarrationText(sourcePaper, language, sourceLabel);
+    const [n, t] = await Promise.all([
+      generateNarrationText(sourcePaper, language, sourceLabel),
+      language === "ko"
+        ? translateTitleToKorean(body.paper.title)
+        : Promise.resolve(""),
+    ]);
+    narration = n;
+    titleKo = t;
   } catch (err) {
     return jsonError(friendlyErrorMessage(err, language), 502);
   }
@@ -120,6 +129,10 @@ export async function POST(req: Request) {
     // Vercel/Node 헤더 제한(보통 32KB+) 안에 충분히 들어간다.
     const narrationB64 = Buffer.from(narration, "utf-8").toString("base64");
 
+    const titleKoB64 = titleKo
+      ? Buffer.from(titleKo, "utf-8").toString("base64")
+      : "";
+
     const headers: Record<string, string> = {
       "content-type": result.format,
       "content-length": String(result.audio.byteLength),
@@ -131,9 +144,12 @@ export async function POST(req: Request) {
       "x-audio-sample-rate": String(result.sampleRate),
       "x-tts-narration-b64": narrationB64,
       "access-control-expose-headers":
-        "x-tts-provider, x-tts-voice, x-tts-language, x-tts-format, x-audio-duration-ms, x-audio-sample-rate, x-tts-narration-b64, x-tts-degraded-from",
+        "x-tts-provider, x-tts-voice, x-tts-language, x-tts-format, x-audio-duration-ms, x-audio-sample-rate, x-tts-narration-b64, x-tts-title-ko-b64, x-tts-degraded-from",
       "cache-control": "no-store",
     };
+    if (titleKoB64) {
+      headers["x-tts-title-ko-b64"] = titleKoB64;
+    }
     if (resolved.degraded && resolved.requestedName) {
       headers["x-tts-degraded-from"] = resolved.requestedName;
     }

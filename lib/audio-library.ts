@@ -93,6 +93,8 @@ export interface AppendTrackInput {
   audioBlob: Blob;
   durationMs: number;
   narrationText?: string;
+  /** 영어 제목의 한국어 번역 (한국어 TTS만, 서버가 동봉) */
+  titleKo?: string;
 }
 
 function newId(): string {
@@ -133,6 +135,7 @@ export async function appendTrack(input: AppendTrackInput): Promise<AudioTrack> 
     position,
     paperSnapshot: input.paper,
     narrationText: input.narrationText,
+    titleKo: input.titleKo,
   };
   await db.add(STORE, track);
   notifyChange();
@@ -167,6 +170,7 @@ export async function listTrackMetas(): Promise<AudioTrackMeta[]> {
       position: v.position,
       paperSnapshot: v.paperSnapshot,
       narrationText: v.narrationText,
+      titleKo: v.titleKo,
       audioByteSize: v.audioBlob?.size ?? 0,
     });
     cursor = await cursor.continue();

@@ -146,6 +146,11 @@ export interface AudioTrack {
    * 재생 중 "스크립트 보기" UI에서 표시.
    */
   narrationText?: string;
+  /**
+   * 영어 제목의 한국어 번역. v3.5+ 새 트랙에만 채워짐 (한국어 TTS만).
+   * 라이브러리/PlayerBar는 titleKo ?? title 순으로 표시.
+   */
+  titleKo?: string;
 }
 
 // 라이브러리 목록 조회용 — audioBlob을 의도적으로 제외해 메모리 폭주를 막는다.
@@ -167,5 +172,6 @@ export interface AudioTrackMeta {
   position: number;
   paperSnapshot: Paper;
   narrationText?: string;
+  titleKo?: string;
   audioByteSize: number;
 }

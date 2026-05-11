@@ -270,3 +270,53 @@ export async function generateNarrationText(
   }
   return chunks.join("").trim();
 }
+
+// ─────────────────────────────────────────────
+// 논문 제목 한국어 번역 (TTS 트랙 라이브러리 표시용)
+// ─────────────────────────────────────────────
+
+const TITLE_TRANSLATE_MODEL = "gemini-2.5-flash-lite";
+
+/**
+ * 영어 논문 제목을 한국어로 번역. 의학 용어(spasticity, RCT, FIM 등)는 원어 유지,
+ * 가독성 위해 자연스러운 한국어 구성. 1줄, 따옴표 없이 본문만.
+ *
+ * 실패 시 원본 title을 그대로 반환 (라이브러리가 깨지지 않게).
+ */
+export async function translateTitleToKorean(
+  title: string
+): Promise<string> {
+  const trimmed = title.trim();
+  if (!trimmed) return trimmed;
+  // 이미 한국어 위주면 번역 안 함 (한글 비율 30%↑이면 그대로)
+  const hangul = trimmed.match(/[가-힣]/g)?.length ?? 0;
+  if (hangul / trimmed.length > 0.3) return trimmed;
+
+  const client = getGeminiClient();
+  const systemInstruction = [
+    "You translate biomedical paper titles from English to Korean for a Korean physician.",
+    "Output ONE line — only the translated title. No quotes, no labels, no explanation.",
+    "Preserve precise English medical/rehabilitation terms when natural (spasticity, FIM, NIHSS, CIMT, RCT, Botox). Translate the surrounding structure into clear, concise Korean.",
+    "Keep it close to the original meaning — do not summarize or paraphrase.",
+  ].join(" ");
+
+  try {
+    const result = await callWithRetry(
+      () =>
+        client.models.generateContent({
+          model: TITLE_TRANSLATE_MODEL,
+          contents: trimmed,
+          config: {
+            systemInstruction,
+            temperature: 0.2,
+            maxOutputTokens: 200,
+          },
+        }),
+      MAX_RETRY_ATTEMPTS
+    );
+    const out = (result.text ?? "").trim().replace(/^["「"']|["」"']$/g, "");
+    return out || trimmed;
+  } catch {
+    return trimmed;
+  }
+}

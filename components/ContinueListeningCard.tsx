@@ -89,7 +89,7 @@ export default function ContinueListeningCard() {
             ▶ 이어 듣기
           </span>
           <span className="mt-1 block truncate text-sm font-medium text-paperis-text">
-            {latest.title}
+            {latest.titleKo ?? latest.title}
           </span>
           <span className="mt-1 block truncate text-[11px] text-paperis-text-3">
             {latest.journal} · 약 {totalMin}분

@@ -209,7 +209,7 @@ export default function AudioLibrary({ onOpenPaper }: Props) {
                       📊 트렌드
                     </span>
                   ) : null}
-                  {track.title}
+                  {track.titleKo ?? track.title}
                 </p>
                 <p className="mt-0.5 truncate text-[11px] leading-tight text-paperis-text-3">
                   {track.journal} · {track.year} ·{" "}

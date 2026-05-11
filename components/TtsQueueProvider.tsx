@@ -219,24 +219,26 @@ export default function TtsQueueProvider({
         const usedProvider =
           res.headers.get("x-tts-provider") ?? "gemini";
         // narration 원문 (재생 중 스크립트 보기용). 헤더 없거나 디코딩 실패해도 트랙은 정상 저장.
-        let narrationText: string | undefined;
-        const narrationB64 = res.headers.get("x-tts-narration-b64");
-        if (narrationB64) {
+        const decodeB64Utf8 = (b64: string): string | undefined => {
           try {
-            narrationText = atob(narrationB64);
-            // base64 → utf-8 텍스트 (atob은 Latin-1 바이트 문자열이라 다중바이트 복원 필요)
+            const latin = atob(b64);
             try {
-              const bytes = Uint8Array.from(narrationText, (c) =>
-                c.charCodeAt(0)
-              );
-              narrationText = new TextDecoder("utf-8").decode(bytes);
+              const bytes = Uint8Array.from(latin, (c) => c.charCodeAt(0));
+              return new TextDecoder("utf-8").decode(bytes);
             } catch {
-              // 환경별 fallback — 그냥 atob 결과 유지
+              return latin;
             }
           } catch {
-            narrationText = undefined;
+            return undefined;
           }
-        }
+        };
+        let narrationText: string | undefined;
+        const narrationB64 = res.headers.get("x-tts-narration-b64");
+        if (narrationB64) narrationText = decodeB64Utf8(narrationB64);
+        // 제목 한국어 번역 (서버가 동봉). 한국어 출력일 때만 비어 있지 않음.
+        let titleKo: string | undefined;
+        const titleKoB64 = res.headers.get("x-tts-title-ko-b64");
+        if (titleKoB64) titleKo = decodeB64Utf8(titleKoB64);
 
         try {
           await appendTrack({
@@ -247,6 +249,7 @@ export default function TtsQueueProvider({
             audioBlob: blob,
             durationMs,
             narrationText,
+            titleKo,
           });
           updateJob(next.id, {
             status: "done",
