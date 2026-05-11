@@ -14,6 +14,7 @@ import SortControl from "@/components/SortControl";
 import ContinueListeningCard from "@/components/ContinueListeningCard";
 import MyJournalsNewIssues from "@/components/MyJournalsNewIssues";
 import MySpecialtiesPicker from "@/components/MySpecialtiesPicker";
+import TrendFeaturedCard from "@/components/TrendFeaturedCard";
 // JournalEntryLink는 홈이 이제 큐레이션 진입점이라 토픽바에서 제거 (MyJournalsNewIssues
 // 안의 "전체 보기" + 빈 상태 CTA가 같은 동선 제공). 다른 페이지의 헤더에는 그대로 유지.
 import TtsQueueBadge from "@/components/TtsQueueBadge";
@@ -88,12 +89,15 @@ function HomeInner() {
   const autoMiniKeyRef = useRef<string>("");
 
   const updateUrl = useCallback(
-    (next: {
-      q?: string;
-      sort?: SortMode;
-      pmid?: string | null;
-      page?: number | null;
-    }) => {
+    (
+      next: {
+        q?: string;
+        sort?: SortMode;
+        pmid?: string | null;
+        page?: number | null;
+      },
+      mode: "push" | "replace" = "push"
+    ) => {
       const params = new URLSearchParams(searchParams.toString());
       if (next.q !== undefined) {
         if (next.q) params.set("q", next.q);
@@ -108,7 +112,9 @@ function HomeInner() {
         if (next.page && next.page > 1) params.set("page", String(next.page));
         else params.delete("page");
       }
-      router.push(`/?${params.toString()}`, { scroll: false });
+      const href = `/?${params.toString()}`;
+      if (mode === "replace") router.replace(href, { scroll: false });
+      else router.push(href, { scroll: false });
     },
     [router, searchParams]
   );
@@ -141,7 +147,15 @@ function HomeInner() {
 
   const handleSelect = useCallback(
     (pmid: string) => {
-      updateUrl({ pmid: pmid === selectedPmid ? null : pmid });
+      // 모바일 뒤로가기 자연 동작:
+      //   - 새 paper 열기 → push (back으로 패널 닫기 가능)
+      //   - 같은 카드 클릭 = 토글 닫기 → replace (history 정리)
+      //   - 다른 카드로 전환 → replace (history 폭주 방지)
+      if (pmid === selectedPmid) {
+        updateUrl({ pmid: null }, "replace");
+      } else {
+        updateUrl({ pmid }, selectedPmid ? "replace" : "push");
+      }
     },
     [updateUrl, selectedPmid]
   );
@@ -446,6 +460,7 @@ function HomeInner() {
             <div className="paperis-stagger">
               <ContinueListeningCard />
               <MySpecialtiesPicker />
+              <TrendFeaturedCard />
               <MyJournalsNewIssues />
               <div className="mt-2 rounded-2xl border border-dashed border-paperis-border bg-paperis-surface/50 p-5 text-center">
                 <p className="text-sm text-paperis-text-2">
@@ -525,7 +540,7 @@ function HomeInner() {
             <PaperDetailPanel
               key={selectedPaper.pmid}
               paper={selectedPaper}
-              onBack={() => updateUrl({ pmid: null })}
+              onBack={() => updateUrl({ pmid: null }, "replace")}
             />
           ) : (
             <div className="sticky top-32 rounded-2xl border border-dashed border-paperis-border bg-paperis-surface p-6 text-sm text-paperis-text-3">
