@@ -103,7 +103,7 @@ export default function AccountPage() {
 
   const planLabel = (() => {
     if (!sub || !sub.plan) return "Free";
-    if (sub.plan === "byok") return "BYOK (평생)";
+    if (sub.plan === "byok") return sub.admin ? "BYOK (관리자)" : "BYOK (평생)";
     if (sub.status === "cancelled") return "Pro (해지 예정)";
     if (sub.status === "suspended") return "Pro (결제 실패 — 보류)";
     return "Pro (월 구독)";

@@ -15,6 +15,7 @@
 
 import { and, eq, sql } from "drizzle-orm";
 import { auth } from "@/auth";
+import { isAdminEmail } from "@/lib/admin";
 import { getDb, hasDb } from "@/lib/db";
 import { subscriptions, usageMonthly } from "@/lib/db/schema";
 
@@ -86,12 +87,15 @@ export async function getIdentityKey(req: Request): Promise<string | null> {
 /**
  * plan 판정 — 순수 DB 기반 (2026-05-11 변경).
  * 헤더 키 우회 ("byok-effective")는 제거 — 키 입력은 BYOK 결제자만 가능 정책 반영.
+ * 관리자(ADMIN_EMAILS)는 자동 BYOK plan으로 — 한도 우회 + BYOK UI 활성.
  */
 export async function getPlan(req: Request): Promise<Plan> {
   void req;
   if (!hasDb()) return "free";
   const session = await auth();
   if (!session?.user?.id) return "free";
+  // 관리자 우선 체크 — DB 조회보다 빠르고, subscriptions 없어도 BYOK 효과
+  if (isAdminEmail(session.user.email)) return "byok";
   try {
     const db = getDb();
     const rows = await db

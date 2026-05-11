@@ -7,6 +7,7 @@
 
 import { eq } from "drizzle-orm";
 import { auth } from "@/auth";
+import { isAdminEmail } from "@/lib/admin";
 import { getDb, hasDb } from "@/lib/db";
 import { subscriptions } from "@/lib/db/schema";
 
@@ -65,14 +66,17 @@ export function readUserKeys(req: Request): UserApiKeys {
 }
 
 /**
- * 현재 요청 사용자가 BYOK 결제자인지 확인.
+ * 현재 요청 사용자가 BYOK 권한 가지고 있는지 확인.
+ * - 관리자(ADMIN_EMAILS): true
  * - 익명/Free/Pro: false
- * - subscriptions.plan='byok' + status active/cancelled: true (cancelled도 expiresAt 만료 전까지는 유지)
+ * - subscriptions.plan='byok' + status active/cancelled: true
  */
 async function userHasByokPlan(): Promise<boolean> {
-  if (!hasDb()) return false;
   const session = await auth();
   if (!session?.user?.id) return false;
+  // 관리자 우선 체크
+  if (isAdminEmail(session.user.email)) return true;
+  if (!hasDb()) return false;
   try {
     const db = getDb();
     const rows = await db

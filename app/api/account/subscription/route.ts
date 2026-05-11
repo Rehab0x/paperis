@@ -10,6 +10,7 @@
 import { NextResponse } from "next/server";
 import { eq } from "drizzle-orm";
 import { auth } from "@/auth";
+import { isAdminEmail } from "@/lib/admin";
 import { getDb, hasDb } from "@/lib/db";
 import { subscriptions } from "@/lib/db/schema";
 import type { ApiError } from "@/types";
@@ -23,6 +24,8 @@ export interface SubscriptionDto {
   hasBillingKey: boolean;
   /** 다음 결제 예정일이 있는 경우. Pro에 해지되지 않은 경우만 표시 */
   nextBillingAt: string | null;
+  /** 관리자 권한 (ADMIN_EMAILS env). DB 구독과 별개로 BYOK 효과 */
+  admin?: boolean;
 }
 
 export async function GET() {
@@ -40,6 +43,9 @@ export async function GET() {
     );
   }
 
+  // 관리자는 DB 구독과 무관하게 BYOK 응답 (실제 구독이 있어도 admin marker 동봉)
+  const isAdmin = isAdminEmail(session.user.email);
+
   try {
     const db = getDb();
     const rows = await db
@@ -49,24 +55,39 @@ export async function GET() {
       .limit(1);
     const row = rows[0];
     if (!row) {
-      const empty: SubscriptionDto = {
-        plan: null,
-        status: "inactive",
-        expiresAt: null,
-        hasBillingKey: false,
-        nextBillingAt: null,
-      };
+      // 구독 없어도 admin이면 BYOK 효과
+      const empty: SubscriptionDto = isAdmin
+        ? {
+            plan: "byok",
+            status: "active",
+            expiresAt: null,
+            hasBillingKey: false,
+            nextBillingAt: null,
+            admin: true,
+          }
+        : {
+            plan: null,
+            status: "inactive",
+            expiresAt: null,
+            hasBillingKey: false,
+            nextBillingAt: null,
+          };
       return NextResponse.json(empty);
     }
+    // 실제 구독이 있더라도 admin이면 plan을 byok로 끌어올림 (admin은 항상 BYOK 효과)
+    const effectivePlan: "byok" | "pro" | null = isAdmin
+      ? "byok"
+      : ((row.plan as "byok" | "pro" | null) ?? null);
     const dto: SubscriptionDto = {
-      plan: (row.plan as "byok" | "pro" | null) ?? null,
-      status: row.status,
+      plan: effectivePlan,
+      status: isAdmin ? "active" : row.status,
       expiresAt: row.expiresAt?.toISOString() ?? null,
       hasBillingKey: Boolean(row.tossBillingKey),
       nextBillingAt:
         row.plan === "pro" && row.status === "active" && row.tossBillingKey
           ? (row.expiresAt?.toISOString() ?? null)
           : null,
+      ...(isAdmin ? { admin: true } : {}),
     };
     return NextResponse.json(dto);
   } catch (err) {

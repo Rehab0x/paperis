@@ -12,6 +12,7 @@
 
 import { eq } from "drizzle-orm";
 import { auth } from "@/auth";
+import { isAdminEmail } from "@/lib/admin";
 import { getDb, hasDb } from "@/lib/db";
 import { subscriptions } from "@/lib/db/schema";
 import { readAiPreference } from "@/lib/ai-preference";
@@ -78,12 +79,14 @@ export async function getEffectiveAiProvider(req: Request): Promise<AiProvider> 
   const requested = readAiPreference(req);
   if (requested === DEFAULT_PROVIDER) return getAiProvider(requested);
 
-  // BYOK 게이트
+  // BYOK 게이트 — 관리자 우선, 그 다음 DB subscriptions
   let isByok = false;
-  if (hasDb()) {
-    try {
-      const session = await auth();
-      if (session?.user?.id) {
+  try {
+    const session = await auth();
+    if (session?.user?.id) {
+      if (isAdminEmail(session.user.email)) {
+        isByok = true;
+      } else if (hasDb()) {
         const db = getDb();
         const rows = await db
           .select()
@@ -99,9 +102,9 @@ export async function getEffectiveAiProvider(req: Request): Promise<AiProvider> 
           isByok = true;
         }
       }
-    } catch {
-      // graceful: DB 실패 시 default
     }
+  } catch {
+    // graceful: 실패 시 default
   }
   if (!isByok) return getAiProvider(DEFAULT_PROVIDER);
   return getAiProvider(requested);
