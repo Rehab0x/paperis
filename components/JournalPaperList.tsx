@@ -10,6 +10,7 @@
 // 페이지네이션은 결과 위·아래 양쪽에 표시 — 스크롤 왕복 안 해도 다음 페이지 가능.
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import JournalPaginationView from "@/components/JournalPagination";
 import PaperDetailPanel from "@/components/PaperDetailPanel";
 import ResultsList from "@/components/ResultsList";
@@ -47,7 +48,26 @@ export default function JournalPaperList({
   fetchKey,
   pageSize = DEFAULT_PAGE_SIZE,
 }: Props) {
-  const [selectedPmid, setSelectedPmid] = useState<string | null>(null);
+  // 선택 pmid는 URL ?pmid=...에 동기화 — 모바일 뒤로가기로 패널 닫기.
+  // setSelectedPmid 헬퍼가 router.push/replace로 URL 갱신 → history entry 1개 추가.
+  // 같은 페이지 내 다른 카드 선택은 replace (history 폭주 방지), 새 선택/닫기는 push.
+  const router = useRouter();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
+  const selectedPmid = searchParams.get("pmid");
+  const setSelectedPmid = useCallback(
+    (next: string | null, mode: "push" | "replace" = "push") => {
+      const params = new URLSearchParams(searchParams.toString());
+      if (next) params.set("pmid", next);
+      else params.delete("pmid");
+      const qs = params.toString();
+      const href = qs ? `${pathname}?${qs}` : pathname;
+      if (mode === "replace") router.replace(href, { scroll: false });
+      else router.push(href, { scroll: false });
+    },
+    [pathname, router, searchParams]
+  );
+
   const [miniSummaries, setMiniSummaries] = useState<Map<string, MiniSummary>>(
     () => new Map()
   );
@@ -64,12 +84,14 @@ export default function JournalPaperList({
     setPage(1);
   }, [fetchKey, oaFirst]);
 
-  // fetchKey 바뀌면 선택·요약 캐시 리셋
+  // fetchKey 바뀌면 요약 캐시 리셋. selectedPmid는 URL이 source of truth라
+  // 새 검색 시 ?pmid가 따라가지 않게 replace로 비움.
   useEffect(() => {
-    setSelectedPmid(null);
     setMiniSummaries(new Map());
     setMiniLoading(new Set());
     autoMiniKeyRef.current = "";
+    if (selectedPmid) setSelectedPmid(null, "replace");
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [fetchKey]);
 
   // Open Access 우선 정렬 — 전체 papers 단위 (페이지 안에서만이 아니라).
@@ -181,9 +203,16 @@ export default function JournalPaperList({
     requestMiniSummary,
   ]);
 
-  const handleSelect = useCallback((pmid: string) => {
-    setSelectedPmid((prev) => (prev === pmid ? null : pmid));
-  }, []);
+  const handleSelect = useCallback(
+    (pmid: string) => {
+      // 같은 카드 재클릭 = 닫기 → replace (현재 URL의 pmid 제거 — 뒤로가기 한 단계 절약)
+      // 다른 카드 = 같은 page 내 전환 → replace (history 폭주 방지)
+      // 첫 선택 = push (뒤로가기로 닫기 가능)
+      if (selectedPmid === pmid) setSelectedPmid(null, "replace");
+      else setSelectedPmid(pmid, selectedPmid ? "replace" : "push");
+    },
+    [selectedPmid, setSelectedPmid]
+  );
 
   const handleLoadMini = useCallback(
     (pmid: string) => {
@@ -285,7 +314,7 @@ export default function JournalPaperList({
           <PaperDetailPanel
             key={selectedPaper.pmid}
             paper={selectedPaper}
-            onBack={() => setSelectedPmid(null)}
+            onBack={() => setSelectedPmid(null, "replace")}
           />
         ) : (
           <div className="sticky top-32 hidden rounded-2xl border border-dashed border-paperis-border bg-paperis-surface p-6 text-sm text-paperis-text-3 lg:block">
