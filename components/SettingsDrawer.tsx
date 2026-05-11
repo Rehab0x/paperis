@@ -572,9 +572,26 @@ function ByokGateBadge() {
   );
 }
 
-function useByokStatus(): { isByok: boolean; loading: boolean } {
-  const [state, setState] = useState<{ isByok: boolean; loading: boolean }>({
+interface ByokStatus {
+  /** 본인 키 입력이 허용되는 등급 (BYOK 결제자 또는 admin) */
+  isByok: boolean;
+  /** Pro 결제자 (provider 선택 가능, 본인 키 입력 X) */
+  isPro: boolean;
+  /** 서버 env에 등록된 provider 키 보유 여부 */
+  envProviders: {
+    gemini: boolean;
+    claude: boolean;
+    openai: boolean;
+    grok: boolean;
+  };
+  loading: boolean;
+}
+
+function useByokStatus(): ByokStatus {
+  const [state, setState] = useState<ByokStatus>({
     isByok: false,
+    isPro: false,
+    envProviders: { gemini: true, claude: false, openai: false, grok: false },
     loading: true,
   });
   useEffect(() => {
@@ -586,11 +603,24 @@ function useByokStatus(): { isByok: boolean; loading: boolean } {
         const isByok =
           j && j.plan === "byok" &&
           (j.status === "active" || j.status === "cancelled");
-        setState({ isByok: Boolean(isByok), loading: false });
+        const isPro =
+          j && j.plan === "pro" &&
+          (j.status === "active" || j.status === "cancelled");
+        setState({
+          isByok: Boolean(isByok),
+          isPro: Boolean(isPro),
+          envProviders: j?.envProviders ?? {
+            gemini: true,
+            claude: false,
+            openai: false,
+            grok: false,
+          },
+          loading: false,
+        });
       })
       .catch(() => {
         if (cancelled) return;
-        setState({ isByok: false, loading: false });
+        setState((prev) => ({ ...prev, loading: false }));
       });
     return () => {
       cancelled = true;
@@ -721,7 +751,7 @@ function ApiKeysSection() {
 }
 
 function AiProviderSection() {
-  const { isByok, loading } = useByokStatus();
+  const { isByok, isPro, envProviders, loading } = useByokStatus();
   const { keys } = useApiKeys();
   const [provider, setProviderState] = useState<AiProviderName>(
     AI_PROVIDER_DEFAULT
@@ -765,10 +795,11 @@ function AiProviderSection() {
       <div className="h-12 animate-pulse rounded-lg bg-paperis-surface-2" />
     );
   }
-  if (!isByok) {
+  // Free 사용자 — provider 선택 불가
+  if (!isByok && !isPro) {
     return (
       <p className="text-xs text-paperis-text-3">
-        BYOK 결제자만 provider를 변경할 수 있습니다. 그 외에는 기본 Gemini 사용.
+        Pro/BYOK 결제자만 provider를 변경할 수 있습니다. 그 외에는 기본 Gemini 사용.
       </p>
     );
   }
@@ -777,10 +808,28 @@ function AiProviderSection() {
     <div className="space-y-2">
       {(["gemini", "claude", "openai", "grok"] as const).map((p) => {
         const info = PROVIDER_INFO[p];
-        const hasKey = Boolean(keys[info.keyName]);
-        // 비-default(=gemini)는 본인 키 입력 필수 — 안 했으면 disabled
-        const disabled = p !== "gemini" && !hasKey;
+        const hasUserKey = Boolean(keys[info.keyName]);
+        const hasEnvKey = envProviders[p];
+        // 등급별 활성 조건:
+        //   BYOK: 본인 키 입력 필수
+        //   Pro: 서버 env 키 보유 필요 (본인 키는 못 씀)
+        //   Admin (isByok=true이지만 isPro=false 가능, 또는 둘 다): 본인 키 OR env 키
+        // useByokStatus는 admin을 isByok=true로 표시 → 본인 키 OR env 키 양쪽 허용으로 통일
+        const enabled = isByok
+          ? hasUserKey || hasEnvKey // BYOK or admin
+          : hasEnvKey; // Pro
+        const disabled = !enabled;
         const active = provider === p;
+
+        // 상태 라벨: 우선순위 본인 키 > env 키 > 비활성
+        const stateLabel = hasUserKey
+          ? "내 키"
+          : hasEnvKey && isPro
+            ? "기본 키"
+            : hasEnvKey && isByok
+              ? "기본 키" // admin인 경우
+              : null;
+
         return (
           <button
             key={p}
@@ -806,9 +855,9 @@ function AiProviderSection() {
             <span className="min-w-0 flex-1">
               <span className="flex items-center gap-2 text-sm font-medium text-paperis-text">
                 {info.label}
-                {hasKey ? (
+                {stateLabel ? (
                   <span className="rounded-full bg-paperis-accent-dim/60 px-1.5 py-0.5 text-[9px] font-semibold uppercase text-paperis-accent">
-                    키 입력됨
+                    {stateLabel}
                   </span>
                 ) : null}
               </span>
@@ -820,8 +869,10 @@ function AiProviderSection() {
         );
       })}
       <p className="mt-2 text-[11px] text-paperis-text-3">
-        선택한 provider로 자연어 검색·요약·트렌드 분석이 호출됩니다. TTS 음성
-        합성은 별도(위 "TTS provider" 섹션)로 설정.
+        {isByok
+          ? "BYOK: 본인 키 입력 시 그 키로 호출 (서버 키 안 씀). 키 미입력 + 서버 등록 안 됨인 provider는 비활성."
+          : "Pro: 우리 서버 키로 호출. 서버에 등록된 provider만 활성."}{" "}
+        TTS 음성 합성은 별도 설정.
       </p>
     </div>
   );

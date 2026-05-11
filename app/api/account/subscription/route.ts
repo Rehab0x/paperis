@@ -26,6 +26,13 @@ export interface SubscriptionDto {
   nextBillingAt: string | null;
   /** 관리자 권한 (ADMIN_EMAILS env). DB 구독과 별개로 BYOK 효과 */
   admin?: boolean;
+  /** 서버 env에 등록된 AI provider 키 보유 여부 — Pro/Admin 사용자가 선택 가능한지 UI에서 결정 */
+  envProviders: {
+    gemini: boolean;
+    claude: boolean;
+    openai: boolean;
+    grok: boolean;
+  };
 }
 
 export async function GET() {
@@ -46,6 +53,15 @@ export async function GET() {
   // 관리자는 DB 구독과 무관하게 BYOK 응답 (실제 구독이 있어도 admin marker 동봉)
   const isAdmin = isAdminEmail(session.user.email);
 
+  // 서버 env에 어떤 provider 키가 등록되어 있는지 — UI에서 Pro 사용자의 provider
+  // 라디오 disabled 결정에 사용 (값은 노출 안 함, 보유 boolean만)
+  const envProviders = {
+    gemini: Boolean(process.env.GEMINI_API_KEY),
+    claude: Boolean(process.env.ANTHROPIC_API_KEY),
+    openai: Boolean(process.env.OPENAI_API_KEY),
+    grok: Boolean(process.env.XAI_API_KEY),
+  };
+
   try {
     const db = getDb();
     const rows = await db
@@ -64,6 +80,7 @@ export async function GET() {
             hasBillingKey: false,
             nextBillingAt: null,
             admin: true,
+            envProviders,
           }
         : {
             plan: null,
@@ -71,6 +88,7 @@ export async function GET() {
             expiresAt: null,
             hasBillingKey: false,
             nextBillingAt: null,
+            envProviders,
           };
       return NextResponse.json(empty);
     }
@@ -88,6 +106,7 @@ export async function GET() {
           ? (row.expiresAt?.toISOString() ?? null)
           : null,
       ...(isAdmin ? { admin: true } : {}),
+      envProviders,
     };
     return NextResponse.json(dto);
   } catch (err) {
