@@ -94,9 +94,9 @@ body {
 }
 
 /*
-  PlayerBar marquee — 제목이 컨테이너보다 길 때만 좌우 천천히 슬라이드.
-  data-overflow="true" 일 때만 활성, 그 외에는 정적 truncate.
-  CSS animation은 텍스트 폭에 무관하게 작동하도록 transform 100% 사용.
+  PlayerBar marquee — 제목이 컨테이너보다 길 때만 천천히 슬라이드.
+  duration은 JS에서 텍스트 폭 기반으로 계산해 --marquee-duration으로 주입
+  (긴 텍스트일수록 시간 길게 → 일정 속도). 짧은 텍스트도 너무 빨라지지 않게 최소 20s.
 */
 @keyframes paperis-marquee {
   0% { transform: translateX(0); }
@@ -108,13 +108,17 @@ body {
 [data-paperis-marquee="true"] > [data-marquee-track] {
   display: inline-block;
   white-space: nowrap;
-  animation: paperis-marquee 14s ease-in-out infinite;
+  animation: paperis-marquee var(--marquee-duration, 30s) ease-in-out infinite;
   will-change: transform;
 }
 
 /*
-  PlayerBar 진행 막대 — input[type="range"] 커스텀 스타일.
-  트랙은 시각 progress 위에 투명 오버레이, thumb만 보이게.
+  PlayerBar 진행 막대 — input[type="range"] 커스텀.
+  - input 높이는 부모(SeekBar h-4 = 16px) 기준 — 브라우저가 thumb을 입력 영역 안에
+    자동 수직 중앙 정렬. 별도 margin-top 안 줘서 thumb이 PlayerBar 위로 튀어나오는
+    문제 회피 (라이브러리 드로어가 그 부분을 가리는 이슈 해결).
+  - 트랙은 투명 (시각 progress는 별도 div).
+  - thumb 16px(border 포함 18px) — 잡기 쉽게.
 */
 .paperis-seek {
   -webkit-appearance: none;
@@ -122,26 +126,30 @@ body {
   background: transparent;
   outline: none;
   cursor: pointer;
+  /* 시크 정밀도를 위해 padding 없음 */
 }
 .paperis-seek::-webkit-slider-runnable-track {
   height: 100%;
   background: transparent;
+  border: none;
 }
 .paperis-seek::-moz-range-track {
   height: 100%;
   background: transparent;
+  border: none;
 }
 .paperis-seek::-webkit-slider-thumb {
   -webkit-appearance: none;
+  appearance: none;
   width: 14px;
   height: 14px;
   border-radius: 50%;
   background: var(--paperis-accent);
   border: 2px solid var(--paperis-bg);
   cursor: grab;
-  margin-top: -5px;
   box-shadow: 0 1px 4px rgba(0, 0, 0, 0.3);
   transition: transform 0.1s ease;
+  /* margin-top 명시 안 함 — input 높이 안에서 vertical center */
 }
 .paperis-seek::-webkit-slider-thumb:active {
   cursor: grabbing;

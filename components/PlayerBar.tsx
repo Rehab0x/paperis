@@ -55,7 +55,6 @@ export default function PlayerBar() {
   if (currentIndex < 0 || !queue[currentIndex]) return null;
   const track = queue[currentIndex];
   const dur = durationMs || track.durationMs || 0;
-  const progress = dur > 0 ? Math.min(100, (currentTimeMs / dur) * 100) : 0;
   const hasScript = Boolean(track.narrationText);
   const metaLine = `${track.journal}${track.year ? ` · ${track.year}` : ""} · ${currentIndex + 1}/${queue.length}`;
   const titleDisplay = track.titleKo ?? track.title;
@@ -80,7 +79,6 @@ export default function PlayerBar() {
         <SeekBar
           currentTimeMs={currentTimeMs}
           durationMs={dur}
-          progress={progress}
           onSeek={player.seekTo}
         />
 
@@ -178,31 +176,37 @@ export default function PlayerBar() {
 }
 
 /**
- * 풀너비 진행 막대 — 시각 progress fill + 드래그 thumb (input[type=range] 오버레이).
- * Range input은 트랙이 투명, thumb만 보임. 사용자는 thumb을 잡고 드래그 가능.
+ * 풀너비 진행 막대.
+ *
+ * 레이아웃:
+ *   - 컨테이너 h-4 (16px) — thumb이 PlayerBar 안에 충분히 들어가 라이브러리
+ *     드로어가 가리지 않게 (이전 h-3은 thumb이 위로 튀어나옴).
+ *   - 좌우 padding 7px (thumb 반지름) — 진행바 시작·끝 좌표가 thumb 이동 범위와
+ *     1:1 일치 (이전엔 thumb이 끝에서도 100%에 못 도달해 시각 mismatch 있었음).
+ *   - 시각 progress bar 3px, 컨테이너 vertical center에 위치.
+ *
+ * 드래그:
+ *   - 각 input 이벤트마다 즉시 onSeek 호출 (이전엔 onMouseUp/onTouchEnd 의존 →
+ *     드래그가 컨테이너 밖에서 끝나면 commit 안 됨).
+ *   - audio.currentTime이 따라잡으면 자동으로 input value도 동기화.
  */
 function SeekBar({
   currentTimeMs,
   durationMs,
-  progress,
   onSeek,
 }: {
   currentTimeMs: number;
   durationMs: number;
-  progress: number;
   onSeek: (ms: number) => void;
 }) {
-  // 사용자가 드래그 중일 때는 input.value를 그대로 반영(외부 currentTime이 따라잡기 전 jitter 방지).
-  const [draggingValue, setDraggingValue] = useState<number | null>(null);
-  const displayValue = draggingValue ?? currentTimeMs;
   const displayProgress =
-    durationMs > 0 ? Math.min(100, (displayValue / durationMs) * 100) : progress;
+    durationMs > 0 ? Math.min(100, (currentTimeMs / durationMs) * 100) : 0;
 
   return (
-    <div className="relative h-3">
-      {/* 시각 progress fill — 풀너비 3px bar, 위쪽 정렬 */}
+    <div className="relative h-4 px-[7px]">
+      {/* 시각 progress — vertical center, 풀너비 (padding 안의 영역). */}
       <div
-        className="pointer-events-none absolute inset-x-0 top-0 h-[3px] bg-paperis-border"
+        className="pointer-events-none absolute left-[7px] right-[7px] top-1/2 h-[3px] -translate-y-1/2 overflow-hidden rounded-full bg-paperis-border"
         aria-hidden
       >
         <div
@@ -210,28 +214,16 @@ function SeekBar({
           style={{ width: `${displayProgress}%` }}
         />
       </div>
-      {/* 드래그 thumb overlay — 트랙은 투명, thumb만 보임 (globals.css .paperis-seek) */}
+      {/* 드래그 thumb overlay. input은 진행바와 같은 padding 안. */}
       <input
         type="range"
         min={0}
         max={Math.max(1, durationMs)}
         step={100}
-        value={displayValue}
-        onChange={(e) => setDraggingValue(Number(e.target.value))}
-        onMouseUp={() => {
-          if (draggingValue !== null) {
-            onSeek(draggingValue);
-            setDraggingValue(null);
-          }
-        }}
-        onTouchEnd={() => {
-          if (draggingValue !== null) {
-            onSeek(draggingValue);
-            setDraggingValue(null);
-          }
-        }}
+        value={Math.min(currentTimeMs, durationMs)}
+        onChange={(e) => onSeek(Number(e.target.value))}
         aria-label="재생 위치"
-        className="paperis-seek absolute inset-x-0 top-0 h-3 w-full"
+        className="paperis-seek absolute inset-x-0 top-0 h-4 w-full"
       />
     </div>
   );
@@ -239,7 +231,8 @@ function SeekBar({
 
 /**
  * 제목 + 메타 줄. 제목이 컨테이너보다 길면 좌우 marquee 애니메이션 활성화.
- * ResizeObserver로 너비 변화 감지 → data-overflow="true" 토글.
+ * 스크롤 속도는 거리 기반으로 일정 — 짧은 텍스트도 빠르게 안 흐르도록 floor 30초.
+ * 30px/sec ≈ 한 글자에 약 0.4초 (느린 편집자 톤).
  */
 function MarqueeTitle({ title, meta }: { title: string; meta: string }) {
   const containerRef = useRef<HTMLDivElement>(null);
@@ -254,9 +247,16 @@ function MarqueeTitle({ title, meta }: { title: string; meta: string }) {
       const isOverflow = track.scrollWidth > container.clientWidth + 2;
       setOverflow(isOverflow);
       if (isOverflow) {
+        const distance = track.scrollWidth - container.clientWidth;
+        // 30px/sec — 천천히 흐르도록. 짧은 텍스트도 floor 30초.
+        const seconds = Math.max(30, distance / 30);
         container.style.setProperty(
           "--marquee-container-w",
           `${container.clientWidth}px`
+        );
+        container.style.setProperty(
+          "--marquee-duration",
+          `${seconds.toFixed(1)}s`
         );
       }
     };
