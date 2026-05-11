@@ -77,7 +77,7 @@ export default function TrendFeaturedCard() {
     return subscribeJournalFavorites(pick);
   }, []);
 
-  // 2) 선택된 저널의 트렌드 fetch (Redis 캐시 활용)
+  // 2) 라이트 헤드라인 fetch (Flash Lite 기반 ~5–10s, Redis 캐시 활용)
   useEffect(() => {
     if (!meta) return;
     const issn = meta.issnL ?? meta.issns[0] ?? null;
@@ -92,16 +92,15 @@ export default function TrendFeaturedCard() {
       year: String(year),
       quarter,
     });
-    fetch(`/api/journal/trend?${params.toString()}`, { cache: "no-store" })
+    fetch(`/api/journal/trend-headline?${params.toString()}`, { cache: "no-store" })
       .then((r) => (r.ok ? r.json() : null))
       .then((j) => {
         if (cancelled) return;
         if (
           !j ||
           typeof j !== "object" ||
-          !j.trend ||
-          typeof j.trend.headline !== "string" ||
-          j.trend.headline.length === 0
+          typeof j.headline !== "string" ||
+          j.headline.length === 0
         ) {
           setBrief(null);
           setError(true);
@@ -113,8 +112,8 @@ export default function TrendFeaturedCard() {
           year,
           quarter,
           periodLabel: j.periodLabel ?? `${year} ${quarter}`,
-          headline: j.trend.headline,
-          hasNarration: Boolean(j.trend.narrationScript),
+          headline: j.headline,
+          hasNarration: false, // 라이트 모드는 narration 없음 — 전체 페이지에서 별도 제공
         });
       })
       .catch(() => {
@@ -132,10 +131,37 @@ export default function TrendFeaturedCard() {
   if (!meta) return null;
   if (error) return null;
 
+  // 로딩: 빈 박스 대신 "분석 중" 안내. Flash Lite + 캐시로 보통 5–10초, 캐시 hit 시 즉시.
   if (loading) {
+    const { year, quarter } = currentYearQuarter();
     return (
       <section className="mb-6">
-        <div className="h-40 animate-pulse rounded-2xl bg-paperis-surface-2" />
+        <div className="mb-2 flex items-baseline justify-between">
+          <h2 className="text-[13px] font-semibold uppercase tracking-[0.04em] text-paperis-text-2">
+            📈 이번 분기 트렌드
+          </h2>
+        </div>
+        <div className="rounded-2xl border border-paperis-border bg-paperis-surface p-5">
+          <div className="text-[11px] font-semibold uppercase tracking-[0.06em] text-paperis-text-3">
+            {meta.name} · {year}년 {quarter}
+          </div>
+          <div className="mt-3 flex items-center gap-2.5">
+            <span
+              aria-hidden
+              className="inline-block h-3 w-3 shrink-0 animate-spin rounded-full border-2 border-paperis-border border-t-paperis-accent"
+            />
+            <p className="text-sm text-paperis-text-2">
+              이번 분기 핵심 트렌드를 분석하는 중…
+            </p>
+          </div>
+          <div className="mt-3 space-y-2">
+            <div className="h-3 w-4/5 animate-pulse rounded bg-paperis-surface-2" />
+            <div className="h-3 w-3/5 animate-pulse rounded bg-paperis-surface-2" />
+          </div>
+          <p className="mt-4 text-[11px] text-paperis-text-3">
+            첫 분석은 5–10초 걸려요. 다음부터는 캐시로 즉시 표시.
+          </p>
+        </div>
       </section>
     );
   }
@@ -166,9 +192,9 @@ export default function TrendFeaturedCard() {
         </p>
         <div className="mt-4 flex items-center gap-2 text-xs text-paperis-text-2">
           <span aria-hidden className="text-paperis-accent">
-            ▶
+            →
           </span>
-          <span>편집장 브리핑 · 분기 단위 트렌드 분석</span>
+          <span>전체 분석·청취·논문 목록 보기</span>
         </div>
       </Link>
     </section>

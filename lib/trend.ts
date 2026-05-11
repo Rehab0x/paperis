@@ -156,6 +156,56 @@ function userPrompt(papers: Paper[]): string {
 }
 
 /**
+ * 라이트 헤드라인 전용 — Flash Lite + 짧은 프롬프트로 한 문장 추출.
+ * 홈 피처드 카드용 (전체 trend는 30~90초 vs 이건 3~8초).
+ */
+const HEADLINE_MODEL = "gemini-2.5-flash-lite";
+
+export async function generateTrendHeadline(
+  papers: Paper[],
+  journalName: string,
+  periodLabel: string,
+  language: Language = "ko"
+): Promise<string> {
+  if (papers.length === 0) return "";
+
+  // 헤드라인용은 상위 ~20편 abstract만 — 더 많으면 입력 토큰만 늘고 품질엔 큰 차이 없음
+  const sorted = [...papers].reverse().slice(0, 20);
+  const blocks = sorted.map((p, i) => {
+    const abstract = (p.abstract || "").replace(/\s+/g, " ").trim().slice(0, 500);
+    return `[${i + 1}] ${p.title || "(no title)"} — ${abstract}`;
+  });
+
+  const systemInstruction = [
+    `You are a senior clinical research analyst.`,
+    `Output ONE sentence in ${langLabel(language)}, no quotes, no labels, no explanation.`,
+    `Read these abstracts from "${journalName}" (${periodLabel}) as a corpus.`,
+    `Identify the SINGLE most clinically impactful trend or finding emerging from this period — what would a busy physiatrist most want to know?`,
+    `Be specific and substantive. Bad: "뇌졸중 재활 연구가 증가하고 있다". Good: "상지재활의 용량–반응 관계가 다시 쓰이고 있다" or "조기 보행 재훈련 프로토콜의 임상 이득이 다수 RCT로 재확인되고 있다".`,
+    `Preserve English medical terms inline (RCT, CIMT, NIHSS, FIM, MCID).`,
+    `Maximum 60 Korean characters or 80 English characters.`,
+  ].join(" ");
+
+  const ai = getGeminiClient();
+  const response = await callWithRetry(() =>
+    ai.models.generateContent({
+      model: HEADLINE_MODEL,
+      contents: blocks.join("\n"),
+      config: {
+        systemInstruction,
+        temperature: 0.4,
+        maxOutputTokens: 300,
+      },
+    })
+  );
+  return (response.text ?? "")
+    .trim()
+    .replace(/^["「"']|["」"']$/g, "")
+    .split("\n")[0]
+    .trim();
+}
+
+/**
  * 트렌드 분석 — 환각 PMID 필터링 포함.
  * 반환된 themes의 representativePmids에서 corpus에 없는 PMID는 제거됨.
  */
