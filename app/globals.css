@@ -93,6 +93,73 @@ body {
   text-rendering: optimizeLegibility;
 }
 
+/*
+  PlayerBar marquee — 제목이 컨테이너보다 길 때만 좌우 천천히 슬라이드.
+  data-overflow="true" 일 때만 활성, 그 외에는 정적 truncate.
+  CSS animation은 텍스트 폭에 무관하게 작동하도록 transform 100% 사용.
+*/
+@keyframes paperis-marquee {
+  0% { transform: translateX(0); }
+  10% { transform: translateX(0); }
+  50% { transform: translateX(calc(-100% + var(--marquee-container-w, 100%))); }
+  60% { transform: translateX(calc(-100% + var(--marquee-container-w, 100%))); }
+  100% { transform: translateX(0); }
+}
+[data-paperis-marquee="true"] > [data-marquee-track] {
+  display: inline-block;
+  white-space: nowrap;
+  animation: paperis-marquee 14s ease-in-out infinite;
+  will-change: transform;
+}
+
+/*
+  PlayerBar 진행 막대 — input[type="range"] 커스텀 스타일.
+  트랙은 시각 progress 위에 투명 오버레이, thumb만 보이게.
+*/
+.paperis-seek {
+  -webkit-appearance: none;
+  appearance: none;
+  background: transparent;
+  outline: none;
+  cursor: pointer;
+}
+.paperis-seek::-webkit-slider-runnable-track {
+  height: 100%;
+  background: transparent;
+}
+.paperis-seek::-moz-range-track {
+  height: 100%;
+  background: transparent;
+}
+.paperis-seek::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: var(--paperis-accent);
+  border: 2px solid var(--paperis-bg);
+  cursor: grab;
+  margin-top: -5px;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.3);
+  transition: transform 0.1s ease;
+}
+.paperis-seek::-webkit-slider-thumb:active {
+  cursor: grabbing;
+  transform: scale(1.15);
+}
+.paperis-seek::-moz-range-thumb {
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: var(--paperis-accent);
+  border: 2px solid var(--paperis-bg);
+  cursor: grab;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.3);
+}
+.paperis-seek::-moz-range-thumb:active {
+  cursor: grabbing;
+}
+
 /* 페이지 진입 시 stagger 애니메이션 — 카드/섹션이 위에서 아래로 순차 등장 */
 @keyframes paperis-rise {
   from {
