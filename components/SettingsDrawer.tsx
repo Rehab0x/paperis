@@ -21,6 +21,13 @@ import {
 } from "@/components/TtsProviderPreferenceProvider";
 import { useFetchWithKeys } from "@/components/useFetchWithKeys";
 import {
+  AI_PROVIDER_DEFAULT,
+  getAiPreference,
+  setAiPreference,
+  subscribeAiPreference,
+} from "@/lib/ai-preference";
+import type { AiProviderName } from "@/lib/ai/types";
+import {
   exportLibrary,
   importLibrary,
   type LibraryExport,
@@ -208,6 +215,14 @@ export default function SettingsDrawer({ open, onClose }: Props) {
             description="TTS 변환이 끝나면 브라우저 알림을 표시"
           >
             <NotificationPermission />
+          </Section>
+
+          <Section
+            title="AI provider 선택"
+            description="자연어 검색·요약·트렌드 분석에 어떤 AI를 쓸지 — BYOK 결제자만 변경 가능"
+            badge={<ByokGateBadge />}
+          >
+            <AiProviderSection />
           </Section>
 
           <Section
@@ -589,6 +604,9 @@ function ApiKeysSection() {
   const { isByok, loading } = useByokStatus();
   const [reveal, setReveal] = useState<Record<ApiKeyName, boolean>>({
     gemini: false,
+    anthropic: false,
+    openai: false,
+    grok: false,
     googleCloud: false,
     clovaId: false,
     clovaSecret: false,
@@ -596,8 +614,8 @@ function ApiKeysSection() {
     unpaywall: false,
   });
 
-  const fields: ApiKeyName[] = [
-    "gemini",
+  const aiFields: ApiKeyName[] = ["gemini", "anthropic", "openai", "grok"];
+  const serviceFields: ApiKeyName[] = [
     "googleCloud",
     "clovaId",
     "clovaSecret",
@@ -632,56 +650,179 @@ function ApiKeysSection() {
     );
   }
 
+  const renderField = (name: ApiKeyName) => {
+    const v = keys[name] ?? "";
+    const visible = reveal[name];
+    return (
+      <label key={name} className="block">
+        <span className="mb-1 block font-mono text-[10px] uppercase tracking-wide text-paperis-text-3">
+          {API_KEY_LABELS[name]}
+        </span>
+        <div className="flex gap-1">
+          <input
+            type={visible ? "text" : "password"}
+            value={v}
+            onChange={(e) => setKey(name, e.target.value)}
+            placeholder="(미설정 시 .env.local 키 사용)"
+            className="min-w-0 flex-1 rounded-lg border border-paperis-border bg-paperis-surface px-2 py-1 text-xs text-paperis-text"
+            autoComplete="off"
+            spellCheck={false}
+          />
+          <button
+            type="button"
+            onClick={() =>
+              setReveal((prev) => ({ ...prev, [name]: !prev[name] }))
+            }
+            className="rounded-lg border border-paperis-border px-2 text-xs text-paperis-text-3 transition hover:bg-paperis-surface-2 hover:text-paperis-text"
+            aria-label={visible ? "숨기기" : "보이기"}
+            title={visible ? "숨기기" : "보이기"}
+          >
+            {visible ? "🙈" : "👁"}
+          </button>
+          {v ? (
+            <button
+              type="button"
+              onClick={() => clearKey(name)}
+              className="rounded-lg border border-paperis-border px-2 text-xs text-paperis-text-3 transition hover:bg-paperis-surface-2 hover:text-paperis-text"
+              aria-label="삭제"
+              title="삭제"
+            >
+              🗑
+            </button>
+          ) : null}
+        </div>
+      </label>
+    );
+  };
+
   return (
-    <div className="space-y-2.5">
+    <div className="space-y-4">
       <p className="rounded-lg border border-paperis-accent/40 bg-paperis-accent-dim/40 px-2.5 py-1.5 text-[11px] text-paperis-accent">
         ⚠ 키는 브라우저 localStorage에 저장됩니다. XSS 위험을 인지하시고 본인
         브라우저에서만 사용하세요.
       </p>
-      {fields.map((name) => {
-        const v = keys[name] ?? "";
-        const visible = reveal[name];
+      <div>
+        <h4 className="mb-2 text-[11px] font-semibold uppercase tracking-[0.06em] text-paperis-text-2">
+          AI 모델 (검색·요약·트렌드 분석)
+        </h4>
+        <p className="mb-2 text-[11px] text-paperis-text-3">
+          입력한 provider 키만 활성화. "AI provider 선택"에서 어떤 걸 쓸지 결정.
+        </p>
+        <div className="space-y-2.5">{aiFields.map(renderField)}</div>
+      </div>
+      <div>
+        <h4 className="mb-2 text-[11px] font-semibold uppercase tracking-[0.06em] text-paperis-text-2">
+          외부 서비스 / TTS
+        </h4>
+        <div className="space-y-2.5">{serviceFields.map(renderField)}</div>
+      </div>
+    </div>
+  );
+}
+
+function AiProviderSection() {
+  const { isByok, loading } = useByokStatus();
+  const { keys } = useApiKeys();
+  const [provider, setProviderState] = useState<AiProviderName>(
+    AI_PROVIDER_DEFAULT
+  );
+  useEffect(() => {
+    setProviderState(getAiPreference());
+    return subscribeAiPreference(() => {
+      setProviderState(getAiPreference());
+    });
+  }, []);
+
+  // provider별 라벨 + 필요한 키 매핑
+  const PROVIDER_INFO: Record<
+    AiProviderName,
+    { label: string; keyName: ApiKeyName; note: string }
+  > = {
+    gemini: {
+      label: "Gemini",
+      keyName: "gemini",
+      note: "기본값. Flash Lite/Flash 라인업.",
+    },
+    claude: {
+      label: "Claude",
+      keyName: "anthropic",
+      note: "Anthropic. Haiku 4.5 / Sonnet 4.6.",
+    },
+    openai: {
+      label: "OpenAI",
+      keyName: "openai",
+      note: "gpt-4.1 라인업.",
+    },
+    grok: {
+      label: "Grok (xAI)",
+      keyName: "grok",
+      note: "grok-4 라인업.",
+    },
+  };
+
+  if (loading) {
+    return (
+      <div className="h-12 animate-pulse rounded-lg bg-paperis-surface-2" />
+    );
+  }
+  if (!isByok) {
+    return (
+      <p className="text-xs text-paperis-text-3">
+        BYOK 결제자만 provider를 변경할 수 있습니다. 그 외에는 기본 Gemini 사용.
+      </p>
+    );
+  }
+
+  return (
+    <div className="space-y-2">
+      {(["gemini", "claude", "openai", "grok"] as const).map((p) => {
+        const info = PROVIDER_INFO[p];
+        const hasKey = Boolean(keys[info.keyName]);
+        // 비-default(=gemini)는 본인 키 입력 필수 — 안 했으면 disabled
+        const disabled = p !== "gemini" && !hasKey;
+        const active = provider === p;
         return (
-          <label key={name} className="block">
-            <span className="mb-1 block font-mono text-[10px] uppercase tracking-wide text-paperis-text-3">
-              {API_KEY_LABELS[name]}
-            </span>
-            <div className="flex gap-1">
-              <input
-                type={visible ? "text" : "password"}
-                value={v}
-                onChange={(e) => setKey(name, e.target.value)}
-                placeholder="(미설정 시 .env.local 키 사용)"
-                className="min-w-0 flex-1 rounded-lg border border-paperis-border bg-paperis-surface px-2 py-1 text-xs text-paperis-text"
-                autoComplete="off"
-                spellCheck={false}
-              />
-              <button
-                type="button"
-                onClick={() =>
-                  setReveal((prev) => ({ ...prev, [name]: !prev[name] }))
-                }
-                className="rounded-lg border border-paperis-border px-2 text-xs text-paperis-text-3 transition hover:bg-paperis-surface-2 hover:text-paperis-text"
-                aria-label={visible ? "숨기기" : "보이기"}
-                title={visible ? "숨기기" : "보이기"}
-              >
-                {visible ? "🙈" : "👁"}
-              </button>
-              {v ? (
-                <button
-                  type="button"
-                  onClick={() => clearKey(name)}
-                  className="rounded-lg border border-paperis-border px-2 text-xs text-paperis-text-3 transition hover:bg-paperis-surface-2 hover:text-paperis-text"
-                  aria-label="삭제"
-                  title="삭제"
-                >
-                  🗑
-                </button>
+          <button
+            key={p}
+            type="button"
+            disabled={disabled}
+            onClick={() => {
+              setAiPreference(p);
+              setProviderState(p);
+            }}
+            className={[
+              "flex w-full items-start gap-3 rounded-lg border px-3 py-2 text-left transition",
+              active
+                ? "border-paperis-accent bg-paperis-accent-dim/30"
+                : "border-paperis-border hover:border-paperis-text-3",
+              disabled ? "cursor-not-allowed opacity-50" : "",
+            ].join(" ")}
+          >
+            <span className="mt-0.5 inline-flex h-4 w-4 shrink-0 items-center justify-center rounded-full border border-paperis-border">
+              {active ? (
+                <span className="block h-2 w-2 rounded-full bg-paperis-accent" />
               ) : null}
-            </div>
-          </label>
+            </span>
+            <span className="min-w-0 flex-1">
+              <span className="flex items-center gap-2 text-sm font-medium text-paperis-text">
+                {info.label}
+                {hasKey ? (
+                  <span className="rounded-full bg-paperis-accent-dim/60 px-1.5 py-0.5 text-[9px] font-semibold uppercase text-paperis-accent">
+                    키 입력됨
+                  </span>
+                ) : null}
+              </span>
+              <span className="block text-[11px] text-paperis-text-3">
+                {info.note}
+              </span>
+            </span>
+          </button>
         );
       })}
+      <p className="mt-2 text-[11px] text-paperis-text-3">
+        선택한 provider로 자연어 검색·요약·트렌드 분석이 호출됩니다. TTS 음성
+        합성은 별도(위 "TTS provider" 섹션)로 설정.
+      </p>
     </div>
   );
 }

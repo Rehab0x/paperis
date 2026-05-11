@@ -17,6 +17,9 @@ import {
 
 export type ApiKeyName =
   | "gemini"
+  | "anthropic"
+  | "openai"
+  | "grok"
   | "googleCloud"
   | "clovaId"
   | "clovaSecret"
@@ -25,12 +28,32 @@ export type ApiKeyName =
 
 export const API_KEY_LABELS: Record<ApiKeyName, string> = {
   gemini: "GEMINI_API_KEY",
+  anthropic: "ANTHROPIC_API_KEY",
+  openai: "OPENAI_API_KEY",
+  grok: "XAI_API_KEY",
   googleCloud: "GOOGLE_CLOUD_TTS_API_KEY",
   clovaId: "NCP_CLOVA_CLIENT_ID",
   clovaSecret: "NCP_CLOVA_CLIENT_SECRET",
   pubmed: "PUBMED_API_KEY",
   unpaywall: "UNPAYWALL_EMAIL",
 };
+
+/** AI 모델 provider 키만 별도 그룹 — 설정 UI에서 묶어 표시 */
+export const AI_PROVIDER_KEYS: ReadonlyArray<ApiKeyName> = [
+  "gemini",
+  "anthropic",
+  "openai",
+  "grok",
+];
+
+/** 외부 서비스/TTS 키 — AI provider와 분리 */
+export const SERVICE_KEYS: ReadonlyArray<ApiKeyName> = [
+  "googleCloud",
+  "clovaId",
+  "clovaSecret",
+  "pubmed",
+  "unpaywall",
+];
 
 export type ApiKeys = Partial<Record<ApiKeyName, string>>;
 
@@ -64,6 +87,9 @@ function readStored(): ApiKeys {
     const out: ApiKeys = {};
     const allowed: ApiKeyName[] = [
       "gemini",
+      "anthropic",
+      "openai",
+      "grok",
       "googleCloud",
       "clovaId",
       "clovaSecret",

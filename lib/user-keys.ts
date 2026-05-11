@@ -11,7 +11,12 @@ import { getDb, hasDb } from "@/lib/db";
 import { subscriptions } from "@/lib/db/schema";
 
 export interface UserApiKeys {
+  // AI provider 키 (lib/ai/registry.ts에서 사용)
   gemini?: string;
+  anthropic?: string;
+  openai?: string;
+  grok?: string;
+  // 외부 서비스 / TTS 키
   googleCloud?: string;
   clovaId?: string;
   clovaSecret?: string;
@@ -45,6 +50,9 @@ export function readUserKeys(req: Request): UserApiKeys {
     const out: UserApiKeys = {};
     const map = parsed as Record<string, unknown>;
     if (typeof map.gemini === "string") out.gemini = map.gemini;
+    if (typeof map.anthropic === "string") out.anthropic = map.anthropic;
+    if (typeof map.openai === "string") out.openai = map.openai;
+    if (typeof map.grok === "string") out.grok = map.grok;
     if (typeof map.googleCloud === "string") out.googleCloud = map.googleCloud;
     if (typeof map.clovaId === "string") out.clovaId = map.clovaId;
     if (typeof map.clovaSecret === "string") out.clovaSecret = map.clovaSecret;
@@ -95,6 +103,9 @@ export async function applyUserKeysToEnv(req: Request): Promise<void> {
   const keys = readUserKeys(req);
   const hasAny =
     keys.gemini ||
+    keys.anthropic ||
+    keys.openai ||
+    keys.grok ||
     keys.googleCloud ||
     keys.clovaId ||
     keys.clovaSecret ||
@@ -106,6 +117,9 @@ export async function applyUserKeysToEnv(req: Request): Promise<void> {
   if (!allowed) return; // 비-BYOK 사용자 헤더는 무시
 
   if (keys.gemini) process.env.GEMINI_API_KEY = keys.gemini;
+  if (keys.anthropic) process.env.ANTHROPIC_API_KEY = keys.anthropic;
+  if (keys.openai) process.env.OPENAI_API_KEY = keys.openai;
+  if (keys.grok) process.env.XAI_API_KEY = keys.grok;
   if (keys.googleCloud)
     process.env.GOOGLE_CLOUD_TTS_API_KEY = keys.googleCloud;
   if (keys.clovaId) process.env.NCP_CLOVA_CLIENT_ID = keys.clovaId;
