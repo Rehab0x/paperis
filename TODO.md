@@ -1,17 +1,18 @@
 # Paperis — TODO / 진척 기록
 
-> 마지막 갱신: 2026-05-13 (v3 M1~M7 + 멀티 AI provider + admin + 디자인 톤 + UX 정리 완료)
+> 마지막 갱신: 2026-05-13 (v3 M1~M7 + 멀티 AI provider + admin + 디자인 톤 + UX 정리 + Phase 2-A 랜딩페이지/i18n)
 > 외부 노출 문서는 [README.md](README.md), 컨텍스트는 [CLAUDE.md](CLAUDE.md). 이 파일은 작업 일지·기술부채·의사결정 기록 보관용.
 
 ---
 
 ## 현재 상태
 
-- **라이브**: paperis.vercel.app — v3 M1~M7 코드 배포 + 멀티 AI provider 풀스택 + 에디토리얼 디자인 시스템
+- **라이브**: paperis.vercel.app — v3 M1~M7 + 멀티 AI provider + 디자인 시스템 + **Phase 2-A 랜딩페이지/i18n 인프라** 배포
 - **GitHub**: Rehab0x/paperis (master), origin과 동기화
 - **Vercel**: Pro plan (5분 maxDuration), 수동 배포 (`vercel deploy --prod --yes`), daily cron (KST 자정 자동결제)
 - **외부 통합 (prod env 등록 완료)**: Neon Postgres · Google OAuth · NCP Clova · Gemini · PubMed/Unpaywall · Upstash Redis · Toss Payments (sandbox)
 - **데이터**: `data/journals.json` GitHub raw fetch (1h revalidate). 25 임상과, 3개(재활/심장/신경)에 manualSeedJournals 입력
+- **Phase 2-A flag**: `NEXT_PUBLIC_FEATURE_LANDING` default 0 (prod 검증 후 1로 활성)
 
 ### v3 마일스톤 진척
 
@@ -36,6 +37,21 @@
 - ✅ **멀티 AI provider (Phase A~E)** — Gemini/Claude/OpenAI/Grok 추상화 + 등급별 권한 게이트
 - ✅ **관리자 권한** — `ADMIN_EMAILS` env. 결제 없이 BYOK 효과
 - ✅ **등급별 권한 명확화** — Free/Pro/BYOK/Admin 분리 (본인 키 강제 / 서버 env / fallback 룰)
+
+### 글로벌 확장 (Phase 2) — docs/GLOBAL_EXPANSION_PLAN.md
+
+- ✅ **Phase 2-A 랜딩페이지 + i18n 인프라** (2026-05-13)
+  - 자체 i18n (`lib/i18n.ts` + `messages/{ko,en}.json`, next-intl 미사용 — 가볍게)
+  - `app/[locale]/` SSG 랜딩 (Hero/Stats/How/Features/Pricing), 다크/라이트 양쪽
+  - `middleware.ts` — / 진입 시 쿠키 → GeoIP → Accept-Language(ko 토큰 우선) 분기
+  - URL 구조 = **하이브리드**: 랜딩만 `/[locale]/`, 앱은 `/app` 유지 (회귀 위험 최소)
+  - 기존 `app/page.tsx` → `app/app/page.tsx` 이동, 루트는 server redirect fallback
+  - 내부 "/" 링크 14곳 → "/app" 일괄 수정 (헤더 로고/홈으로/onboarding redirect/AuthMenu callbackUrl)
+  - 글로벌 Footer (`components/Footer.tsx` + `lib/branding.ts`) — 모든 페이지 © 표기, PlayerBar 높이 보정
+  - **회귀 fix 2건** (Phase 2-A 직후 발견): TtsQueueBadge·LibraryDrawer가 `router.push("/?...")` 쓰던 부분 → `/app?...`
+- ⬜ **Phase 2-B** 영어 서비스 파이프라인 — TTS 분기(en→Google Cloud) + 번역 단계 조건부 제거 + 영어 Gemini 프롬프트 튜닝 + `data/journals.json` `defaultLocale` 필드
+- ⬜ **Phase 2-C** 앱 UI i18n — 헤더/버튼/placeholder 등 한국어 텍스트를 메시지 키로 마이그레이션 (큰 작업, 별도 사이클)
+- ⬜ **Phase 2-D** Stripe 결제 연동 (해외 사용자 USD) — 한국 사업자등록(M8) 완료 후
 
 ---
 
@@ -68,7 +84,7 @@
 - [ ] **단위 테스트** — `lib/pubmed.ts` XML 파서, `lib/openalex.ts` group_by 정렬, `lib/account-prefs.ts` 멱등 upsert, `lib/usage.ts` race-safe 분기, `lib/ai/*` provider mock
 - [ ] **CSP / 보안 헤더** — `Content-Security-Policy` / `X-Frame-Options`
 - [ ] **PWA 오프라인 지원** — 홈 shell/정적 페이지 precache
-- [ ] **영어 UI 토글** — 한국어 고정 (영어 검색 prompt만 일부 보강됨)
+- [ ] ~~영어 UI 토글~~ → **Phase 2-B/2-C로 이관** (랜딩만 i18n 완료, 앱 UI는 다음 사이클)
 - [ ] **이메일 magic link** — Resend/SES 등 메일 발신 셋업 후 Auth.js EmailProvider 추가
 - [ ] **applyUserKeysToEnv race** — Node 단일 프로세스에서 동시 요청 시 process.env 충돌 이론적 가능성. provider별 ctx 인자로 리팩토링 검토
 - [ ] **NCBI ERROR 자동 재시도** — 현재는 ERROR 응답 시 throw. NCBI flapping 자주 발생하므로 backoff retry 1-2회 추가 검토
@@ -91,6 +107,10 @@
 - [x] 트렌드 빈 박스 로딩 → 명시적 "분석 중" 메시지 + spinner + 메타
 - [x] BYOK 결제 후 본인 키 미입력 시 우리 키 무단 사용 가능 — 엄격 게이트 (호출 실패 + 에러 메시지)
 - [x] Pro provider 선택 불가 (BYOK만 가능) → Pro도 env 보유 provider 선택 가능, 비보유는 disabled
+- [x] TtsQueueBadge·LibraryDrawer가 `router.push("/?...")` 사용 — Phase 2-A 도입 후 `/app?...`로 가지 않으면 미들웨어가 다시 가로채 pmid 쿼리 잃는 버그. `ae1ac52`에서 fix
+- [x] "Gemini가 검색식으로 바꿔 돌립니다" 안내 문구 — 멀티 AI provider 시대에 부정확. provider 언급 제거
+- [x] SortControl 모바일에서 한쪽 몰림 — inline-flex + wrapper justify-center로 가운데 정렬
+- [x] LibraryDrawer/SettingsDrawer 헤더 이모지+한글 — Paperis 로고 톤(Fraunces + accent dot)으로 통일
 
 ---
 
@@ -266,7 +286,7 @@ vercel.json                      cron 설정 (recurring-billing)
 
 | 버전 | 날짜 | 핵심 |
 |---|---|---|
-| **v3** (master 진화) | 2026-05-08~13 | 저널 큐레이션 + Auth + Neon + 결제 + 멀티 AI provider + 에디토리얼 디자인. paperis.vercel.app 라이브 |
+| **v3** (master 진화) | 2026-05-08~13 | 저널 큐레이션 + Auth + Neon + 결제 + 멀티 AI provider + 에디토리얼 디자인 + **Phase 2-A 랜딩페이지/i18n**. paperis.vercel.app 라이브 |
 | v2.0.4 | 2026-05-04 | 설정 패널 6개 섹션 + Google Cloud TTS + API 키 6종 + X-Paperis-Keys |
 | v2.0.3 | 2026-05-04 | 페이지네이션 + 테마(라이트/다크/시스템) + Naver Clova + 검색 안전망 |
 | v2.0.2 | 2026-04-30 | PlayerBar 동적 높이 + listTrackMetas + IndexedDB v2 |
@@ -357,6 +377,25 @@ vercel.json                      cron 설정 (recurring-billing)
 - **PlayerBar thumb 가림** — h-3→h-4, margin-top 제거 (라이브러리 드로어와 안 겹침)
 - **PlayerBar marquee 속도** — 거리 기반 일정 (30px/sec, 최소 30초)
 - **헤더 ⚙ SVG 교체** — heroicons cog-6-tooth solid (🎧와 시각 무게 균형)
+
+### Phase 2-A 글로벌 확장 — 랜딩페이지/i18n 인프라 (2026-05-13)
+
+커밋: `4e42a42` (Phase 2-A 본체), `ae1ac52` (회귀 fix + UX)
+
+- **i18n 자체 구현** — `lib/i18n.ts` (Locale 타입, `parseAcceptLanguage` ko 토큰 우선) + `messages/{ko,en}.json`
+- **`app/[locale]/`** SSG 랜딩 — Hero/Stats/How/Features/Pricing/LangToggle, paperis-* 토큰 그대로 (다크+라이트)
+- **`middleware.ts`** — / 진입 분기. 쿠키 우선 → GeoIP(`x-vercel-ip-country`) → Accept-Language → DEFAULT (en)
+  · 한국인 사용자가 영어 우선 브라우저 써도 Accept-Language 토큰에 `ko` 있으면 ko로 (load-bearing)
+  · 로그인 사용자는 랜딩 건너뛰고 /app으로
+- **URL 구조 = 하이브리드** — 랜딩만 `/[locale]/`, 앱은 `/app` 유지 (v3 라이브 회귀 위험 최소)
+- **앱 본체 이동** — `app/page.tsx` → `app/app/page.tsx`. 루트 `app/page.tsx`는 `redirect("/app")` server component fallback
+- **내부 "/" 링크 14곳 → "/app"** — 헤더 로고/onboarding redirect/← 홈으로/AuthMenu callbackUrl
+- **글로벌 Footer** (`components/Footer.tsx` + `lib/branding.ts`) — `© 2026 {COMPANY_NAME}` placeholder ("Neokuns"). 사업자등록 후 한 줄만 갱신하면 일괄 변경. PlayerBar 높이 (--player-bar-h) 만큼 padding-bottom 보정
+- **Feature flag** `NEXT_PUBLIC_FEATURE_LANDING` default 0 — 라이브 회귀 시 즉시 0으로 끄면 / → /app 강제 (기존 동작)
+- **회귀 fix 2건** (`ae1ac52`) — TtsQueueBadge/LibraryDrawer가 `router.push("/?...")` 쓰던 곳 → `/app?...` (안 고치면 미들웨어가 가로채 pmid 쿼리 손실)
+- **UX 4건** — `/app` 빈 상태 문구 provider 비종속 / SortControl 모바일 가운데 / 드로어 헤더 Audio Library·Settings (Fraunces + accent dot) / 글로벌 Footer
+
+기획·프로토타입: `docs/GLOBAL_EXPANSION_PLAN.md`, `docs/paperis_landing_prototype.html`, `docs/HOME_LAYOUT_SPEC.md`, `docs/RESEARCH_READING_BEHAVIOR_Marketing.md`, `docs/Paperis_home_prototype.html`
 
 ---
 

@@ -9,8 +9,10 @@
 ## 무엇을 하는가
 
 1. **저널 큐레이션 (메인 진입)** — 임상과 선택 → 저널 선택 → 호 탐색 / 주제 탐색 / 분기 트렌드 분석. 결과는 카드 + 미니 요약 + 풀텍스트 + TTS 청취로 이어진다
-2. **자연어 검색 (보조 진입)** — 입력을 Gemini가 PubMed 검색식으로 변환. v2 사용자를 위한 흐름 보존
+2. **자연어 검색 (보조 진입)** — 입력을 사용자가 선택한 AI provider가 PubMed 검색식으로 변환. v2 사용자를 위한 흐름 보존
 3. **출퇴근 청취** — TTS narration → IndexedDB 라이브러리 → 글로벌 PlayerBar에서 큐 재생
+
+서비스 진입은 두 단계 — `paperis.vercel.app/`은 비로그인 사용자에게 한/영 랜딩페이지(`/ko`, `/en`)를 보여주고, 로그인된 사용자나 deep link 사용자는 `/app`(앱 본체)로 바로 진입한다. 미들웨어가 쿠키 → GeoIP(`x-vercel-ip-country`) → Accept-Language(ko 토큰 우선) 순으로 자동 분기.
 
 설계 1순위 시나리오: **출퇴근길에 듣는다**. 모든 흐름이 결국 TTS → 라이브러리 → 플레이어로 수렴한다.
 
@@ -113,6 +115,7 @@ CRON_SECRET=                     # Vercel cron 인증 (Bearer)
 NEXT_PUBLIC_FEATURE_AUTH=1       # AuthMenu 노출
 NEXT_PUBLIC_FEATURE_JOURNAL=1    # /journal 진입
 FEATURE_USAGE_LIMIT=1            # Free 한도 활성
+NEXT_PUBLIC_FEATURE_LANDING=0    # / → /ko|/en 랜딩 분기 (Phase 2-A, 0=기존 / → /app)
 ```
 
 `.env.example` 전체 참조. `.env.local`은 `.gitignore`로 제외.
@@ -158,8 +161,14 @@ vercel deploy --prod --yes
 
 ```
 app/
-  layout.tsx                      Provider 중첩 + Fraunces + Pretendard
-  page.tsx                        v2 자연어 검색 + 홈 카드 시스템
+  layout.tsx                      Provider 중첩 + Fraunces + Pretendard + 글로벌 Footer
+  page.tsx                        / 진입 server redirect (→ /app, 미들웨어가 못 잡았을 때 fallback)
+  [locale]/                       랜딩페이지 SSG (Phase 2-A) — ko/en
+    layout.tsx                    locale 검증 + generateStaticParams
+    page.tsx                      Hero/Stats/How/Features/Pricing
+    LangToggle.tsx                KO/EN 토글 (쿠키 저장)
+  app/
+    page.tsx                      v2 자연어 검색 + 홈 카드 시스템 (앱 본체)
   account/page.tsx                구독 + 사용량 + 정보
   billing/page.tsx                BYOK/Pro 결제 시작
   billing/{success,fail}/         결제 콜백
@@ -177,6 +186,7 @@ app/
     cron/recurring-billing                              매일 KST 자정 자동결제
     auth/[...nextauth]
 components/
+  Footer                                                 글로벌 푸터 (모든 페이지, PlayerBar 보정)
   PlayerBar PlayerProvider AudioLibrary LibraryDrawer    글로벌 미디어 (포털 마운트)
   ContinueListeningCard MySpecialtiesPicker
   TrendFeaturedCard MyJournalsNewIssues UsageBanner      홈 카드 시스템
@@ -190,6 +200,8 @@ components/
 lib/
   ai/                              types · registry · gemini · claude · openai (Grok 재사용)
   ai-preference                    사용자 provider 선호 localStorage
+  branding                         COMPANY_NAME / copyright 연도 (한 곳 갱신)
+  i18n                             Locale 타입 · Accept-Language 파서 · 메시지 로더
   user-keys                        BYOK 게이트 + applyUserKeysToEnv
   admin                            ADMIN_EMAILS 체크
   usage                            checkAndIncrement + getPlan + KST yearMonth
@@ -204,7 +216,9 @@ lib/
   specialty-prefs anonymous-id auto-mini-summary
   db/                              Drizzle schema + connection
 data/journals.json                 임상과 카탈로그
+messages/{ko,en}.json              랜딩페이지 카피 (Phase 2-A)
 auth.ts                            Auth.js v5 + Drizzle adapter
+middleware.ts                      / 진입 시 랜딩/앱 분기 (Phase 2-A)
 ```
 
 ---
