@@ -1,0 +1,786 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Paperis</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,300;0,9..144,400;0,9..144,500;1,9..144,400;1,9..144,500&display=swap" rel="stylesheet">
+<link rel="stylesheet" as="style" crossorigin href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css" />
+<style>
+:root {
+  --bg: #0a0a0a;
+  --surface: #141414;
+  --surface-2: #1c1c1c;
+  --border: #222;
+  --border-2: #2a2a2a;
+  --text: #f0f0f0;
+  --text-2: #999;
+  --text-3: #555;
+  --accent: #ff5b3a;
+  --accent-bg: rgba(255,91,58,0.08);
+  --accent-border: rgba(255,91,58,0.2);
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+html { scroll-behavior: smooth; }
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: 'Pretendard', -apple-system, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  line-height: 1.6;
+}
+
+a { color: inherit; text-decoration: none; }
+
+/* ── NAV ─────────────────────────── */
+nav {
+  position: fixed; top: 0; left: 0; right: 0; z-index: 100;
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 18px 32px;
+  background: rgba(10,10,10,0.85);
+  backdrop-filter: blur(24px);
+  border-bottom: 1px solid var(--border);
+}
+
+.logo {
+  font-family: 'Fraunces', serif;
+  font-size: 22px; font-weight: 500;
+  letter-spacing: -0.02em;
+}
+.logo-dot { color: var(--accent); }
+
+.nav-right {
+  display: flex; align-items: center; gap: 8px;
+}
+
+.lang-toggle {
+  display: flex; align-items: center;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  overflow: hidden;
+}
+.lang-btn {
+  padding: 6px 12px;
+  font-size: 12px; font-weight: 600;
+  letter-spacing: 0.04em;
+  color: var(--text-3);
+  background: transparent; border: none;
+  cursor: pointer; transition: all .15s;
+  font-family: inherit;
+}
+.lang-btn.active {
+  color: var(--text);
+  background: var(--surface-2);
+}
+
+.nav-cta {
+  padding: 8px 18px;
+  background: var(--accent);
+  color: #000;
+  font-size: 13px; font-weight: 600;
+  border-radius: 10px;
+  border: none; cursor: pointer;
+  font-family: inherit;
+  transition: opacity .15s;
+}
+.nav-cta:hover { opacity: .85; }
+
+/* ── HERO ────────────────────────── */
+.hero {
+  min-height: 100vh;
+  display: flex; flex-direction: column;
+  align-items: center; justify-content: center;
+  padding: 120px 24px 80px;
+  text-align: center;
+  position: relative;
+  overflow: hidden;
+}
+
+.hero::before {
+  content: '';
+  position: absolute; inset: 0;
+  background:
+    radial-gradient(ellipse 60% 50% at 50% 0%, rgba(255,91,58,0.07) 0%, transparent 70%),
+    radial-gradient(ellipse 40% 40% at 20% 80%, rgba(255,91,58,0.04) 0%, transparent 60%);
+  pointer-events: none;
+}
+
+.hero-badge {
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 6px 14px;
+  background: var(--accent-bg);
+  border: 1px solid var(--accent-border);
+  border-radius: 100px;
+  font-size: 12px; font-weight: 600;
+  color: var(--accent);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  margin-bottom: 32px;
+}
+
+.hero-title {
+  font-family: 'Fraunces', serif;
+  font-size: clamp(38px, 6vw, 72px);
+  font-weight: 500;
+  line-height: 1.1;
+  letter-spacing: -0.03em;
+  max-width: 800px;
+  margin: 0 auto 24px;
+}
+.hero-title em {
+  font-style: italic;
+  color: var(--accent);
+}
+
+.hero-sub {
+  font-size: clamp(15px, 2vw, 18px);
+  color: var(--text-2);
+  max-width: 520px;
+  margin: 0 auto 48px;
+  line-height: 1.7;
+}
+
+.hero-ctas {
+  display: flex; gap: 12px;
+  flex-wrap: wrap; justify-content: center;
+  margin-bottom: 72px;
+}
+
+.btn-primary {
+  padding: 14px 28px;
+  background: var(--accent); color: #000;
+  font-size: 15px; font-weight: 700;
+  border-radius: 12px; border: none; cursor: pointer;
+  font-family: inherit; transition: opacity .15s;
+}
+.btn-primary:hover { opacity: .85; }
+
+.btn-secondary {
+  padding: 14px 28px;
+  background: transparent; color: var(--text-2);
+  font-size: 15px; font-weight: 500;
+  border-radius: 12px;
+  border: 1px solid var(--border-2);
+  cursor: pointer; font-family: inherit; transition: all .15s;
+}
+.btn-secondary:hover { border-color: #444; color: var(--text); }
+
+.hero-note {
+  font-size: 12px; color: var(--text-3);
+}
+
+/* ── STATS ───────────────────────── */
+.stats {
+  padding: 0 24px 80px;
+  max-width: 900px;
+  margin: 0 auto;
+}
+
+.stats-inner {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 1px;
+  background: var(--border);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  overflow: hidden;
+}
+
+.stat {
+  background: var(--surface);
+  padding: 32px 28px;
+  text-align: center;
+}
+
+.stat-num {
+  font-family: 'Fraunces', serif;
+  font-size: 44px; font-weight: 400;
+  color: var(--accent);
+  line-height: 1;
+  margin-bottom: 10px;
+}
+.stat-label {
+  font-size: 13px; color: var(--text-2);
+  line-height: 1.5;
+}
+.stat-source {
+  font-size: 10px; color: var(--text-3);
+  margin-top: 6px;
+  font-style: italic;
+}
+
+/* ── HOW ─────────────────────────── */
+.how {
+  padding: 80px 24px;
+  max-width: 900px;
+  margin: 0 auto;
+}
+
+.section-label {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: var(--text-3);
+  font-weight: 600;
+  margin-bottom: 16px;
+  text-align: center;
+}
+
+.section-title {
+  font-family: 'Fraunces', serif;
+  font-size: clamp(28px, 4vw, 42px);
+  font-weight: 500;
+  text-align: center;
+  line-height: 1.2;
+  letter-spacing: -0.02em;
+  margin-bottom: 56px;
+}
+
+.steps {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 16px;
+}
+
+.step {
+  padding: 28px 24px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  transition: border .15s;
+}
+.step:hover { border-color: var(--border-2); }
+
+.step-num {
+  font-family: 'Fraunces', serif;
+  font-size: 32px; font-weight: 400;
+  color: var(--text-3);
+  line-height: 1;
+  margin-bottom: 16px;
+}
+.step-icon { font-size: 28px; margin-bottom: 12px; }
+.step-title {
+  font-size: 16px; font-weight: 600;
+  margin-bottom: 8px; line-height: 1.3;
+}
+.step-desc { font-size: 14px; color: var(--text-2); line-height: 1.6; }
+
+/* ── FEATURES ─────────────────────── */
+.features {
+  padding: 80px 24px;
+  max-width: 900px;
+  margin: 0 auto;
+}
+
+.feature-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 12px;
+}
+
+.feature {
+  padding: 28px 24px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+}
+.feature-icon { font-size: 24px; margin-bottom: 14px; }
+.feature-title {
+  font-size: 15px; font-weight: 600;
+  margin-bottom: 8px;
+}
+.feature-desc { font-size: 14px; color: var(--text-2); line-height: 1.6; }
+
+/* ── PRICING ─────────────────────── */
+.pricing {
+  padding: 80px 24px;
+  max-width: 900px;
+  margin: 0 auto;
+}
+
+.plans {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 12px;
+  margin-top: 16px;
+}
+
+.plan {
+  padding: 28px 24px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  display: flex; flex-direction: column;
+}
+.plan.featured {
+  border-color: var(--accent-border);
+  background: linear-gradient(160deg, #1a0e08 0%, #141414 50%);
+}
+
+.plan-badge {
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--accent);
+  margin-bottom: 14px;
+}
+
+.plan-name {
+  font-family: 'Fraunces', serif;
+  font-size: 22px; font-weight: 500;
+  margin-bottom: 6px;
+}
+
+.plan-price {
+  margin-bottom: 20px;
+}
+.plan-price .amount {
+  font-size: 32px; font-weight: 700;
+  letter-spacing: -0.02em;
+  font-variant-numeric: tabular-nums;
+}
+.plan-price .period {
+  font-size: 13px; color: var(--text-3);
+}
+
+.plan-items {
+  list-style: none;
+  display: flex; flex-direction: column; gap: 10px;
+  flex: 1;
+  margin-bottom: 24px;
+}
+.plan-items li {
+  display: flex; align-items: flex-start; gap: 8px;
+  font-size: 13px; color: var(--text-2);
+  line-height: 1.4;
+}
+.plan-items li::before {
+  content: '✓';
+  color: var(--accent);
+  flex-shrink: 0;
+  font-weight: 700;
+  margin-top: 1px;
+}
+
+.plan-btn {
+  width: 100%;
+  padding: 12px;
+  font-size: 14px; font-weight: 600;
+  font-family: inherit;
+  border-radius: 10px; cursor: pointer;
+  transition: all .15s;
+}
+.plan-btn.outline {
+  background: transparent;
+  border: 1px solid var(--border-2);
+  color: var(--text-2);
+}
+.plan-btn.outline:hover {
+  border-color: #444; color: var(--text);
+}
+.plan-btn.solid {
+  background: var(--accent); border: none;
+  color: #000;
+}
+.plan-btn.solid:hover { opacity: .85; }
+
+/* ── FOOTER ──────────────────────── */
+footer {
+  border-top: 1px solid var(--border);
+  padding: 32px 32px;
+  display: flex; align-items: center; justify-content: space-between;
+  flex-wrap: wrap; gap: 12px;
+}
+.footer-logo {
+  font-family: 'Fraunces', serif;
+  font-size: 18px; color: var(--text-3);
+}
+.footer-links {
+  display: flex; gap: 20px;
+  font-size: 12px; color: var(--text-3);
+}
+.footer-links a:hover { color: var(--text-2); }
+
+/* ── DIVIDER ─────────────────────── */
+.divider {
+  height: 1px;
+  background: var(--border);
+  max-width: 900px;
+  margin: 0 auto;
+}
+
+/* ── RESPONSIVE ──────────────────── */
+@media (max-width: 680px) {
+  nav { padding: 14px 20px; }
+  .stats-inner { grid-template-columns: 1fr; }
+  .steps { grid-template-columns: 1fr; }
+  .feature-grid { grid-template-columns: 1fr; }
+  .plans { grid-template-columns: 1fr; }
+  .hero-title { font-size: 36px; }
+  footer { flex-direction: column; align-items: flex-start; }
+}
+
+/* ── FADE IN ─────────────────────── */
+@keyframes fadeUp {
+  from { opacity: 0; transform: translateY(20px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.fade-up {
+  opacity: 0;
+  animation: fadeUp .7s ease forwards;
+}
+.fade-up:nth-child(1) { animation-delay: .1s; }
+.fade-up:nth-child(2) { animation-delay: .2s; }
+.fade-up:nth-child(3) { animation-delay: .3s; }
+.fade-up:nth-child(4) { animation-delay: .4s; }
+.fade-up:nth-child(5) { animation-delay: .5s; }
+</style>
+</head>
+<body>
+
+<!-- NAV -->
+<nav>
+  <div class="logo">Paperis<span class="logo-dot">.</span></div>
+  <div class="nav-right">
+    <div class="lang-toggle">
+      <button class="lang-btn active" onclick="setLang('ko')" id="btn-ko">KO</button>
+      <button class="lang-btn" onclick="setLang('en')" id="btn-en">EN</button>
+    </div>
+    <button class="nav-cta" id="nav-cta">무료 시작</button>
+  </div>
+</nav>
+
+<!-- HERO -->
+<section class="hero">
+  <div class="hero-badge fade-up" id="badge">PubMed AI 큐레이션</div>
+  <h1 class="hero-title fade-up" id="hero-title">
+    읽을 시간이 없다면,<br><em>들으세요.</em>
+  </h1>
+  <p class="hero-sub fade-up" id="hero-sub">
+    바쁜 의료인을 위한 PubMed 최신 연구 큐레이션.<br>
+    출퇴근길에 저널 트렌드를 한국어로 들을 수 있어요.
+  </p>
+  <div class="hero-ctas fade-up">
+    <button class="btn-primary" id="cta-main">무료로 시작하기</button>
+    <button class="btn-secondary" id="cta-demo">데모 보기</button>
+  </div>
+  <p class="hero-note fade-up" id="hero-note">신용카드 불필요 · 매월 무료 사용량 제공</p>
+</section>
+
+<!-- STATS -->
+<section class="stats">
+  <div class="stats-inner">
+    <div class="stat">
+      <div class="stat-num">63%</div>
+      <div class="stat-label" id="stat1-label">임상의는 abstract만 읽는다</div>
+      <div class="stat-source">Baudoin et al., Ann Intern Med 1999</div>
+    </div>
+    <div class="stat">
+      <div class="stat-num">84.5%</div>
+      <div class="stat-label" id="stat2-label">출퇴근·운동 중 오디오로 의학 학습</div>
+      <div class="stat-source">Barton et al., Anat Sci Educ 2025</div>
+    </div>
+    <div class="stat">
+      <div class="stat-num">100만+</div>
+      <div class="stat-label" id="stat3-label">매년 PubMed에 새로 추가되는 논문</div>
+      <div class="stat-source">NLM PubMed Statistics 2024</div>
+    </div>
+  </div>
+</section>
+
+<div class="divider"></div>
+
+<!-- HOW IT WORKS -->
+<section class="how">
+  <p class="section-label" id="how-label">어떻게 쓰나요</p>
+  <h2 class="section-title" id="how-title">3단계면 충분해요</h2>
+  <div class="steps">
+    <div class="step">
+      <div class="step-num">01</div>
+      <div class="step-icon">🏥</div>
+      <div class="step-title" id="step1-title">임상과 + 저널 선택</div>
+      <div class="step-desc" id="step1-desc">관심 임상과를 선택하면 주요 저널을 자동으로 추천해드려요. 원하는 저널을 직접 검색해 추가할 수도 있어요.</div>
+    </div>
+    <div class="step">
+      <div class="step-num">02</div>
+      <div class="step-icon">🤖</div>
+      <div class="step-title" id="step2-title">AI가 트렌드 분석</div>
+      <div class="step-desc" id="step2-desc">최신 호를 열면 AI가 이번 호의 경향성과 중요 논문을 자동으로 분석해드려요. 수십 편을 읽을 필요가 없어요.</div>
+    </div>
+    <div class="step">
+      <div class="step-num">03</div>
+      <div class="step-icon">🎧</div>
+      <div class="step-title" id="step3-title">출퇴근길에 듣기</div>
+      <div class="step-desc" id="step3-desc">논문 요약을 TTS로 재생하세요. 재생목록을 만들어 출퇴근 시간에 여러 편을 연속으로 들을 수 있어요.</div>
+    </div>
+  </div>
+</section>
+
+<div class="divider"></div>
+
+<!-- FEATURES -->
+<section class="features">
+  <p class="section-label" id="feat-label">주요 기능</p>
+  <h2 class="section-title" id="feat-title">읽기의 방식을 바꿔요</h2>
+  <div class="feature-grid">
+    <div class="feature">
+      <div class="feature-icon">📅</div>
+      <div class="feature-title" id="f1-title">호(Issue) 탐색</div>
+      <div class="feature-desc" id="f1-desc">특정 월호를 선택하면 이번 호 경향성, top 5 논문 요약, 전체 목록을 한 번에 볼 수 있어요.</div>
+    </div>
+    <div class="feature">
+      <div class="feature-icon">📈</div>
+      <div class="feature-title" id="f2-title">트렌드 분석</div>
+      <div class="feature-desc" id="f2-desc">분기별·연간 트렌드를 편집장 브리핑 톤으로 요약해드려요. 약 8분의 오디오 브리핑도 제공해요.</div>
+    </div>
+    <div class="feature">
+      <div class="feature-icon">🏷️</div>
+      <div class="feature-title" id="f3-title">주제 탐색</div>
+      <div class="feature-desc" id="f3-desc">저널 안에서 spasticity, gait, FIM 같은 관심 주제로 필터링해 관련 논문만 모아볼 수 있어요.</div>
+    </div>
+    <div class="feature">
+      <div class="feature-icon">🔓</div>
+      <div class="feature-title" id="f4-title">OA 풀텍스트 요약</div>
+      <div class="feature-desc" id="f4-desc">Unpaywall, PMC 등을 통해 OA 논문은 abstract가 아닌 전문을 기반으로 깊이 있는 요약을 제공해요.</div>
+    </div>
+  </div>
+</section>
+
+<div class="divider"></div>
+
+<!-- PRICING -->
+<section class="pricing">
+  <p class="section-label" id="price-label">요금제</p>
+  <h2 class="section-title" id="price-title">먼저 써보고 결정하세요</h2>
+  <div class="plans">
+
+    <div class="plan">
+      <div class="plan-badge" id="plan1-badge">무료</div>
+      <div class="plan-name">Free</div>
+      <div class="plan-price">
+        <span class="amount">₩0</span>
+      </div>
+      <ul class="plan-items" id="plan1-items">
+        <li>자연어 논문 검색 무제한</li>
+        <li>미니 요약 무제한</li>
+        <li>저널 큐레이션 월 3회</li>
+        <li>TTS narration 월 5편</li>
+        <li>풀텍스트 요약 월 3편</li>
+      </ul>
+      <button class="plan-btn outline" id="plan1-btn">무료로 시작</button>
+    </div>
+
+    <div class="plan featured">
+      <div class="plan-badge" id="plan2-badge">🔑 내 API 키 사용</div>
+      <div class="plan-name">BYOK</div>
+      <div class="plan-price">
+        <span class="amount" id="byok-price">₩29,900</span>
+        <span class="period" id="byok-period"> 1회</span>
+      </div>
+      <ul class="plan-items" id="plan2-items">
+        <li>모든 기능 무제한</li>
+        <li>본인 Gemini / Clova API 키 사용</li>
+        <li>API 비용 직접 부담 (통상 월 몇백원)</li>
+        <li>영구 사용</li>
+        <li>저널 개인화</li>
+      </ul>
+      <button class="plan-btn solid" id="plan2-btn">1회 결제하기</button>
+    </div>
+
+    <div class="plan">
+      <div class="plan-badge" id="plan3-badge">구독</div>
+      <div class="plan-name">Pro</div>
+      <div class="plan-price">
+        <span class="amount" id="pro-price">₩9,900</span>
+        <span class="period" id="pro-period">/월</span>
+      </div>
+      <ul class="plan-items" id="plan3-items">
+        <li>모든 기능 무제한</li>
+        <li>API 키 설정 불필요</li>
+        <li>저널 개인화</li>
+        <li>신기능 우선 제공</li>
+      </ul>
+      <button class="plan-btn outline" id="plan3-btn">구독 시작</button>
+    </div>
+
+  </div>
+</section>
+
+<!-- FOOTER -->
+<footer>
+  <div class="footer-logo">Paperis<span style="color:var(--accent)">.</span></div>
+  <div class="footer-links" id="footer-links">
+    <a href="#">이용약관</a>
+    <a href="#">개인정보처리방침</a>
+    <a href="#">문의</a>
+  </div>
+</footer>
+
+<script>
+const copy = {
+  ko: {
+    navCta: '무료 시작',
+    badge: 'PubMed AI 큐레이션',
+    heroTitle: '읽을 시간이 없다면,<br><em>들으세요.</em>',
+    heroSub: '바쁜 의료인을 위한 PubMed 최신 연구 큐레이션.<br>출퇴근길에 저널 트렌드를 들을 수 있어요.',
+    ctaMain: '무료로 시작하기',
+    ctaDemo: '데모 보기',
+    heroNote: '신용카드 불필요 · 매월 무료 사용량 제공',
+    stat1: '임상의는 abstract만 읽는다',
+    stat2: '출퇴근·운동 중 오디오로 의학 학습',
+    stat3: '매년 PubMed에 새로 추가되는 논문',
+    howLabel: '어떻게 쓰나요',
+    howTitle: '3단계면 충분해요',
+    step1Title: '임상과 + 저널 선택',
+    step1Desc: '관심 임상과를 선택하면 주요 저널을 자동으로 추천해드려요. 원하는 저널을 직접 검색해 추가할 수도 있어요.',
+    step2Title: 'AI가 트렌드 분석',
+    step2Desc: '최신 호를 열면 AI가 이번 호의 경향성과 중요 논문을 자동으로 분석해드려요. 수십 편을 읽을 필요가 없어요.',
+    step3Title: '출퇴근길에 듣기',
+    step3Desc: '논문 요약을 TTS로 재생하세요. 재생목록을 만들어 출퇴근 시간에 여러 편을 연속으로 들을 수 있어요.',
+    featLabel: '주요 기능',
+    featTitle: '읽기의 방식을 바꿔요',
+    f1Title: '호(Issue) 탐색',
+    f1Desc: '특정 월호를 선택하면 이번 호 경향성, top 5 논문 요약, 전체 목록을 한 번에 볼 수 있어요.',
+    f2Title: '트렌드 분석',
+    f2Desc: '분기별·연간 트렌드를 편집장 브리핑 톤으로 요약해드려요. 약 8분의 오디오 브리핑도 제공해요.',
+    f3Title: '주제 탐색',
+    f3Desc: '저널 안에서 spasticity, gait, FIM 같은 관심 주제로 필터링해 관련 논문만 모아볼 수 있어요.',
+    f4Title: 'OA 풀텍스트 요약',
+    f4Desc: 'Unpaywall, PMC 등을 통해 OA 논문은 abstract가 아닌 전문을 기반으로 깊이 있는 요약을 제공해요.',
+    priceLabel: '요금제',
+    priceTitle: '먼저 써보고 결정하세요',
+    plan1Badge: '무료',
+    plan1Items: ['자연어 논문 검색 무제한','미니 요약 무제한','저널 큐레이션 월 3회','TTS narration 월 5편','풀텍스트 요약 월 3편'],
+    plan1Btn: '무료로 시작',
+    plan2Badge: '🔑 내 API 키 사용',
+    byokPrice: '₩29,900',
+    byokPeriod: ' 1회',
+    plan2Items: ['모든 기능 무제한','본인 Gemini / Clova API 키 사용','API 비용 직접 부담 (통상 월 몇백원)','영구 사용','저널 개인화'],
+    plan2Btn: '1회 결제하기',
+    plan3Badge: '구독',
+    proPrice: '₩9,900',
+    proPeriod: '/월',
+    plan3Items: ['모든 기능 무제한','API 키 설정 불필요','저널 개인화','신기능 우선 제공'],
+    plan3Btn: '구독 시작',
+    footer: ['이용약관','개인정보처리방침','문의'],
+  },
+  en: {
+    navCta: 'Get started',
+    badge: 'AI-powered PubMed curation',
+    heroTitle: 'Too busy to read papers?<br><em>Listen instead.</em>',
+    heroSub: 'AI-curated medical literature briefings for busy clinicians.<br>Catch up on journal trends during your commute.',
+    ctaMain: 'Start for free',
+    ctaDemo: 'See demo',
+    heroNote: 'No credit card required · Free usage every month',
+    stat1: 'of clinicians read only the abstract',
+    stat2: 'listen to medical audio during commute or exercise',
+    stat3: 'new papers added to PubMed every year',
+    howLabel: 'How it works',
+    howTitle: 'Three steps. That\'s it.',
+    step1Title: 'Choose your specialty & journals',
+    step1Desc: 'Select your specialty and get top journals recommended automatically. Search and add any journal by name.',
+    step2Title: 'AI analyzes the trends',
+    step2Desc: 'Open any issue and get an instant AI briefing — key themes, top papers, and what matters for your practice.',
+    step3Title: 'Listen on your commute',
+    step3Desc: 'Turn summaries into audio narration. Build a playlist and listen to multiple papers back-to-back on the go.',
+    featLabel: 'Features',
+    featTitle: 'A new way to stay current',
+    f1Title: 'Issue Explorer',
+    f1Desc: 'Select any journal issue to see AI-generated trend analysis, top 5 papers, and the complete paper list.',
+    f2Title: 'Trend Briefings',
+    f2Desc: 'Quarterly and annual trend analysis written like an editor\'s note. With an 8-minute audio briefing.',
+    f3Title: 'Topic Search',
+    f3Desc: 'Filter within a journal by topic — spasticity, gait, FIM, CIMT — to find relevant papers instantly.',
+    f4Title: 'Full-text OA Summaries',
+    f4Desc: 'For open-access papers, we fetch the full text via Unpaywall and PMC for deeper, more accurate summaries.',
+    priceLabel: 'Pricing',
+    priceTitle: 'Try it first, pay when it clicks',
+    plan1Badge: 'Free',
+    plan1Items: ['Unlimited natural language search','Unlimited mini summaries','3 journal curations / month','5 TTS narrations / month','3 full-text summaries / month'],
+    plan1Btn: 'Get started free',
+    plan2Badge: '🔑 Bring your own API key',
+    byokPrice: '$19.99',
+    byokPeriod: ' one-time',
+    plan2Items: ['Unlimited everything','Use your own Gemini / ElevenLabs API key','Typically a few cents/month in API costs','Lifetime access','Journal personalization'],
+    plan2Btn: 'Buy once',
+    plan3Badge: 'Subscription',
+    proPrice: '$7.99',
+    proPeriod: '/mo',
+    plan3Items: ['Unlimited everything','No API key needed','Journal personalization','Early access to new features'],
+    plan3Btn: 'Start Pro',
+    footer: ['Terms','Privacy','Contact'],
+  }
+}
+
+let lang = 'ko'
+
+function setLang(l) {
+  lang = l
+  const c = copy[l]
+  document.getElementById('btn-ko').classList.toggle('active', l === 'ko')
+  document.getElementById('btn-en').classList.toggle('active', l === 'en')
+  document.documentElement.lang = l
+
+  document.getElementById('nav-cta').textContent = c.navCta
+  document.getElementById('badge').textContent = c.badge
+  document.getElementById('hero-title').innerHTML = c.heroTitle
+  document.getElementById('hero-sub').innerHTML = c.heroSub
+  document.getElementById('cta-main').textContent = c.ctaMain
+  document.getElementById('cta-demo').textContent = c.ctaDemo
+  document.getElementById('hero-note').textContent = c.heroNote
+  document.getElementById('stat1-label').textContent = c.stat1
+  document.getElementById('stat2-label').textContent = c.stat2
+  document.getElementById('stat3-label').textContent = c.stat3
+  document.getElementById('how-label').textContent = c.howLabel
+  document.getElementById('how-title').textContent = c.howTitle
+  document.getElementById('step1-title').textContent = c.step1Title
+  document.getElementById('step1-desc').textContent = c.step1Desc
+  document.getElementById('step2-title').textContent = c.step2Title
+  document.getElementById('step2-desc').textContent = c.step2Desc
+  document.getElementById('step3-title').textContent = c.step3Title
+  document.getElementById('step3-desc').textContent = c.step3Desc
+  document.getElementById('feat-label').textContent = c.featLabel
+  document.getElementById('feat-title').textContent = c.featTitle
+  document.getElementById('f1-title').textContent = c.f1Title
+  document.getElementById('f1-desc').textContent = c.f1Desc
+  document.getElementById('f2-title').textContent = c.f2Title
+  document.getElementById('f2-desc').textContent = c.f2Desc
+  document.getElementById('f3-title').textContent = c.f3Title
+  document.getElementById('f3-desc').textContent = c.f3Desc
+  document.getElementById('f4-title').textContent = c.f4Title
+  document.getElementById('f4-desc').textContent = c.f4Desc
+  document.getElementById('price-label').textContent = c.priceLabel
+  document.getElementById('price-title').textContent = c.priceTitle
+  document.getElementById('plan1-badge').textContent = c.plan1Badge
+  document.getElementById('plan1-btn').textContent = c.plan1Btn
+  document.getElementById('plan2-badge').textContent = c.plan2Badge
+  document.getElementById('byok-price').textContent = c.byokPrice
+  document.getElementById('byok-period').textContent = c.byokPeriod
+  document.getElementById('plan2-btn').textContent = c.plan2Btn
+  document.getElementById('plan3-badge').textContent = c.plan3Badge
+  document.getElementById('pro-price').textContent = c.proPrice
+  document.getElementById('pro-period').textContent = c.proPeriod
+  document.getElementById('plan3-btn').textContent = c.plan3Btn
+
+  // list items
+  const updateList = (id, items) => {
+    const el = document.getElementById(id)
+    el.innerHTML = items.map(i => `<li>${i}</li>`).join('')
+  }
+  updateList('plan1-items', c.plan1Items)
+  updateList('plan2-items', c.plan2Items)
+  updateList('plan3-items', c.plan3Items)
+
+  const links = document.getElementById('footer-links')
+  links.innerHTML = c.footer.map(t => `<a href="#">${t}</a>`).join('')
+}
+</script>
+</body>
+</html>

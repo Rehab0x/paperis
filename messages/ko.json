@@ -1,0 +1,141 @@
+{
+  "landing": {
+    "nav": {
+      "cta": "무료 시작"
+    },
+    "hero": {
+      "badge": "PubMed AI 큐레이션",
+      "titleLine1": "읽을 시간이 없다면,",
+      "titleEm": "들으세요.",
+      "sub": "바쁜 의료인을 위한 PubMed 최신 연구 큐레이션.\n출퇴근길에 저널 트렌드를 한국어로 들을 수 있어요.",
+      "ctaPrimary": "무료로 시작하기",
+      "ctaSecondary": "데모 보기",
+      "note": "신용카드 불필요 · 매월 무료 사용량 제공"
+    },
+    "stats": {
+      "items": [
+        {
+          "num": "63%",
+          "label": "임상의는 abstract만 읽는다",
+          "source": "Baudoin et al., Ann Intern Med 1999"
+        },
+        {
+          "num": "84.5%",
+          "label": "출퇴근·운동 중 오디오로 의학 학습",
+          "source": "Barton et al., Anat Sci Educ 2025"
+        },
+        {
+          "num": "100만+",
+          "label": "매년 PubMed에 새로 추가되는 논문",
+          "source": "NLM PubMed Statistics 2024"
+        }
+      ]
+    },
+    "how": {
+      "label": "어떻게 쓰나요",
+      "title": "3단계면 충분해요",
+      "steps": [
+        {
+          "icon": "🏥",
+          "title": "임상과 + 저널 선택",
+          "desc": "관심 임상과를 선택하면 주요 저널을 자동으로 추천해드려요. 원하는 저널을 직접 검색해 추가할 수도 있어요."
+        },
+        {
+          "icon": "🤖",
+          "title": "AI가 트렌드 분석",
+          "desc": "최신 호를 열면 AI가 이번 호의 경향성과 중요 논문을 자동으로 분석해드려요. 수십 편을 읽을 필요가 없어요."
+        },
+        {
+          "icon": "🎧",
+          "title": "출퇴근길에 듣기",
+          "desc": "논문 요약을 TTS로 재생하세요. 재생목록을 만들어 출퇴근 시간에 여러 편을 연속으로 들을 수 있어요."
+        }
+      ]
+    },
+    "features": {
+      "label": "주요 기능",
+      "title": "읽기의 방식을 바꿔요",
+      "items": [
+        {
+          "icon": "📅",
+          "title": "호(Issue) 탐색",
+          "desc": "특정 월호를 선택하면 이번 호 경향성, top 5 논문 요약, 전체 목록을 한 번에 볼 수 있어요."
+        },
+        {
+          "icon": "📈",
+          "title": "트렌드 분석",
+          "desc": "분기별·연간 트렌드를 편집장 브리핑 톤으로 요약해드려요. 약 8분의 오디오 브리핑도 제공해요."
+        },
+        {
+          "icon": "🏷️",
+          "title": "주제 탐색",
+          "desc": "저널 안에서 spasticity, gait, FIM 같은 관심 주제로 필터링해 관련 논문만 모아볼 수 있어요."
+        },
+        {
+          "icon": "🔓",
+          "title": "OA 풀텍스트 요약",
+          "desc": "Unpaywall, PMC 등을 통해 OA 논문은 abstract가 아닌 전문을 기반으로 깊이 있는 요약을 제공해요."
+        }
+      ]
+    },
+    "pricing": {
+      "label": "요금제",
+      "title": "먼저 써보고 결정하세요",
+      "plans": [
+        {
+          "badge": "무료",
+          "name": "Free",
+          "price": "₩0",
+          "period": "",
+          "items": [
+            "자연어 논문 검색 무제한",
+            "미니 요약 무제한",
+            "저널 큐레이션 월 3회",
+            "TTS narration 월 5편",
+            "풀텍스트 요약 월 3편"
+          ],
+          "cta": "무료로 시작",
+          "featured": false
+        },
+        {
+          "badge": "🔑 내 API 키 사용",
+          "name": "BYOK",
+          "price": "₩29,900",
+          "period": " 1회",
+          "items": [
+            "모든 기능 무제한",
+            "본인 Gemini / Clova API 키 사용",
+            "API 비용 직접 부담 (통상 월 몇백원)",
+            "영구 사용",
+            "저널 개인화"
+          ],
+          "cta": "1회 결제하기",
+          "featured": true
+        },
+        {
+          "badge": "구독",
+          "name": "Pro",
+          "price": "₩9,900",
+          "period": "/월",
+          "items": [
+            "모든 기능 무제한",
+            "API 키 설정 불필요",
+            "저널 개인화",
+            "신기능 우선 제공"
+          ],
+          "cta": "구독 시작",
+          "featured": false
+        }
+      ]
+    },
+    "footer": {
+      "terms": "이용약관",
+      "privacy": "개인정보처리방침",
+      "contact": "문의"
+    },
+    "langToggle": {
+      "ko": "KO",
+      "en": "EN"
+    }
+  }
+}

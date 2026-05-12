@@ -119,7 +119,7 @@ export default function AccountPage() {
   return (
     <main className="mx-auto w-full max-w-3xl flex-1 px-4 py-10 pb-32">
       <Link
-        href="/"
+        href="/app"
         className="inline-flex h-7 items-center gap-1 text-xs text-paperis-text-3 transition hover:text-paperis-text"
       >
         ← 홈으로

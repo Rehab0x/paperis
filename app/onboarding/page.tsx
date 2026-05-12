@@ -28,11 +28,11 @@ export default function OnboardingPage() {
     if (status === "loading") return;
     if (!session?.user) {
       // 미로그인 — 로그인 페이지로 가긴 어색하니 홈으로 보내고 헤더에서 로그인 유도
-      router.replace("/");
+      router.replace("/app");
       return;
     }
     if (session.user.onboardingDone) {
-      router.replace("/");
+      router.replace("/app");
     }
   }, [session, status, router]);
 
@@ -69,7 +69,7 @@ export default function OnboardingPage() {
       }
       // session 갱신 — onboardingDone=true 반영 (next-auth update())
       await update();
-      router.replace("/");
+      router.replace("/app");
     } catch (err) {
       setError(err instanceof Error ? err.message : "저장 실패");
     } finally {
@@ -88,7 +88,7 @@ export default function OnboardingPage() {
   return (
     <main className="mx-auto w-full max-w-2xl flex-1 px-4 py-10 pb-32">
       <Link
-        href="/"
+        href="/app"
         className="inline-flex h-7 items-center gap-1 text-xs text-paperis-text-3 transition hover:text-paperis-text"
       >
         ← 홈으로
@@ -168,7 +168,7 @@ export default function OnboardingPage() {
         <div className="flex items-center justify-end gap-2">
           <button
             type="button"
-            onClick={() => router.replace("/")}
+            onClick={() => router.replace("/app")}
             className="rounded-lg px-3 py-2 text-sm text-paperis-text-3 transition hover:text-paperis-text"
           >
             나중에

@@ -13,7 +13,7 @@ export default function LegalLayout({
       <header className="border-b border-paperis-border bg-paperis-bg/85 backdrop-blur-xl">
         <div className="mx-auto flex max-w-3xl items-center justify-between gap-4 px-4 py-3 sm:py-4">
           <Link
-            href="/"
+            href="/app"
             className="font-serif text-2xl font-medium tracking-tight text-paperis-text"
           >
             Paperis

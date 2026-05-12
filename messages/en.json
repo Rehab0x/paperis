@@ -1,0 +1,141 @@
+{
+  "landing": {
+    "nav": {
+      "cta": "Get started"
+    },
+    "hero": {
+      "badge": "AI-powered PubMed curation",
+      "titleLine1": "Too busy to read papers?",
+      "titleEm": "Listen instead.",
+      "sub": "AI-curated medical literature briefings for busy clinicians.\nCatch up on journal trends during your commute.",
+      "ctaPrimary": "Start for free",
+      "ctaSecondary": "See demo",
+      "note": "No credit card required · Free usage every month"
+    },
+    "stats": {
+      "items": [
+        {
+          "num": "63%",
+          "label": "of clinicians read only the abstract",
+          "source": "Baudoin et al., Ann Intern Med 1999"
+        },
+        {
+          "num": "84.5%",
+          "label": "listen to medical audio during commute or exercise",
+          "source": "Barton et al., Anat Sci Educ 2025"
+        },
+        {
+          "num": "1M+",
+          "label": "new papers added to PubMed every year",
+          "source": "NLM PubMed Statistics 2024"
+        }
+      ]
+    },
+    "how": {
+      "label": "How it works",
+      "title": "Three steps. That's it.",
+      "steps": [
+        {
+          "icon": "🏥",
+          "title": "Choose your specialty & journals",
+          "desc": "Select your specialty and get top journals recommended automatically. Search and add any journal by name."
+        },
+        {
+          "icon": "🤖",
+          "title": "AI analyzes the trends",
+          "desc": "Open any issue and get an instant AI briefing — key themes, top papers, and what matters for your practice."
+        },
+        {
+          "icon": "🎧",
+          "title": "Listen on your commute",
+          "desc": "Turn summaries into audio narration. Build a playlist and listen to multiple papers back-to-back on the go."
+        }
+      ]
+    },
+    "features": {
+      "label": "Features",
+      "title": "A new way to stay current",
+      "items": [
+        {
+          "icon": "📅",
+          "title": "Issue Explorer",
+          "desc": "Select any journal issue to see AI-generated trend analysis, top 5 papers, and the complete paper list."
+        },
+        {
+          "icon": "📈",
+          "title": "Trend Briefings",
+          "desc": "Quarterly and annual trend analysis written like an editor's note. With an 8-minute audio briefing."
+        },
+        {
+          "icon": "🏷️",
+          "title": "Topic Search",
+          "desc": "Filter within a journal by topic — spasticity, gait, FIM, CIMT — to find relevant papers instantly."
+        },
+        {
+          "icon": "🔓",
+          "title": "Full-text OA Summaries",
+          "desc": "For open-access papers, we fetch the full text via Unpaywall and PMC for deeper, more accurate summaries."
+        }
+      ]
+    },
+    "pricing": {
+      "label": "Pricing",
+      "title": "Try it first, pay when it clicks",
+      "plans": [
+        {
+          "badge": "Free",
+          "name": "Free",
+          "price": "$0",
+          "period": "",
+          "items": [
+            "Unlimited natural language search",
+            "Unlimited mini summaries",
+            "3 journal curations / month",
+            "5 TTS narrations / month",
+            "3 full-text summaries / month"
+          ],
+          "cta": "Get started free",
+          "featured": false
+        },
+        {
+          "badge": "🔑 Bring your own API key",
+          "name": "BYOK",
+          "price": "$19.99",
+          "period": " one-time",
+          "items": [
+            "Unlimited everything",
+            "Use your own Gemini / ElevenLabs API key",
+            "Typically a few cents/month in API costs",
+            "Lifetime access",
+            "Journal personalization"
+          ],
+          "cta": "Buy once",
+          "featured": true
+        },
+        {
+          "badge": "Subscription",
+          "name": "Pro",
+          "price": "$7.99",
+          "period": "/mo",
+          "items": [
+            "Unlimited everything",
+            "No API key needed",
+            "Journal personalization",
+            "Early access to new features"
+          ],
+          "cta": "Start Pro",
+          "featured": false
+        }
+      ]
+    },
+    "footer": {
+      "terms": "Terms",
+      "privacy": "Privacy",
+      "contact": "Contact"
+    },
+    "langToggle": {
+      "ko": "KO",
+      "en": "EN"
+    }
+  }
+}

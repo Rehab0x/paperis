@@ -133,7 +133,7 @@ function SuccessInner() {
         </p>
         <div className="mt-5 flex gap-2">
           <Link
-            href="/"
+            href="/app"
             className="inline-flex h-9 items-center rounded-lg bg-paperis-accent px-4 text-sm font-medium text-paperis-bg transition hover:opacity-90"
           >
             홈으로
@@ -206,7 +206,7 @@ export default function BillingSuccessPage() {
   return (
     <main className="mx-auto w-full max-w-3xl flex-1 px-4 py-10 pb-32">
       <Link
-        href="/"
+        href="/app"
         className="mb-3 inline-flex h-7 items-center gap-1 text-xs text-paperis-text-3 transition hover:text-paperis-text"
       >
         ← 홈으로

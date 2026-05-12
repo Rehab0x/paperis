@@ -41,7 +41,7 @@ export default function AuthMenu() {
     return (
       <button
         type="button"
-        onClick={() => signIn("google")}
+        onClick={() => signIn("google", { callbackUrl: "/app" })}
         className="inline-flex h-8 items-center rounded-lg border border-paperis-border bg-paperis-surface px-3 text-xs font-medium text-paperis-text-2 transition hover:border-paperis-text-3 hover:text-paperis-text"
       >
         로그인
