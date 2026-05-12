@@ -4,6 +4,9 @@ import { notFound } from "next/navigation";
 import LangToggle from "./LangToggle";
 import { getMessages, isLocale, type Locale } from "@/lib/i18n";
 
+// 랜딩 전용 footer는 제거 — 글로벌 Footer(components/Footer.tsx)가 root layout에서
+// 모든 페이지에 자동 노출. 약관 링크/copyright 통합.
+
 export async function generateMetadata({
   params,
 }: {
@@ -59,7 +62,6 @@ export default async function LandingPage({
         title={m.pricing.title}
         plans={m.pricing.plans}
       />
-      <Footer locale={locale} links={m.footer} />
     </div>
   );
 }
@@ -351,46 +353,5 @@ function SectionHeader({ label, title }: { label: string; title: string }) {
 function Divider() {
   return (
     <div className="mx-auto h-px max-w-[900px] bg-paperis-border" />
-  );
-}
-
-// ── FOOTER ──────────────────────────────────────────────────
-function Footer({
-  locale,
-  links,
-}: {
-  locale: Locale;
-  links: { terms: string; privacy: string; contact: string };
-}) {
-  return (
-    <footer className="flex flex-wrap items-center justify-between gap-3 border-t border-paperis-border px-8 py-8">
-      <div className="font-serif text-lg text-paperis-text-3">
-        Paperis<span className="text-paperis-accent">.</span>
-      </div>
-      <div className="flex gap-5 text-xs text-paperis-text-3">
-        <Link
-          href="/legal/terms"
-          className="transition hover:text-paperis-text-2"
-        >
-          {links.terms}
-        </Link>
-        <Link
-          href="/legal/privacy"
-          className="transition hover:text-paperis-text-2"
-        >
-          {links.privacy}
-        </Link>
-        <a
-          href={
-            locale === "ko"
-              ? "mailto:support@paperis.app"
-              : "mailto:support@paperis.app"
-          }
-          className="transition hover:text-paperis-text-2"
-        >
-          {links.contact}
-        </a>
-      </div>
-    </footer>
   );
 }

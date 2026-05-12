@@ -65,7 +65,7 @@ export default function LibraryDrawer({ open, onClose }: Props) {
     // 일반 paper 트랙 — 메인 페이지의 PaperDetailPanel이 paperSnapshot fallback으로 띄움
     const params = new URLSearchParams(searchParams.toString());
     params.set("pmid", track.pmid);
-    router.push(`/?${params.toString()}`, { scroll: false });
+    router.push(`/app?${params.toString()}`, { scroll: false });
     onClose();
   }
 
@@ -94,8 +94,9 @@ export default function LibraryDrawer({ open, onClose }: Props) {
         ].join(" ")}
       >
         <header className="sticky top-0 z-10 flex items-center justify-between gap-3 border-b border-paperis-border bg-paperis-bg/95 px-5 py-3 backdrop-blur-xl">
-          <h2 className="font-serif text-lg font-medium tracking-tight text-paperis-text">
-            🎧 오디오 라이브러리
+          <h2 className="font-serif text-xl font-medium tracking-tight text-paperis-text">
+            Audio Library
+            <span className="text-paperis-accent">.</span>
           </h2>
           <button
             type="button"

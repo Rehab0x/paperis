@@ -85,7 +85,7 @@ export default function TtsQueueBadge() {
   function handleOpenPaper(job: TtsJob) {
     const params = new URLSearchParams(searchParams.toString());
     params.set("pmid", job.paper.pmid);
-    router.push(`/?${params.toString()}`, { scroll: false });
+    router.push(`/app?${params.toString()}`, { scroll: false });
     setOpen(false);
   }
 

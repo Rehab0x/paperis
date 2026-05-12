@@ -23,7 +23,7 @@ export default function SortControl({ value, onChange, disabled }: Props) {
     <div
       role="radiogroup"
       aria-label="정렬"
-      className="flex flex-wrap items-center gap-1 rounded-xl border border-paperis-border bg-paperis-surface p-1 text-sm"
+      className="inline-flex flex-wrap items-center gap-1 rounded-xl border border-paperis-border bg-paperis-surface p-1 text-sm"
     >
       {OPTIONS.map((opt) => {
         const active = value === opt.value;

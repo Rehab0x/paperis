@@ -130,8 +130,9 @@ export default function SettingsDrawer({ open, onClose }: Props) {
         ].join(" ")}
       >
         <header className="sticky top-0 z-10 flex items-center justify-between gap-3 border-b border-paperis-border bg-paperis-bg/95 px-5 py-3 backdrop-blur-xl">
-          <h2 className="font-serif text-lg font-medium tracking-tight text-paperis-text">
-            ⚙ 설정
+          <h2 className="font-serif text-xl font-medium tracking-tight text-paperis-text">
+            Settings
+            <span className="text-paperis-accent">.</span>
           </h2>
           <button
             type="button"

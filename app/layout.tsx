@@ -6,6 +6,7 @@ import PlayerProvider from "@/components/PlayerProvider";
 import AccountSyncProvider from "@/components/AccountSyncProvider";
 import ApiKeysProvider from "@/components/ApiKeysProvider";
 import AuthSessionProvider from "@/components/AuthSessionProvider";
+import Footer from "@/components/Footer";
 import RegisterSW from "@/components/RegisterSW";
 import ThemeProvider from "@/components/ThemeProvider";
 import TtsCompletionToast from "@/components/TtsCompletionToast";
@@ -94,6 +95,7 @@ export default function RootLayout({
                   <TtsQueueProvider>
                     <PlayerProvider>
                       {children}
+                      <Footer />
                       <PlayerBar />
                       <TtsCompletionToast />
                     </PlayerProvider>

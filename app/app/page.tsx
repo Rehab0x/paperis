@@ -411,11 +411,16 @@ function HomeInner() {
                 onSubmit={handleSearchSubmit}
               />
             </div>
-            <SortControl
-              value={sort}
-              onChange={handleSortChange}
-              disabled={loading}
-            />
+            {/* 모바일에서는 SortControl이 검색창 아래로 떨어지면서 한쪽에 몰리는데,
+                inline-flex + 가운데 정렬로 시각적 무게 균형. sm 이상은 검색창
+                옆에 그대로. */}
+            <div className="flex justify-center sm:block">
+              <SortControl
+                value={sort}
+                onChange={handleSortChange}
+                disabled={loading}
+              />
+            </div>
           </div>
           {translated && q.trim() ? (
             <div className="text-xs text-paperis-text-3">
@@ -468,7 +473,7 @@ function HomeInner() {
                   또는, 위 검색창에 자연어로 질문해 보세요.
                 </p>
                 <p className="mt-1 text-[11px] text-paperis-text-3">
-                  Gemini가 PubMed 검색식으로 바꿔 돌립니다.
+                  PubMed 검색식으로 바꿔 돌립니다.
                 </p>
               </div>
             </div>
