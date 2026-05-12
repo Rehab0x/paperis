@@ -1,16 +1,16 @@
 # Paperis — TODO / 진척 기록
 
-> 마지막 갱신: 2026-05-10 (v3 M1~M6 완료, M5·M6 prod env 미반영 / 코드만 라이브)
-> 외부 노출 문서는 [README.md](README.md), 컨텍스트는 [CLAUDE.md](CLAUDE.md), v3 로드맵은 [PAPERIS_V3_ROADMAP.md](PAPERIS_V3_ROADMAP.md). 이 파일은 작업 일지·기술부채 보관용.
+> 마지막 갱신: 2026-05-13 (v3 M1~M7 + 멀티 AI provider + admin + 디자인 톤 + UX 정리 완료)
+> 외부 노출 문서는 [README.md](README.md), 컨텍스트는 [CLAUDE.md](CLAUDE.md). 이 파일은 작업 일지·기술부채·의사결정 기록 보관용.
 
 ---
 
 ## 현재 상태
 
-- **라이브**: paperis.vercel.app — v3 M1~M6 코드 배포, FEATURE flag로 단계 노출 제어
+- **라이브**: paperis.vercel.app — v3 M1~M7 코드 배포 + 멀티 AI provider 풀스택 + 에디토리얼 디자인 시스템
 - **GitHub**: Rehab0x/paperis (master), origin과 동기화
-- **Vercel**: Pro plan (5분 maxDuration), 수동 배포 (`vercel deploy --prod --yes`)
-- **외부 통합**: Neon Postgres · Google OAuth · NCP Clova · Gemini · PubMed/Unpaywall — prod env 등록 완료. **Upstash Redis는 dev에만 등록**, prod env에 추가하면 캐시 즉시 활성
+- **Vercel**: Pro plan (5분 maxDuration), 수동 배포 (`vercel deploy --prod --yes`), daily cron (KST 자정 자동결제)
+- **외부 통합 (prod env 등록 완료)**: Neon Postgres · Google OAuth · NCP Clova · Gemini · PubMed/Unpaywall · Upstash Redis · Toss Payments (sandbox)
 - **데이터**: `data/journals.json` GitHub raw fetch (1h revalidate). 25 임상과, 3개(재활/심장/신경)에 manualSeedJournals 입력
 
 ### v3 마일스톤 진척
@@ -19,51 +19,78 @@
 - M2 ✅ 카탈로그(GitHub raw) + OpenAlex Sources/Works
 - M3 ✅ 저널 큐레이션 풀스택 (호/주제/트렌드 + 차단/추가/즐겨찾기 + 페이지네이션 + OA 정렬)
 - M4 ✅ Auth.js v5 + Neon + 온보딩 + localStorage↔DB 양방향 동기화
-- M5 ✅ Upstash Redis 캐시 (silent fallback — prod env 추가만 하면 즉시 활성)
-- M6 ✅ Free 사용량 한도 코드 (`FEATURE_USAGE_LIMIT` flag, default OFF — 결제 도입 후 활성)
-- **M7 다음** — Toss Payments (BYOK 1회 + Pro 빌링키 자동결제 + 웹훅 + 약관/환불 페이지)
-- M8 — 사업자등록 후 `TOSS_LIVE_MODE=1` + 푸터 정보 + 라이브 검증
+- M5 ✅ Upstash Redis 캐시 (silent fallback)
+- M6 ✅ Free 사용량 한도 (`FEATURE_USAGE_LIMIT=1` prod 활성)
+- M7 ✅ Toss Payments 풀스택 (PR1~PR5, sandbox 검증 완료)
+- **M8 다음** — 사업자등록 후 `TOSS_LIVE_MODE=1` + 라이브 결제 활성
+
+### v3 후반부 작업 (M1~M8 외)
+
+- ✅ **에디토리얼 디자인 시스템** — Fraunces 세리프 + Pretendard + warm 오렌지 액센트. `paperis-*` Tailwind 토큰. 다크 + 라이트 양쪽 변환
+- ✅ **홈 카드 시스템** — ContinueListening / MySpecialties / TrendFeatured (favorites 매일 로테이션) / MyJournalsNewIssues (14일 휴리스틱 ●)
+- ✅ **PlayerBar 컴팩트** — SVG 아이콘, 모바일 2줄, marquee 거리 기반 일정 속도, range thumb 드래그 시크
+- ✅ **TTS 트랙 한국어 제목** — narration과 병렬로 Flash Lite 번역
+- ✅ **모바일 history sync** — JournalPaperList selectedPmid를 URL `?pmid=`로 → 모바일 뒤로가기 자연스러움
+- ✅ **Settings 아코디언** — 섹션 토글, BYOK 게이트, AI provider 선택, API 키 그룹화
+- ✅ **createPortal 드로어** — 라이브러리/설정이 헤더 backdrop-filter containing block 회피
+- ✅ **멀티 AI provider (Phase A~E)** — Gemini/Claude/OpenAI/Grok 추상화 + 등급별 권한 게이트
+- ✅ **관리자 권한** — `ADMIN_EMAILS` env. 결제 없이 BYOK 효과
+- ✅ **등급별 권한 명확화** — Free/Pro/BYOK/Admin 분리 (본인 키 강제 / 서버 env / fallback 룰)
 
 ---
 
 ## 다음 후보 / 기술부채
 
-### v3 마일스톤 (정해진 순서)
+### v3 마일스톤 (남은 것)
 
-- [ ] **M7** Toss Payments (BYOK 1회 + Pro 빌링키 자동결제 + 웹훅 + 약관/환불 페이지)
-- [ ] **M8** 사업자등록 후 `TOSS_LIVE_MODE=1` + 푸터 정보 + 라이브 검증
+- [ ] **M8** 사업자등록 후 `TOSS_LIVE_MODE=1` + 푸터 사업자 정보 + 라이브 검증
+  - 사업자 등록증, 통신판매업 신고 완료 시 시작
+  - Toss 라이브 키 발급 → Vercel env 교체
+  - `/legal/{terms,privacy,refund}` 페이지의 placeholder(`support@paperis.example`, 사업자 정보)를 실제 값으로 갱신
+  - 라이브 결제 1회 + 환불 1회 회귀 검증
+  - 푸터 컴포넌트 신설 (사업자명·대표·연락처·통판신고번호)
 
-### prod 활성화 대기 (코드는 완료)
+### prod 활성화 / 운영 대기
 
-- [ ] **Upstash Redis prod env 추가** — `UPSTASH_REDIS_REST_URL/TOKEN` Vercel prod scope에. 추가만 하면 캐시 즉시 활성 (silent fallback이라 코드 변경 없음)
-- [ ] **prod DB schema 적용** — `npx drizzle-kit push` 또는 prod DB에 새 4 테이블(`usage_monthly` + `subscriptions` + 기존 user_* prefs)이 반영됐는지 확인. 사용량 한도/결제 도입 시 필수
-- [ ] **사용량 한도 활성** — 결제(M7) 정착 후 `FEATURE_USAGE_LIMIT=1` 토글. 그 전엔 dev에서만 검증
+- [ ] **추가 AI provider env 등록** — `ANTHROPIC_API_KEY`/`OPENAI_API_KEY`/`XAI_API_KEY` Vercel prod에 등록 시 Pro 사용자도 선택 가능. 현재는 본인 키 입력한 BYOK 사용자만
+- [ ] **`usage_monthly` 오래된 row cleanup** — lazy reset 패턴이라 행 누적. cron으로 N개월 이전 row delete
 
-### 발견된 개선 후보 (우선순위 낮음)
+### UX 개선 후보 (우선순위 낮음)
 
 - [ ] **카탈로그 추가 시드** — 정형외과/마취/응급/내과 등 22개 임상과의 manualSeedJournals ISSN 입력
-- [ ] **사용량 잔여 UI 표시** — `/api/account/usage` GET 결과를 헤더 또는 AuthMenu 드롭다운에 노출 (월 한도 활성 시점에)
-- [ ] **에러 바운더리** — React error boundary 없음. 런타임 에러 시 화면 깨짐
-- [ ] **HTML 풀텍스트 정확도** — `@mozilla/readability` 도입 검토 (자체 구현은 일부 publisher에서 정확도 낮음)
+- [ ] **새 호 실제 감지** — 현재 ● 인디케이터는 "14일 안 본 저널" 휴리스틱. 가벼운 latest-issue 메타만 받는 엔드포인트 + localStorage `lastSeenIssue:{openAlexId}` 비교로 정확도 강화 가능
+- [ ] **이어 읽기 카드** — 홈 우선순위 3. reading history DB 추가 필요 (`user_reading_history`)
+- [ ] **시간대 인식 카드** — 출퇴근(7-9시)/점심(12-13시)/저녁(18-20시)별 추천 콘텐츠 강조
+- [ ] **HTML 풀텍스트 정확도** — `@mozilla/readability` 도입 (자체 구현은 일부 publisher에서 정확도 낮음)
 - [ ] **TTS narration 길이 제어** — 5분 넘는 케이스에서 Vercel timeout 한계 근접. chunk 단위 progressive 합성 미구현
 - [ ] **라이브러리 백업 zip 압축** — 트랙 50편 base64 = 100MB+. 개별 트랙 export 또는 zip 미구현
-- [ ] **검색 결과 자동 broadening** — `[MeSH Terms]` 빈 결과 시 fallback 로직 (사용자 수동 재검색)
-- [ ] **단위 테스트** — `lib/pubmed.ts` XML 파서, `lib/openalex.ts` group_by 정렬, `lib/account-prefs.ts` 멱등 upsert, `lib/usage.ts` race-safe 분기 등 순수 함수부터
+- [ ] **에러 바운더리** — React error boundary 없음. 런타임 에러 시 화면 깨짐
+- [ ] **단위 테스트** — `lib/pubmed.ts` XML 파서, `lib/openalex.ts` group_by 정렬, `lib/account-prefs.ts` 멱등 upsert, `lib/usage.ts` race-safe 분기, `lib/ai/*` provider mock
 - [ ] **CSP / 보안 헤더** — `Content-Security-Policy` / `X-Frame-Options`
 - [ ] **PWA 오프라인 지원** — 홈 shell/정적 페이지 precache
-- [ ] **모바일 반응형 점검** — 카드 내부 버튼 그룹이 좁은 폭에서 빡빡
-- [ ] **applyUserKeysToEnv race** — Node 단일 프로세스에서 동시 요청 시 process.env 충돌 이론적 가능성. provider별 ctx 인자로 리팩토링 검토 (단일 사용자 환경에선 사실상 무시 가능)
 - [ ] **영어 UI 토글** — 한국어 고정 (영어 검색 prompt만 일부 보강됨)
-- [ ] **이메일 magic link** — Resend/SES 등 메일 발신 셋업 후 Auth.js EmailProvider 추가 (Google 외 옵션)
-- [ ] **usage_monthly 오래된 row cleanup** — lazy reset 패턴이라 행 누적. cron으로 N개월 이전 row delete 또는 Postgres partial index
+- [ ] **이메일 magic link** — Resend/SES 등 메일 발신 셋업 후 Auth.js EmailProvider 추가
+- [ ] **applyUserKeysToEnv race** — Node 단일 프로세스에서 동시 요청 시 process.env 충돌 이론적 가능성. provider별 ctx 인자로 리팩토링 검토
+- [ ] **NCBI ERROR 자동 재시도** — 현재는 ERROR 응답 시 throw. NCBI flapping 자주 발생하므로 backoff retry 1-2회 추가 검토
 
-### v3에서 일부 해결된 v2 한계
+### 해결된 항목 (v3에서)
 
 - [x] OpenAlex enrichment 캐싱 — `next: { revalidate: 3600 }` + M5 Redis로 강화
 - [x] 인용수순 정렬 페이지 한계 — 호 탐색에서는 OpenAlex enrichment + 페이지 내 정렬로 동작
 - [x] 라이브러리 다른 기기 동기화 — v3 M4에서 user_journal_prefs 4 테이블로 임상과·저널만 동기화 (오디오 자체는 여전히 IndexedDB)
-- [x] OA 정렬이 "현재 페이지" 한정이던 것 → 전체 결과 단위 정렬 (호/주제/트렌드 모두 한 번에 받아 클라 페이지네이션)
+- [x] OA 정렬이 "현재 페이지" 한정 → 전체 결과 단위 정렬 (호/주제/트렌드 모두 한 번에 받아 클라 페이지네이션). 자연어 검색은 페이지 단위 토글
 - [x] 페이지 이동 시 결과 하단에서 시작되던 UX → 자동 smooth scroll top + 페이지네이션 상하 양쪽 표시
+- [x] 모바일 뒤로가기로 paper detail 통과해서 점프하던 문제 — URL `?pmid` 동기화
+- [x] 라이브러리/설정 드로어가 헤더 영역만큼만 보이던 문제 — `createPortal`로 body 마운트
+- [x] PlayerBar 모바일 두 줄로 펴져 라이브러리 짧아짐 — single row + SVG + 컴팩트
+- [x] PlayerBar 진행 막대 클릭 시크 → 드래그 thumb. 시간/위치 정확 일치 (padding 보정)
+- [x] PlayerBar marquee 너무 빠름 — 거리 기반 일정 속도 + 최소 30초
+- [x] PlayerBar ⏸ 모바일 오렌지 박스 (iOS 컬러 이모지) — SVG로 교체
+- [x] 헤더 ⚙ 이모지 환경별 렌더링 차이 — heroicons cog-6-tooth SVG로 교체
+- [x] 트렌드 전체 분석 30~90초 → 홈 카드용 lite endpoint (~5-10초, Flash Lite, headline만)
+- [x] 트렌드 빈 박스 로딩 → 명시적 "분석 중" 메시지 + spinner + 메타
+- [x] BYOK 결제 후 본인 키 미입력 시 우리 키 무단 사용 가능 — 엄격 게이트 (호출 실패 + 에러 메시지)
+- [x] Pro provider 선택 불가 (BYOK만 가능) → Pro도 env 보유 provider 선택 가능, 비보유는 disabled
 
 ---
 
@@ -71,107 +98,166 @@
 
 ### v3 핵심 정신
 
-- **저널 큐레이션 1순위 진입** — 자연어 검색은 보조. 임상과→저널→호/주제/트렌드 흐름이 메인 (PLAN.md §1)
+- **저널 큐레이션 1순위 진입** — 자연어 검색은 보조. 임상과→저널→호/주제/트렌드 흐름이 메인
 - **출퇴근 청취 1순위 시나리오** — 모든 흐름이 결국 TTS → IndexedDB 라이브러리 → PlayerBar로 수렴
 - **로그인 무관 동작 보존** — 비로그인도 v2 검색 + v3 큐레이션 모두 사용 가능. 사용량 한도는 anonymous-id 기반
+- **홈은 빈 검색 상태에서 카드 시스템 노출** — 검색바 입력 시 v2 결과로 자연 전환. `q.trim()` 조건 분기
 
 ### 인증 / DB
 
 - **Auth.js v5 + Google OAuth + Neon + Drizzle** — session strategy `database`(JWT 아님), session 콜백에서 `user.id` + `onboardingDone` 명시 매핑
 - **사용자 prefs PUT = 멱등 upsert** — Neon HTTP는 statement-level이라 트랜잭션 X. `onConflictDoUpdate` + `notInArray` delete (v1.1 카트 패턴 → v3 user_specialties/blocks/additions/favorites 차용)
 - **DB 마이그레이션 = add-only** — drop column 금지. 이전 코드도 새 schema 위에서 동작 보장
-- **API 키 = 사용자별 X-Paperis-Keys** — 클라 localStorage → fetch 헤더 → 서버 process.env override. BYOK 결제와 별개로 자기 키 입력 그대로 무제한
-- **anonymous-id 헤더 = X-Paperis-Anon-Id** — 클라 localStorage UUID(v2부터) + useFetchWithKeys가 모든 fetch에 자동 동봉. server에서 사용량 카운터 식별
 
-### TTS / 미디어
+### 등급 시스템 (2026-05-12~13 정립)
 
-- **TTS multi-provider, default Clova + Gemini fallback** — v2.0.3-4부터 단일 Gemini 깨짐. `lib/tts/index.ts` `resolveTtsProvider`가 키 부재 시 자동 강등
-- **TTS narration only** — dialogue 모드 부활 금지. 출퇴근 청취 시나리오 단순화
-- **WAV 헤더 수동 래핑 (Gemini)** — 24kHz mono PCM. DataView write `true`(little-endian)
-- **TTS provider chunk 분할** — Clova 1900 bytes, Google Cloud 4500 bytes. MP3 byte concat
-- **`listTrackMetas` cursor 순회** — 메모리 폭주(Chrome STATUS_ACCESS_VIOLATION) 회피. blob은 재생 시점에만 로드
+- **Free**: 한도 적용. provider = gemini 강제. 본인 키 입력 X
+- **Pro**: 무제한 (우리 env 키). provider 자유 선택. env 키 있는 provider만 활성, 없는 건 disabled. 본인 키 입력 X
+- **BYOK**: 무제한 (본인 키 강제). 본인 키 입력 안 한 provider 호출 시 명확한 에러 — env fallback 없음. `applyUserKeysToEnv`가 BYOK 사용자만 헤더 키 적용. `getEffectiveAiProvider`가 명시 `apiKey` opt 전달 (process.env 상태 무관)
+- **Admin (ADMIN_EMAILS env)**: 결제 없이 BYOK 효과. 본인 키 입력 OR 서버 env fallback 양쪽 OK. UI에서 "BYOK (관리자)" 표시
+- **헤더 위조 방지** — 클라가 `X-Paperis-Keys`/`X-Paperis-Ai-Provider`를 위조해도 서버에서 등급 판정 후 게이트. Free가 Claude 헤더 보내도 Gemini로 강제
 
 ### 캐시 / 사용량
 
-- **Upstash Redis silent fallback** — `UPSTASH_REDIS_REST_URL/TOKEN` 부재 시 모든 호출 캐시 miss로 처리, 라우트 자체는 정상 동작. dev에서 검증 후 prod env 추가만 하면 즉시 활성
-- **캐시 hit은 사용량 카운트 X** — PubMed/Gemini 호출 비용 0이라 limit 차감 안 함. 사용자 친화적
-- **트렌드 캐시 키에 language 포함** — 한국어/영어 트렌드 분리 저장
-- **Free 한도 server-side flag (`FEATURE_USAGE_LIMIT`)** — NEXT_PUBLIC_ X. 미설정 시 모든 호출 무제한 통과. M7 결제 도입 후 prod 활성
-- **BYOK 우회 = `X-Paperis-Keys.gemini` 존재** — 자기 Gemini 키를 보냈다면 plan="byok-effective"로 즉시 무제한 (DB 조회 X, 비로그인도 가능). 정책: 우회 막지 않음
-- **yearMonth = KST 기준** — 한국 의사 대상이라 자정 기준 KST. `lib/usage.ts currentYearMonthKST`
-- **lazy reset 파티셔닝** — yearMonth가 키에 포함되어 매달 자동 분리. cron 없어도 동작 (오래된 row cleanup만 후속)
+- **Upstash Redis silent fallback** — 키 부재 시 모든 호출 캐시 miss, 라우트는 정상 동작
+- **캐시 hit은 사용량 카운트 X** — PubMed/AI 호출 비용 0이라 limit 차감 안 함. 사용자 친화적
+- **트렌드 캐시는 풀/라이트 분리** — `trend:` (themes 포함) vs `trend-headline:` (한 문장). 홈 카드는 라이트만 쓰고 캐시 hit 시 ~100ms
+- **`FEATURE_USAGE_LIMIT` prod 활성 (2026-05-11)** — Free 사용자에게 한도 적용 중
+- **yearMonth = KST 기준** — 한국 의사 대상. `lib/usage.ts currentYearMonthKST`
+- **lazy reset 파티셔닝** — yearMonth가 키에 포함되어 매달 자동 분리
+
+### 결제 / 등급 게이트
+
+- **BYOK 1회 결제 = 평생 권한** — Toss 일반 결제(`/payments/confirm`). 9,900원. 본인 키 입력 권한 + 무제한
+- **Pro 월 구독 = 자동결제** — Toss billingKey 발급 → 매월 KST 자정 cron이 chargeBilling. 4,900원
+- **cron WHERE 가드** — `status='active' AND expiresAt <= NOW()`. cancelled는 skip (해지 = expiresAt까지 사용 가능, 자동결제 시도 X)
+- **해지 = status='cancelled' + billingKey null** — expiresAt까지 권한 유지. cron이 picksup 안 함
+- **orderId prefix 검증** — `byok-{userIdPrefix}-{ts}-{rand}`. 다른 사용자 orderId로 confirm 호출 차단
+- **amount 검증** — server PRICING.byokOnce/proMonthly와 일치 강제. 클라 위조 차단
+
+### 멀티 AI provider
+
+- **provider-agnostic 추상화** — `lib/ai/types.ts` `AiProvider` 인터페이스. `generateText`/`generateStream`/`generateJson` + `AiJsonSchema`(표준 JSON Schema) + `ModelTier`(fast/balanced/heavy)
+- **provider별 JSON 패턴 차이 흡수** — Gemini responseSchema / Claude tool_use input_schema / OpenAI response_format json_schema strict / Grok = OpenAI 호환
+- **Grok = OpenAI SDK + xAI baseURL 재사용** — 별도 SDK 없이 한 구현체로 두 provider
+- **getEffectiveAiProvider 등급별 룰** — Free → default 강제, Pro → env 있는 것만, BYOK → 본인 키 강제 (명시 apiKey opt), Admin → env+본인 키 합집합
+- **헤더 `X-Paperis-Ai-Provider`** — 클라가 사용자 선호 전달. default와 다를 때만 동봉 (트래픽/캐시 최적)
+
+### TTS / 미디어
+
+- **TTS multi-provider, default Clova + Gemini fallback** — 키 부재 시 자동 강등. `x-tts-degraded-from` 헤더
+- **TTS narration only** — dialogue 모드 부활 금지
+- **TTS 트랙 한국어 제목** — 한국어 출력일 때만 Flash Lite로 번역. `x-tts-title-ko-b64` 헤더 → IndexedDB `titleKo` 필드. 라이브러리/PlayerBar는 `titleKo ?? title`
+- **listTrackMetas cursor 순회** — 메모리 폭주(Chrome STATUS_ACCESS_VIOLATION) 회피. blob은 재생 시점에만 로드
+- **PlayerBar 동적 높이** `--player-bar-h` — ResizeObserver. 신규 페이지도 `pb-32` 보존
+- **PlayerBar 단일 행** — 모바일에서도 single row. 제목은 marquee로 처리
+- **PlayerBar SVG 아이콘** — ⏸/▶/⏮/⏭ 인라인 SVG (iOS 컬러 이모지 박스 회피)
+- **SeekBar range thumb 드래그** — `<input type=range>` + 좌우 padding 7px(thumb 반지름)로 progress fill과 thumb 위치 1:1. onChange마다 즉시 onSeek (drag-end 의존 X)
+- **Marquee 거리 기반 일정 속도** — 30px/sec, 최소 30초. JS에서 거리 측정 → `--marquee-duration` 주입
 
 ### UI / 데이터 흐름
 
 - **PaperDetailPanel dedupe ref 가드 금지** — Strict Mode mount→cleanup→remount cycle에서 가드가 두 번째 mount 막아 무한 loading. `cancelled` flag + `AbortController`만
-- **PlayerBar 동적 높이** `--player-bar-h` — ResizeObserver 측정. 신규 페이지도 `pb-32` 또는 `pb-[calc(var(--player-bar-h)+...)]`
 - **테마 = class 기반 dark + FOUC inline script + suppressHydrationWarning** — globals.css `@variant dark`. 신규 라우트 wrapping 검증
-- **카드 상태 캐시는 pmid 키** — `lib/card-cache.ts` 모듈 단위 Map (검색·추천·연관·playlist 모달 공유)
-- **URL = source of truth** — 검색 `?q&sort&pmid&page`, 저널 `/journal/[issn]?tab=&from=`. SearchBar는 prop 변경 시 useEffect로 동기화
-- **자동 미니요약 default OFF** — 검색 결과 도착 후 layout shift + Gemini quota 낭비. 사용자가 설정에서 토글
-- **저널 호/주제/트렌드 = 한 번에 받기 + 클라 페이지네이션** — server에서 호 전체(200건 cap) 한 번 fetch → JournalPaperList가 OA sort + slice + 자동 스크롤 모두 관리. 페이지 이동 시 server 호출 0
-- **OA 정렬은 전체 결과 단위** — 페이지 안 정렬이 아니라 64건 중 OA 12건이 1페이지 상단에 모이도록. JournalPaperList 자체에서 sort
-- **페이지 이동 자동 smooth scroll top** — 결과 하단에서 다음 페이지 누른 후 다시 스크롤 안 해도 됨. JournalPagination onChange에서 `window.scrollTo({top:0, behavior:'smooth'})`
+- **카드 상태 캐시는 pmid 키** — `lib/card-cache.ts` 모듈 단위 Map
+- **URL = source of truth** — 검색 `?q&sort&pmid&page`, 저널 `/journal/[issn]?tab=&from=`. JournalPaperList도 `?pmid`로 동기화 (모바일 history)
+- **자동 미니요약 default OFF** — 검색 결과 layout shift + Gemini quota 낭비
+- **저널 호/주제/트렌드 = 한 번에 받기 + 클라 페이지네이션** — server에서 호 전체(200/100/80건 cap) → JournalPaperList가 OA sort + slice + 스크롤 모두 관리
+- **OA 정렬은 전체 결과 단위** (저널 큐레이션) / **페이지 단위** (자연어 검색, server pagination이라 비용)
+- **드로어는 createPortal로 body 마운트** — 헤더 backdrop-filter가 fixed 자식의 containing block이 되는 CSS 사양 회피
+
+### 디자인 시스템
+
+- **Fraunces (세리프) + Pretendard (본문)** — 저널명/헤드라인은 `font-serif`, 본문은 default Pretendard (CDN)
+- **`paperis-*` Tailwind 토큰** — bg/surface/surface-2/border/text/text-2/text-3/accent/accent-dim/new. `@theme inline`으로 v4 자동 utility 생성
+- **다크 + 라이트 양쪽 변환** — zinc 한기 제거. 같은 철학으로 라이트 = 따뜻한 white + 머스타드, 다크 = 프로토타입 그대로
+- **paperis-stagger 애니메이션** — 홈 카드 위→아래 순차 등장
 
 ### 외부 API quirks
 
-- **PubMed `[ISSN]` 따옴표** — `0028-3878[ISSN]`(따옴표 없음)이 `[Journal]`로 정확 매핑. `"0028-3878"[ISSN]`(따옴표)은 `[All Fields]` fallback돼 노이즈. PDAT는 따옴표 + range
-- **OpenAlex 임상과 매핑 = subfields** — 26개 fields는 너무 broad(전체 Medicine 등). 250여 개 subfields가 임상과와 매칭. Sources에 subfield 직접 필터 없어 Works `primary_topic.subfield.id` group_by → Sources batch fetch 우회
-- **임상과 추천 정렬 = group_by count desc** — cited_by_count로 정렬하면 JAMA/Lancet이 어느 임상과든 위로. count desc 보존이 자연스러움
-- **manualSeedJournals 화이트리스트** — OpenAlex topic 분류 노이즈(Plastic Surgery in PM&R 등) 보완. 카탈로그에서 핵심 저널 ISSN-L 박아둠
-- **검색 안전망** — PubMed esearch JSON parse + Gemini control char sanitize + JSON parse 에러 retryable
+- **PubMed `[ISSN]` 따옴표** — `0028-3878[ISSN]`(따옴표 없음)이 `[Journal]`로 정확. `"..."[ISSN]`은 `[All Fields]` fallback
+- **PubMed ERROR 응답** — 200 + `esearchresult.ERROR` 필드로 장애 알림. 우리 코드가 throw → 502 + 친절 메시지 (silent 0건 방지)
+- **OpenAlex 임상과 매핑 = subfields** — 26 fields 너무 broad. 250 subfields가 임상과와 매칭. Works `primary_topic.subfield.id` group_by → Sources batch fetch
+- **manualSeedJournals 화이트리스트** — OpenAlex topic 분류 노이즈 보완
+- **NCBI 장애 자주 발생** — backend 라우팅 실패. 사용자에겐 "PubMed 일시 장애 (NCBI)" 메시지
 
 ### 안전 가드
 
-- 매 단계 `npm run build` 통과 + 회귀 체크리스트 수동 검증 (v2 자연어 검색·미니요약·풀텍스트·TTS·라이브러리 흐름)
+- 매 단계 `npm run build` 통과 + 회귀 체크리스트 수동 검증
 - prod deploy는 수동 (`vercel deploy --prod --yes`) — 머지 != 배포
-- 외부 의존(Clova/Redis/Toss) 부재 시 silent 강등 — 라우트 자체는 절대 500 안 남
-- **PDF 파서 = unpdf** — pdf-parse는 Turbopack worker 경로 이슈. `next.config.ts`의 `serverExternalPackages`에서 제거 금지
+- 외부 의존(Clova/Redis/Toss/NCBI/AI provider) 부재 시 silent 강등 — 라우트 자체는 절대 500 안 남
+- **PDF 파서 = unpdf** — pdf-parse는 Turbopack worker 경로 이슈. `next.config.ts` `serverExternalPackages`에서 제거 금지
+- **드로어 portal 마운트** — 헤더 backdrop-filter가 부모면 fixed top-0 bottom-X가 헤더 영역에 갇힘. `createPortal(content, document.body)` 필수
 
 ---
 
-## 핵심 파일 인덱스 (v3 기준)
+## 핵심 파일 인덱스 (v3 최종)
 
 ```
 app/
-  layout.tsx                     루트 — AuthSession/AccountSync/Theme/ApiKeys/Tts/Player Provider 중첩
-  page.tsx                       v2 자연어 검색 + 미니요약 + 디테일 패널. 헤더에 Journal/Library/Settings/Auth 링크
-  onboarding/page.tsx            휴대폰 + 약관 (M4 PR2)
+  layout.tsx                     Provider 중첩 + Fraunces (next/font) + Pretendard (CDN link)
+  globals.css                    paperis-* 토큰 + @theme inline + marquee/seek/stagger 키프레임
+  page.tsx                       v2 검색 + 홈 카드 시스템
+  account/page.tsx               구독 (BYOK/Pro/Admin 라벨) + 사용량 + 정보
+  billing/page.tsx               BYOK/Pro 결제 시작
+  billing/{success,fail}/        결제 콜백
+  onboarding/page.tsx            휴대폰 + 약관
   journal/
-    layout.tsx                   /journal/* 공통 헤더 (Suspense 가드)
-    page.tsx                     임상과 그리드 (server, ISR 1h, MySpecialtiesGrid가 client 분기)
-    specialty/[id]/page.tsx      임상과별 시드 + 자동 추천 합치기 → SpecialtyJournalsList
-    [issn]/page.tsx              저널 홈 — 탭 분기 + IssueExplorer/TopicExplorer/TrendDigest
+    layout.tsx                   /journal/* 공통 헤더 (backdrop-blur)
+    page.tsx                     임상과 그리드
+    specialty/[id]/page.tsx      임상과별 저널 추천
+    [issn]/page.tsx              저널 홈 — 호/주제/트렌드 탭. MarkJournalVisited mount
+  legal/{terms,privacy,refund}/  약관·개인정보·환불 (M8에서 사업자 정보 갱신)
   api/
-    search · summarize · summarize/read · fulltext · pdf · tts · tts/preview   v2 코어 (M6에서 일부 usage hook)
-    journal/search · issues · topic · trend                                    v3 M3 + M5 캐시 + M6 한도
-    auth/[...nextauth]                                                         Auth.js v5 catch-all (M4 PR1)
-    account/onboarding · prefs · usage                                         사용자 메타 + prefs CRUD + 잔여 (M4·M6)
-auth.ts                          Auth.js v5 + Google OAuth + Drizzle adapter. env 4종 부재 시 placeholder
+    search summarize summarize/read fulltext pdf tts tts/preview tts/text
+    journal/{search,issues,topic,trend,trend-headline}
+    account/{onboarding,prefs,usage,subscription}
+    billing/{checkout,confirm,issue-billing-key,charge-first}
+    cron/recurring-billing       매일 KST 자정 (vercel.json cron: `0 15 * * *`)
+    auth/[...nextauth]
 components/
-  AuthMenu · AuthSessionProvider · AccountSyncProvider                  M4 인증·동기화
-  JournalEntryLink · JournalCard · JournalTabs · JournalPagination · JournalSearchAdder
-  MySpecialtiesGrid · MySpecialtiesEditor · SpecialtyJournalsList · JournalBlocksManager
-  IssueExplorer · TopicExplorer · TrendDigest · JournalPaperList   ← M6 UX: 한 번에 받기 + 클라 페이지네이션 + OA 전체 정렬
-  PaperDetailPanel · PlayerProvider · PlayerBar · LibraryDrawer · AudioLibrary · SettingsDrawer
-  ThemeProvider · ApiKeysProvider · TtsProviderPreferenceProvider · TtsQueueProvider
-  useFetchWithKeys · useAutoMiniSummary
-data/
-  journals.json                  임상과 카탈로그 25개 (GitHub raw + 로컬 fallback, 1h revalidate)
+  PlayerBar                      single row + SVG + marquee + range thumb + createPortal ScriptPanel
+  PlayerProvider                 글로벌 미디어 큐 (queue/currentIndex/play/pause/seek)
+  LibraryDrawer (portal)         body 마운트, top-0 bottom-(player-bar-h)
+  AudioLibrary                   IndexedDB 트랙 리스트
+  SettingsDrawer (portal, 아코디언)  Theme/TTS/AI provider/API Keys/내 임상과/차단/백업
+  ContinueListeningCard          IndexedDB 최근 트랙
+  MySpecialtiesPicker            칩 carousel
+  TrendFeaturedCard              favorites epoch day 로테이션 + 라이트 트렌드 fetch
+  MyJournalsNewIssues            favorites + additions + 14일 ● 인디케이터
+  UsageBanner                    Free 한도 임박/소진 시 표시
+  JournalTabs JournalCard JournalPagination JournalSearchAdder
+  IssueExplorer TopicExplorer TrendDigest TrendTtsButton
+  JournalPaperList               URL ?pmid 동기화 (모바일 history)
+  MySpecialtiesGrid MySpecialtiesEditor SpecialtyJournalsList JournalBlocksManager
+  PaperDetailPanel PaperCard MiniSummary ResultsList Pagination
+  AuthMenu AuthSessionProvider AccountSyncProvider
+  ThemeProvider ApiKeysProvider TtsProviderPreferenceProvider TtsQueueProvider
+  MarkJournalVisited             /journal/[issn] 진입 시 lastVisitedAt 기록
+  useFetchWithKeys               X-Paperis-Keys + Anon-Id + Ai-Provider 자동 동봉
+data/journals.json
+auth.ts                          Auth.js v5 + Google + Drizzle (env 부재 시 placeholder)
 lib/
-  pubmed · xml-utils · openalex · journals · trend · summary · paper-type
-  gemini · query-translator · query-cache · client-cache
-  fulltext/ (unpaywall · europe-pmc · pmc · html-extract · index)
-  tts/ (types · gemini · clova · google-cloud · index — Clova default + fallback)
-  audio-library · anonymous-id · user-keys · promise-polyfill · auto-mini-summary
-  specialty-prefs · journal-blocks · journal-additions · journal-favorites    localStorage 4종
-  account-prefs                  서버 helper: load/save AccountPrefs (멱등 upsert)
-  journal-cache                  M5 — Upstash Redis wrapper (silent fallback) + key helpers
-  usage                          M6 — checkAndIncrement / getIdentityKey / getPlan / FREE_LIMITS
-  db/ (schema · index)           Drizzle + Neon. Auth.js 표준 4 + users 확장 + user_* prefs 4 + usage_monthly + subscriptions
-public/sw.js                     paperis-v2 cache (정적 자산만, /api/는 무개입)
-types/index.ts                   v2 + v3 공통 타입
-types/next-auth.d.ts             Session.user.id + onboardingDone 추가 (M4 PR2)
+  ai/                            types · registry · gemini-provider · claude-provider · openai-provider (Grok 재사용)
+  ai-preference                  사용자 provider 선호 (localStorage)
+  user-keys                      BYOK 게이트 (admin/byok plan 확인 후 applyUserKeysToEnv)
+  admin                          ADMIN_EMAILS 체크
+  usage                          checkAndIncrement + getPlan + KST yearMonth + isAdminEmail 우선
+  billing                        Toss Payments wrapper (confirm/issueBillingKey/chargeBilling + PRICING)
+  journals openalex pubmed       카탈로그 + 메타 + 검색
+  trend                          generateJournalTrend (heavy) + generateTrendHeadline (fast, lite)
+  summary query-translator gemini  미니 요약 + 검색식 변환 + Gemini 헬퍼
+  fulltext/                      unpaywall · openalex · europe-pmc · pmc · s2 · medrxiv · asset-fetcher
+  tts/                           Clova/GoogleCloud/Gemini provider + resolveTtsProvider
+  audio-library                  idb 기반 CRUD + titleKo 필드
+  journal-cache                  Upstash Redis wrapper (silent fallback)
+  journal-{favorites,additions,blocks,meta-cache,visits}  localStorage 5종
+  specialty-prefs anonymous-id auto-mini-summary
+  db/                            Drizzle schema + connection
+public/sw.js
+types/index.ts                   v2 + v3 공통 + AudioTrack.titleKo
+types/next-auth.d.ts             Session.user.id + onboardingDone
+vercel.json                      cron 설정 (recurring-billing)
 ```
 
 ---
@@ -180,7 +266,7 @@ types/next-auth.d.ts             Session.user.id + onboardingDone 추가 (M4 PR2
 
 | 버전 | 날짜 | 핵심 |
 |---|---|---|
-| **v3** (master 진화) | 2026-05-08~10 | 저널 큐레이션 + Auth + Neon + 동기화 + Redis 캐시 + 사용량 한도 코드. paperis.vercel.app 라이브 |
+| **v3** (master 진화) | 2026-05-08~13 | 저널 큐레이션 + Auth + Neon + 결제 + 멀티 AI provider + 에디토리얼 디자인. paperis.vercel.app 라이브 |
 | v2.0.4 | 2026-05-04 | 설정 패널 6개 섹션 + Google Cloud TTS + API 키 6종 + X-Paperis-Keys |
 | v2.0.3 | 2026-05-04 | 페이지네이션 + 테마(라이트/다크/시스템) + Naver Clova + 검색 안전망 |
 | v2.0.2 | 2026-04-30 | PlayerBar 동적 높이 + listTrackMetas + IndexedDB v2 |
@@ -196,36 +282,82 @@ types/next-auth.d.ts             Session.user.id + onboardingDone 추가 (M4 PR2
 
 ## v3 진척 상세 (커밋 단위)
 
-### M1 · M2 (2026-05-08)
+### M1·M2 (2026-05-08)
 
-- **M1** TTS default `gemini` → `clova` + `resolveTtsProvider`/`hasProviderCredentials` 가드. 환경에 Clova 키 없을 때 자동 Gemini 강등 + `x-tts-degraded-from` 응답 헤더
-- **M2** `data/journals.json` (재활/심장/신경 3 임상과) + `lib/journals.ts` (GitHub raw + 로컬 fallback) + `lib/openalex.ts` `searchJournalsBySubfield`/`searchJournalsByName`/`getJournalByIssn`
+- **M1** TTS default `gemini` → `clova` + `resolveTtsProvider` 가드. `x-tts-degraded-from` 헤더
+- **M2** `data/journals.json` + `lib/journals.ts` (GitHub raw + 로컬 fallback) + `lib/openalex.ts` 확장
 
 ### M3 (2026-05-08)
 
-- **PR1~PR3** 저널 큐레이션 풀스택 (호/주제/트렌드 + JournalPaperList 공통 + Gemini 트렌드 batch)
-- **PR4-1~PR4-4** 페이지네이션 + OA 정렬 + 차단 + referrer 임상과 추적 + 카탈로그 25개 + 설정 패널
-- **PR5-1~PR5-3** 알고리즘 개선(group_by count) + manualSeedJournals + 사용자 저널 추가 + 즐겨찾기 ⭐
-- **fix** dedupe ref 가드 제거 / 뒤로 가기 referrer specialty / 자동 미니요약 default OFF
+- PR1~PR3 저널 큐레이션 풀스택 + JournalPaperList 공통 + Gemini 트렌드 batch
+- PR4-1~PR4-4 페이지네이션 + OA 정렬 + 차단 + referrer 추적 + 카탈로그 25개 + 설정 패널
+- PR5-1~PR5-3 group_by count + manualSeedJournals + 사용자 추가 + 즐겨찾기 ⭐
+- fix: dedupe ref 가드 제거 / 자동 미니요약 default OFF
 
 ### M4 (2026-05-09)
 
-- **PR1** Auth.js v5 + Drizzle + Neon adapter, schema(users 확장 + Auth.js 표준 4), AuthMenu(`FEATURE_AUTH` flag)
-- **PR2** `/onboarding` 페이지 (휴대폰 normalize + 약관 4개) + `/api/account/onboarding`. 강제 redirect 안 함
-- **PR3** schema 4 테이블 + `lib/account-prefs.ts` 멱등 upsert + `/api/account/prefs` GET/PUT + `AccountSyncProvider` (첫 로그인 합집합 머지 + debounced 500ms PUT)
+- PR1 Auth.js v5 + Drizzle + Neon adapter, AuthMenu(`FEATURE_AUTH` flag)
+- PR2 `/onboarding` + `/api/account/onboarding`
+- PR3 schema 4 테이블 + 멱등 upsert + `AccountSyncProvider` (debounced 500ms)
 
-### Prod 배포 (2026-05-09)
+### Prod 배포 + M5·M6 (2026-05-09~10)
 
-- 21 commits push to origin/master + `vercel deploy --prod --yes`
-- 스모크 테스트: `/`·`/journal`·`/onboarding` 200 OK + GitHub raw catalog 200 OK
+- **M5** Upstash Redis 캐시 (silent fallback) + 진단 log dev 한정
+- **M6** Free 사용량 한도 (`lib/usage.ts` `checkAndIncrement`). `useFetchWithKeys`에 `X-Paperis-Anon-Id` 자동 동봉. KST yearMonth + lazy reset
+- **UX** OA 정렬 전체 결과 + 페이지네이션 상하 + smooth scroll top
 
-### M5 · M6 + UX (2026-05-10)
+### M7 (2026-05-11~12)
 
-- **M5** Upstash Redis 캐시 (`lib/journal-cache.ts` wrapper, silent fallback). 키 `issue:{issn}:{yyyy-mm}:r{retmax}s{retstart}` (∞ TTL for 과거 호) / `trend:{issn}:{months}m:{yyyy-mm}:{language}` (24h TTL). `/api/journal/issues`·`trend`에 hit/miss 헤더
-- **M5 fix** 진단 log를 dev 환경에 한정 (prod 노이즈 방지)
-- **M6** Free 사용량 한도 (`lib/usage.ts` `checkAndIncrement`, `FEATURE_USAGE_LIMIT` flag). schema에 `usage_monthly` + `subscriptions` 추가. 5개 라우트 hook (issues/topic/trend/tts/summarize-read). `useFetchWithKeys`에 `X-Paperis-Anon-Id` 헤더 자동 동봉. `/api/account/usage` GET. KST yearMonth + lazy reset
-- **UX** OA 정렬을 페이지 안에서만 → 전체 결과 단위. 페이지네이션을 결과 위·아래 양쪽 + 페이지 변경 시 자동 smooth scroll top. 호/주제/트렌드 모두 한 번에 받기 (200/100/80건) + 클라 페이지네이션 — 페이지 이동 시 server 호출 0
+- PR1 lib/billing.ts (TossApiError/confirmPayment/issueBillingKey/chargeBilling/PRICING) + 약관/개인정보/환불 페이지
+- PR2 BYOK 1회 결제 (/api/billing/checkout, confirm, /billing 페이지)
+- PR3 Pro 월 구독 (issue-billing-key, charge-first, cron/recurring-billing, vercel.json cron)
+- PR4 /account 페이지 + 구독 해지 (status='cancelled', billingKey null)
+- PR5 UsageBanner + 한도 초과 CTA에 가격 노출
+
+### 후속 fix + UX 정리 (2026-05-12)
+
+- **NCBI ERROR 안전망** — silent 0건 방지, friendly 메시지
+- **back 링크** — /account/onboarding/billing 등 헤더 없는 페이지에 ← 홈으로
+
+### 디자인 시스템 (2026-05-12)
+
+- **Phase 1** Foundation — Fraunces + Pretendard + paperis-* 토큰 + @theme inline + marquee/seek/stagger
+- **Phase 2** 홈 + 핵심 컴포넌트 (PlayerBar/Search/Sort/PaperCard 등)
+- **Batch 1~4** 저널 탐색 흐름 + 설정/라이브러리/TTS + 페이지 본문 + /legal + 잔류 정리
+- 코드베이스 zinc/emerald/red/amber/indigo/violet/sky 토큰 0개 — paperis-* 통일
+
+### 홈 1순위 카드 + UX (2026-05-12~13)
+
+- **ContinueListeningCard / MySpecialtiesPicker / MyJournalsNewIssues** + 즐겨찾기 메타 캐시 (`lib/journal-meta-cache.ts`)
+- **저널 카드 ●** "새 호 가능성" 의미로 (14일 휴리스틱). 즐겨찾기는 ★ 별도 마커
+- **TTS 한국어 제목 번역** — narration과 병렬, `x-tts-title-ko-b64` 헤더, IndexedDB `titleKo`
+- **모바일 history sync** — JournalPaperList selectedPmid를 URL `?pmid` 동기화 + push/replace 정책
+- **Settings 아코디언** + BYOK 게이트 (subscription.plan='byok'만 API 키 활성)
+- **BYOK 정책 변경** — 키 입력 = BYOK 결제자만. `applyUserKeysToEnv`에 DB 검증 추가
+- **TrendFeaturedCard** + 라이트 헤드라인 endpoint (Flash Lite, ~5-10s) + 로딩 상태 명시
+- **favorites 매일 로테이션** — KST epoch day % length
+
+### 멀티 AI provider (2026-05-13)
+
+- **Phase A·B** lib/ai/ 추상화 + Gemini/Claude 구현. types · registry · gemini-provider · claude-provider
+- **Phase C** UI provider 선택 + 헤더 전송. ApiKeysProvider 4종 키 추가, AiProviderSection (BYOK 게이트)
+- **Phase D** 모든 LLM 라우트가 사용자 선택 provider 사용. `getEffectiveAiProvider(req)` + lib 함수 시그니처 확장
+- **Phase E** OpenAI + Grok provider (xAI baseURL 재사용)
+
+### Admin + 등급별 권한 (2026-05-13)
+
+- **lib/admin.ts** — `ADMIN_EMAILS` env. `isAdminEmail`/`isCurrentUserAdmin`
+- usage/user-keys/registry/subscription 라우트에 admin 통과 분기
+- **등급별 권한 명확화** — Free/Pro/BYOK/Admin 분리 룰 코드로 강제. BYOK 본인 키 강제, Pro provider 선택 (env 보유 시), Admin env fallback
+- API 응답에 `envProviders` 추가, UI에서 disabled 로직
+
+### 최종 UX 수정 (2026-05-13)
+
+- **PlayerBar SeekBar 드래그·정렬** — onChange 즉시 commit + padding 7px (thumb 위치 1:1)
+- **PlayerBar thumb 가림** — h-3→h-4, margin-top 제거 (라이브러리 드로어와 안 겹침)
+- **PlayerBar marquee 속도** — 거리 기반 일정 (30px/sec, 최소 30초)
+- **헤더 ⚙ SVG 교체** — heroicons cog-6-tooth solid (🎧와 시각 무게 균형)
 
 ---
 
-*v1·v2 마일스톤 상세는 `git log` 또는 commit message 본문 참고. 이 파일은 v3 시점 기준으로 정리됨.*
+*이 파일은 v3 최종 시점 기준. v1·v2 마일스톤 상세는 `git log` 또는 commit message 본문 참고.*
