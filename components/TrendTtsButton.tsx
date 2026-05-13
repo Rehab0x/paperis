@@ -12,6 +12,7 @@
 import { useState } from "react";
 import { useTtsProviderPreference } from "@/components/TtsProviderPreferenceProvider";
 import { useFetchWithKeys } from "@/components/useFetchWithKeys";
+import { useLocale } from "@/components/useLocale";
 import { appendTrack } from "@/lib/audio-library";
 import type { Paper } from "@/types";
 
@@ -43,6 +44,7 @@ export default function TrendTtsButton({
   const { provider, effectiveVoice, speakingRate } =
     useTtsProviderPreference();
   const fetchWithKeys = useFetchWithKeys();
+  const locale = useLocale();
   const [status, setStatus] = useState<Status>({ kind: "idle" });
 
   async function handleClick() {
@@ -59,7 +61,7 @@ export default function TrendTtsButton({
         headers: { "content-type": "application/json" },
         body: JSON.stringify({
           text: narrationScript,
-          language: "ko",
+          language: locale,
           providerName: provider,
           voice: effectiveVoice,
           speakingRate,
@@ -104,7 +106,7 @@ export default function TrendTtsButton({
 
       await appendTrack({
         paper: fakePaper,
-        language: "ko",
+        language: locale,
         voice: ttsVoice,
         providerName: ttsProvider,
         audioBlob,

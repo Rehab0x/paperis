@@ -7,6 +7,7 @@ import {
   generateNarrationText,
   translateTitleToKorean,
 } from "@/lib/gemini";
+import { getRequestLanguage } from "@/lib/i18n";
 import { resolveTtsProvider } from "@/lib/tts";
 import {
   checkAndIncrement,
@@ -52,7 +53,7 @@ export async function POST(req: Request) {
   if (!isPaper(body.paper)) {
     return jsonError("paper 필드가 필요합니다.");
   }
-  const language: Language = body.language === "en" ? "en" : "ko";
+  const language: Language = getRequestLanguage(req, body);
   // providerName 미지정 시 lib/tts의 DEFAULT_PROVIDER(v3=clova) 사용. 키 부재면 Gemini fallback.
   const providerName =
     typeof body.providerName === "string" ? body.providerName : undefined;
@@ -72,7 +73,7 @@ export async function POST(req: Request) {
 
   let resolved;
   try {
-    resolved = resolveTtsProvider(providerName);
+    resolved = resolveTtsProvider(providerName, language);
   } catch (err) {
     return jsonError(
       err instanceof Error ? err.message : "TTS provider 오류",

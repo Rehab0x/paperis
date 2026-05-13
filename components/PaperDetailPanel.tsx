@@ -5,6 +5,7 @@ import FullTextView from "@/components/FullTextView";
 import PdfUpload from "@/components/PdfUpload";
 import TtsButton from "@/components/TtsButton";
 import { useFetchWithKeys } from "@/components/useFetchWithKeys";
+import { useLocale } from "@/components/useLocale";
 import type {
   FullTextAttempt,
   FullTextResponse,
@@ -47,6 +48,7 @@ const SOURCE_LABEL: Record<FullTextSource, string> = {
 };
 
 export default function PaperDetailPanel({ paper, onBack }: Props) {
+  const locale = useLocale();
   const [ft, setFt] = useState<FullTextState>(initial);
   const [summary, setSummary] = useState<string>("");
   const [summarizing, setSummarizing] = useState(false);
@@ -142,7 +144,7 @@ export default function PaperDetailPanel({ paper, onBack }: Props) {
 
     const body: SummarizeReadRequest & { fullText?: string } = {
       paper,
-      language: "ko",
+      language: locale,
       sourceLabel,
       ...(fullText ? { fullText } : {}),
     };
@@ -276,7 +278,7 @@ export default function PaperDetailPanel({ paper, onBack }: Props) {
         <div className="mt-2">
           <TtsButton
             paper={paper}
-            language="ko"
+            language={locale}
             fullText={ft.status === "ready" ? ft.text : null}
             sourceLabel={
               ft.status === "ready" && ft.source

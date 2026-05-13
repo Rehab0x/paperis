@@ -4,6 +4,7 @@
 import { NextResponse } from "next/server";
 import { getEffectiveAiProvider } from "@/lib/ai/registry";
 import { friendlyErrorMessage } from "@/lib/gemini";
+import { getRequestLanguage } from "@/lib/i18n";
 import { generateMiniSummaries } from "@/lib/summary";
 import { applyUserKeysToEnv } from "@/lib/user-keys";
 import type {
@@ -51,7 +52,7 @@ export async function POST(req: Request) {
     );
   }
 
-  const language: Language = body.language === "en" ? "en" : "ko";
+  const language: Language = getRequestLanguage(req, body);
 
   try {
     const provider = await getEffectiveAiProvider(req);

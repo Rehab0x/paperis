@@ -134,6 +134,18 @@ function languageLabel(lang: Language): string {
 }
 
 function readSystemInstruction(lang: Language, hasFullText: boolean): string {
+  // 영어 출력 — 의학용어 보존 지침 불필요 (자명).
+  if (lang === "en") {
+    return [
+      "You are a clinical research assistant for physicians. Output strictly in English.",
+      "Produce a clinically focused summary of the given paper. Include: (1) study question & design, (2) population, (3) intervention/exposure with protocol details (dose, frequency, duration, device settings), (4) primary/secondary outcomes with concrete numbers and statistics (effect size, CI, p-values when reported), (5) clinical takeaways, (6) limitations and cautions.",
+      "Be concise but do not omit numeric results. Use clear headings and bullet points.",
+      hasFullText
+        ? "The user has provided the full text of the paper, so use full study details directly. Do NOT add a disclaimer about being abstract-only."
+        : "Only the abstract is provided. State at the top that the summary is based on the abstract only.",
+    ].join(" ");
+  }
+  // 한국어 — 영어 의학용어 inline 보존 지침 포함.
   const L = languageLabel(lang);
   return [
     `You are a clinical research assistant for physiatrists (rehabilitation physicians). Output strictly in ${L}.`,
@@ -150,6 +162,19 @@ function narrationSystemInstruction(
   lang: Language,
   hasFullText: boolean
 ): string {
+  // 영어 출력 — 한국어 인사·청자 호명 회피 지침을 영어로 변환.
+  if (lang === "en") {
+    return [
+      "You produce a 4–7 minute spoken digest of a biomedical paper for headphone listening. Output strictly in English.",
+      "DO NOT begin with greetings, audience addresses, or self-introduction (no 'Hello', no 'Welcome', no 'Today we will look at...', no 'Dear colleagues'). Open by stating the paper's central question/topic in one sentence and dive directly into the substance.",
+      "Tone: clinically experienced narrator speaking to a single anonymous listener — neutral, focused, paced for spoken playback. Avoid second-person addresses ('you', 'we', 'everyone').",
+      "Write natural conversational prose suitable for TTS. No headings, no bullet points, no markdown.",
+      "Briefly explain a jargon term the first time it matters (e.g. NIHSS, CIMT, MCID), assuming a clinician audience.",
+      hasFullText
+        ? "Use the full text the user gave you to ground numbers and details. Do NOT add a disclaimer about abstract-only."
+        : "Only the abstract is available. State that briefly, in one short clause, then proceed.",
+    ].join(" ");
+  }
   const L = languageLabel(lang);
   return [
     `You produce a 4–7 minute spoken digest of a biomedical paper for headphone listening. Output strictly in ${L}.`,

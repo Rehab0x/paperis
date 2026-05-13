@@ -7,6 +7,7 @@
 // /api/tts와 동일하게 "tts" 카테고리로 카운트.
 
 import { friendlyErrorMessage } from "@/lib/gemini";
+import { getRequestLanguage } from "@/lib/i18n";
 import { resolveTtsProvider } from "@/lib/tts";
 import {
   checkAndIncrement,
@@ -59,7 +60,7 @@ export async function POST(req: Request) {
     return jsonError(`text가 너무 깁니다 (최대 ${MAX_TEXT}자).`);
   }
 
-  const language: Language = body.language === "en" ? "en" : "ko";
+  const language: Language = getRequestLanguage(req, body);
   const providerName =
     typeof body.providerName === "string" ? body.providerName : undefined;
   const voice = typeof body.voice === "string" ? body.voice : undefined;
@@ -69,7 +70,7 @@ export async function POST(req: Request) {
 
   let resolved;
   try {
-    resolved = resolveTtsProvider(providerName);
+    resolved = resolveTtsProvider(providerName, language);
   } catch (err) {
     return jsonError(
       err instanceof Error ? err.message : "TTS provider 오류",

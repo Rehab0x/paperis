@@ -11,6 +11,7 @@
 
 import { getEffectiveAiProvider } from "@/lib/ai/registry";
 import { friendlyErrorMessage } from "@/lib/gemini";
+import { getRequestLanguage } from "@/lib/i18n";
 import { TTL_24H, getCached, setCached } from "@/lib/journal-cache";
 import { searchPubMed } from "@/lib/pubmed";
 import { generateTrendHeadline } from "@/lib/trend";
@@ -108,7 +109,9 @@ export async function GET(req: Request) {
   const { searchParams } = new URL(req.url);
   const issn = (searchParams.get("issn") ?? "").trim();
   const journalName = (searchParams.get("journalName") ?? "").trim();
-  const language = searchParams.get("language") === "en" ? "en" : "ko";
+  const language = getRequestLanguage(req, {
+    language: searchParams.get("language"),
+  });
   const yearRaw = Number(searchParams.get("year"));
   const quarter = parseQuarter(searchParams.get("quarter") ?? "all");
 

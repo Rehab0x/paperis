@@ -7,13 +7,25 @@ import { ClovaTtsProvider } from "@/lib/tts/clova";
 import { GeminiTtsProvider } from "@/lib/tts/gemini";
 import { GoogleCloudTtsProvider } from "@/lib/tts/google-cloud";
 import type { TtsProvider } from "@/lib/tts/types";
+import type { Language } from "@/types";
 
 const providers = new Map<string, TtsProvider>();
 providers.set("gemini", new GeminiTtsProvider());
 providers.set("clova", new ClovaTtsProvider());
 providers.set("google-cloud", new GoogleCloudTtsProvider());
 
-const DEFAULT_PROVIDER = "clova";
+// 언어별 default — Clova는 한국어 전용. 영어 narration이 Clova로 가면 발음 어색하거나
+// 에러. 사용자가 명시 안 한 경우 언어 기반으로 합리적인 default 선택.
+const DEFAULT_PROVIDER_BY_LANG: Record<Language, string> = {
+  ko: "clova",
+  en: "google-cloud",
+};
+
+const DEFAULT_PROVIDER = DEFAULT_PROVIDER_BY_LANG.ko;
+
+export function defaultTtsProviderFor(language: Language | undefined): string {
+  return language === "en" ? DEFAULT_PROVIDER_BY_LANG.en : DEFAULT_PROVIDER_BY_LANG.ko;
+}
 
 export function getTtsProvider(name?: string): TtsProvider {
   const key = (name ?? DEFAULT_PROVIDER).toLowerCase();
@@ -59,11 +71,18 @@ export interface ResolvedTtsProvider {
  * 요청 provider 키가 없으면 Gemini로 자동 강등. Gemini도 키가 없으면 원래 provider를
  * 그대로 반환 — synthesize 시점에 친절 에러가 나오도록 한다.
  *
+ * language 인자 — 사용자가 provider를 명시 안 했을 때(name=undefined) 언어별 default
+ * 결정 (ko=Clova, en=Google Cloud). 명시했으면 그대로 존중.
+ *
  * Why: v3 default가 Clova라 Vercel prod env에 Clova 키 없는 상태에서 즉시 깨질 위험.
  *      X-Paperis-Keys 미사용 + Clova 키 부재 사용자가 라이브에 있어도 Gemini fallback.
+ *      Phase 2-B에서 영어 narration이 Clova로 가는 미스매치도 방지.
  */
-export function resolveTtsProvider(name?: string): ResolvedTtsProvider {
-  const requested = (name ?? DEFAULT_PROVIDER).toLowerCase();
+export function resolveTtsProvider(
+  name?: string,
+  language?: Language
+): ResolvedTtsProvider {
+  const requested = (name ?? defaultTtsProviderFor(language)).toLowerCase();
   const provider = providers.get(requested);
   if (!provider) {
     throw new Error(`알 수 없는 TTS provider: ${name}`);

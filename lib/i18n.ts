@@ -58,3 +58,29 @@ export const LOCALE_COOKIE = "paperis.locale";
 
 // 1년 — 사용자가 한 번 명시적으로 토글하면 오래 유지
 export const LOCALE_COOKIE_MAX_AGE = 60 * 60 * 24 * 365;
+
+// API 라우트가 요청에서 출력 언어를 결정할 때 쓰는 헬퍼.
+// 우선순위:
+//   1. body.language가 "ko" | "en" 명시 (테스트/디버깅·기존 호환)
+//   2. paperis.locale 쿠키
+//   3. fallback "ko" (한국 사용자 1순위 정책 — 메모리 user_workflow_commute_listening)
+//
+// Language 타입은 types/index.ts에 정의된 "ko" | "en"으로, 이 파일의 Locale과 동일.
+// next/server NextRequest와 일반 Request 모두 호환되도록 cookies/headers를 좁게 사용.
+export function getRequestLanguage(
+  req: { cookies?: { get(name: string): { value: string } | undefined } | undefined; headers: Headers },
+  body?: { language?: unknown } | null | undefined
+): Locale {
+  if (body && (body.language === "en" || body.language === "ko")) {
+    return body.language;
+  }
+  // App Router의 Request는 cookies()가 별도 헬퍼. 우리는 NextRequest 또는 미들웨어
+  // req.cookies를 직접 받음. 둘 다 호환되려면 헤더에서 직접 파싱해도 됨.
+  const cookieValue = req.cookies?.get(LOCALE_COOKIE)?.value;
+  if (isLocale(cookieValue)) return cookieValue;
+  // 직접 Cookie 헤더 파싱 (Request 직접 객체 호환)
+  const cookieHeader = req.headers.get("cookie") ?? "";
+  const match = cookieHeader.match(new RegExp(`(?:^|;\\s*)${LOCALE_COOKIE}=(ko|en)(?:;|$)`));
+  if (match) return match[1] as Locale;
+  return "ko";
+}

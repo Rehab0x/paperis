@@ -2,6 +2,7 @@
 // 짧은 예문을 narration 생성 단계 없이 곧장 provider.synthesize에 던진다.
 
 import { friendlyErrorMessage } from "@/lib/gemini";
+import { getRequestLanguage } from "@/lib/i18n";
 import { resolveTtsProvider } from "@/lib/tts";
 import { applyUserKeysToEnv } from "@/lib/user-keys";
 import type { ApiError, Language } from "@/types";
@@ -35,7 +36,7 @@ export async function POST(req: Request) {
   }
   const text = (body.text ?? "").trim();
   if (!text) return jsonError("미리듣기 텍스트가 비어 있습니다.");
-  const language: Language = body.language === "en" ? "en" : "ko";
+  const language: Language = getRequestLanguage(req, body);
   // providerName 미지정 시 lib/tts의 DEFAULT_PROVIDER(v3=clova) 사용. 키 부재면 Gemini fallback.
   const providerName =
     typeof body.providerName === "string" ? body.providerName : undefined;
@@ -47,7 +48,7 @@ export async function POST(req: Request) {
 
   let resolved;
   try {
-    resolved = resolveTtsProvider(providerName);
+    resolved = resolveTtsProvider(providerName, language);
   } catch (err) {
     return jsonError(
       err instanceof Error ? err.message : "TTS provider 오류",

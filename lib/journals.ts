@@ -6,6 +6,19 @@
 // 저널 추천은 OpenAlex Sources API가 런타임에 주는 결과를 그대로 쓴다.
 
 import localCatalog from "@/data/journals.json";
+import type { Locale } from "@/lib/i18n";
+
+/**
+ * 임상과가 어느 locale 사용자에게 default로 노출되는지.
+ * "ko" — 한국어 사용자에게만 (한국 시장 특화)
+ * "en" — 영어 사용자에게만 (영어권 시장 특화)
+ * "both" — 양쪽 모두 (글로벌 보편 분야)
+ * 미설정 = "both"로 간주 (호환).
+ *
+ * 실제 사용: 온보딩 UI가 사용자 locale에 따라 specialty 목록을 필터링.
+ * Phase 2-C (앱 UI i18n)에서 활성화 예정.
+ */
+export type SpecialtyLocaleScope = "ko" | "en" | "both";
 
 export interface Specialty {
   /** 영구 식별자 — URL slug, DB FK 등에 사용 */
@@ -30,6 +43,8 @@ export interface Specialty {
    * 시드와 무관). 빈 배열이면 자동 추천만 사용.
    */
   manualSeedJournals?: string[];
+  /** Phase 2-B — locale별 default 노출. 미설정 = "both". */
+  defaultLocale?: SpecialtyLocaleScope;
 }
 
 export interface JournalCatalog {
@@ -72,6 +87,18 @@ export async function getJournalCatalog(): Promise<JournalCatalog> {
 export async function getSpecialty(id: string): Promise<Specialty | null> {
   const catalog = await getJournalCatalog();
   return catalog.specialties.find((s) => s.id === id) ?? null;
+}
+
+/**
+ * 사용자 locale에 노출 가능한 specialty인지. defaultLocale 미설정 = "both"로 간주.
+ * Phase 2-C 온보딩 UI에서 사용.
+ */
+export function isSpecialtyVisibleForLocale(
+  s: Specialty,
+  locale: Locale
+): boolean {
+  const scope = s.defaultLocale ?? "both";
+  return scope === "both" || scope === locale;
 }
 
 function isValidCatalog(value: unknown): value is JournalCatalog {

@@ -3,6 +3,7 @@
 
 import { getEffectiveAiProvider } from "@/lib/ai/registry";
 import { friendlyErrorMessage, streamSummary } from "@/lib/gemini";
+import { getRequestLanguage } from "@/lib/i18n";
 import {
   checkAndIncrement,
   getIdentityKey,
@@ -39,7 +40,7 @@ export async function POST(req: Request) {
   if (!isPaper(body.paper)) {
     return new Response("paper 필드가 필요합니다.", { status: 400 });
   }
-  const language: Language = body.language === "en" ? "en" : "ko";
+  const language: Language = getRequestLanguage(req, body);
   const sourceLabel =
     typeof body.sourceLabel === "string" ? body.sourceLabel : undefined;
   // 풀텍스트가 같이 들어오는 경우 abstract 자리에 본문을 주입

@@ -31,6 +31,23 @@ function langLabel(lang: Language): string {
 }
 
 function systemInstruction(lang: Language): string {
+  // 영어 출력 시 — 의학용어 보존 지침 불필요(자명), 톤 가이드와 예시도 영어로.
+  if (lang === "en") {
+    return [
+      "You write tiny clinical mini-summaries of biomedical papers for a busy clinician. Output strictly in English.",
+      "For each paper, return EXACTLY 5 short bullets, each <= 90 characters. No leading dashes — return only the bullet text.",
+      "Bullet 1 is ALWAYS a one-line topic statement that tells the reader what this paper is about, before any numbers or methodology. Use the form below.",
+      "  - research: 'A study examining the effect of [intervention/exposure] on [outcome] in [population]' style. e.g. 'An RCT of mirror therapy on upper-limb function in subacute stroke patients'.",
+      "  - review: 'A review/meta-analysis of [topic]' style. e.g. 'A systematic review of botulinum toxin for post-stroke spasticity management'.",
+      "Bullets 2–5 then go deeper, branching by paperType:",
+      "  - research: bullet 2 = study design + N. bullet 3 = intervention/exposure protocol with key parameters. bullet 4 = primary outcome with concrete numbers (effect size, p-value, CI when reported). bullet 5 = clinical takeaway or the most important caveat.",
+      "  - review: bullet 2 = methods (databases, # of studies, PRISMA adherence, etc.). bullet 3 = headline conclusion. bullet 4 = quantitative findings or major themes. bullet 5 = clinical implication or notable disagreement/caveat.",
+      "Do NOT invent numbers that are not in the abstract. If the abstract is empty, return one bullet that says the abstract is missing.",
+      "Each item's pmid MUST exactly match an input paper's pmid. paperType must be 'research' or 'review' (use the value provided unless the abstract clearly contradicts it).",
+      "Output JSON only.",
+    ].join(" ");
+  }
+  // 한국어 — 기존 톤 유지 (영어 의학용어 inline 보존 지침 포함).
   return [
     `You write tiny clinical mini-summaries of biomedical papers for a busy rehabilitation physician. Output strictly in ${langLabel(lang)}.`,
     "For each paper, return EXACTLY 5 short bullets, each <= 70 characters in the target language. No leading dashes — return only the bullet text.",

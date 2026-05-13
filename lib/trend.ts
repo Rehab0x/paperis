@@ -105,6 +105,28 @@ function trendSystemInstruction(
   paperCount: number
 ): string {
   const longNarration = paperCount > 60;
+  // 영어 출력 — 의학용어 보존 지침 불필요, 톤·예시 영어로.
+  if (language === "en") {
+    return [
+      `You are a senior clinical research analyst with deep expertise in rehabilitation medicine.`,
+      `Output strictly in English.`,
+      `You will analyze ${paperCount} abstracts from "${journalName}" (${periodLabel}) as a single corpus.`,
+      `Your task: identify what this journal has been EMPHASIZING during this period — NOT a list of individual papers, but THEMATIC TRENDS with clinical meaning.`,
+      `For each theme, you MUST specify:`,
+      `- direction: one of "new" (newly emerging), "increasing" (rising volume), "debated" (conflicting evidence), or "ongoing" (consistent over time).`,
+      `- insight: WHY does this matter clinically? What should a busy clinician take away? Do NOT just restate the topic — state the implication.`,
+      `- representativePmids: 1-2 PMIDs from the corpus that best exemplify this theme. Only use PMIDs that actually appear in the provided abstracts.`,
+      `methodologyShift: Note if a new outcome measure, study design, or assessment tool is appearing repeatedly (e.g. "Increasing adoption of MCID-based responder analysis across multiple trials"). Leave empty string if no notable shift.`,
+      `clinicalImplication: 2-3 sentences on what a busy clinician should take away from this period's literature as a whole.`,
+      `narrationScript: Write a natural spoken-word script (NOT bullet points) for TTS narration. Structure: brief intro → each theme explained conversationally → closing implication. Target length: ${longNarration ? "7–10 minutes" : "3–5 minutes"} when read aloud at normal pace. Tone: senior colleague briefing a busy clinician, not an academic lecture.`,
+      `RULES:`,
+      `- 3 to 5 themes only.`,
+      `- Be specific. Bad: "Increasing stroke rehabilitation research". Good: "60-hour CIMT threshold validation (↑ increasing) — 5 RCTs repeatedly verify it, strengthening the case for Modified CIMT protocol redesign."`,
+      `- Do NOT invent themes or PMIDs not in the abstracts.`,
+      `- Output valid JSON only, no markdown fences.`,
+    ].join(" ");
+  }
+  // 한국어 — 기존 유지.
   return [
     `You are a senior clinical research analyst with deep expertise in rehabilitation medicine.`,
     `Output strictly in ${langLabel(language)}, preserving English medical terms inline (e.g. spasticity, FIM, NIHSS, CIMT, FES, PRISMA, RCT, MCID).`,
@@ -173,15 +195,25 @@ export async function generateTrendHeadline(
     return `[${i + 1}] ${p.title || "(no title)"} — ${abstract}`;
   });
 
-  const systemInstruction = [
-    `You are a senior clinical research analyst.`,
-    `Output ONE sentence in ${langLabel(language)}, no quotes, no labels, no explanation.`,
-    `Read these abstracts from "${journalName}" (${periodLabel}) as a corpus.`,
-    `Identify the SINGLE most clinically impactful trend or finding emerging from this period — what would a busy physiatrist most want to know?`,
-    `Be specific and substantive. Bad: "뇌졸중 재활 연구가 증가하고 있다". Good: "상지재활의 용량–반응 관계가 다시 쓰이고 있다" or "조기 보행 재훈련 프로토콜의 임상 이득이 다수 RCT로 재확인되고 있다".`,
-    `Preserve English medical terms inline (RCT, CIMT, NIHSS, FIM, MCID).`,
-    `Maximum 60 Korean characters or 80 English characters.`,
-  ].join(" ");
+  const systemInstruction =
+    language === "en"
+      ? [
+          `You are a senior clinical research analyst.`,
+          `Output ONE sentence in English, no quotes, no labels, no explanation.`,
+          `Read these abstracts from "${journalName}" (${periodLabel}) as a corpus.`,
+          `Identify the SINGLE most clinically impactful trend or finding emerging from this period — what would a busy clinician most want to know?`,
+          `Be specific and substantive. Bad: "Stroke rehabilitation research is increasing". Good: "Dose-response in upper-limb rehab is being rewritten" or "Early ambulation retraining protocols show consistent benefit across multiple RCTs".`,
+          `Maximum 80 English characters.`,
+        ].join(" ")
+      : [
+          `You are a senior clinical research analyst.`,
+          `Output ONE sentence in ${langLabel(language)}, no quotes, no labels, no explanation.`,
+          `Read these abstracts from "${journalName}" (${periodLabel}) as a corpus.`,
+          `Identify the SINGLE most clinically impactful trend or finding emerging from this period — what would a busy physiatrist most want to know?`,
+          `Be specific and substantive. Bad: "뇌졸중 재활 연구가 증가하고 있다". Good: "상지재활의 용량–반응 관계가 다시 쓰이고 있다" or "조기 보행 재훈련 프로토콜의 임상 이득이 다수 RCT로 재확인되고 있다".`,
+          `Preserve English medical terms inline (RCT, CIMT, NIHSS, FIM, MCID).`,
+          `Maximum 60 Korean characters or 80 English characters.`,
+        ].join(" ");
 
   const p = provider ?? getAiProvider("gemini");
   const out = await p.generateText({
