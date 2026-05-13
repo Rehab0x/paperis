@@ -1,6 +1,6 @@
 # Paperis — TODO / 진척 기록
 
-> 마지막 갱신: 2026-05-14 (Phase 2-A 랜딩 + Phase 2-B 영어 서비스 + Phase 2-C1 핵심 흐름 + Phase 2-C2 설정/관리/페이지 i18n 완료 — 영어 사용자 전체 앱 완주 가능, 약관만 한국어)
+> 마지막 갱신: 2026-05-14 (Phase 2-A~C2 + server journal + UX 다듬기 완료 — 영어 사용자 전체 앱 완주, 약관만 한국어)
 > 외부 노출 문서는 [README.md](README.md), 컨텍스트는 [CLAUDE.md](CLAUDE.md). 이 파일은 작업 일지·기술부채·의사결정 기록 보관용.
 
 ---
@@ -70,6 +70,7 @@
   - C2-B: SettingsDrawer 단일 최대 (테마/TTS provider+voice+speed/자동 미니/알림/AI provider/API 키/내 임상과/차단/백업 9개 섹션 + ByokGateBadge + VoicePreview + AutoMiniToggle + NotificationPermission + ApiKeysSection + AiProviderSection + LibraryBackup)
   - C2-C: account·billing·billing/success·billing/fail·onboarding (날짜는 locale별 toLocaleDateString, 가격은 KRW 그대로 — Stripe 도입 전)
   - **총 14개 컴포넌트/페이지 + 250+ 메시지 키**
+  - **후속 fix (같은 날)**: server-rendered journal 페이지 3개 누락분 (`getServerLocale` helper) + specialty 영어 모드 한국어 secondary 숨김 + MiniSummary bullet 정렬 + trend periodLabel ko/en 분기 + trend cache v2 prefix bump + TrendFeaturedCard URL language 명시(locale 변화 refetch + hydrated 가드) + 홈 카드 순서 최종
 - ⬜ **Phase 2-C3** 약관 페이지 영어 번역 (legal/terms·privacy·refund — 법률 검토 필요)
 - ⬜ **Phase 2-D** Stripe 결제 연동 (해외 사용자 USD) — 한국 사업자등록(M8) 완료 후
 
@@ -416,6 +417,18 @@ vercel.json                      cron 설정 (recurring-billing)
 - **UX 4건** — `/app` 빈 상태 문구 provider 비종속 / SortControl 모바일 가운데 / 드로어 헤더 Audio Library·Settings (Fraunces + accent dot) / 글로벌 Footer
 
 기획·프로토타입: `docs/GLOBAL_EXPANSION_PLAN.md`, `docs/paperis_landing_prototype.html`, `docs/HOME_LAYOUT_SPEC.md`, `docs/RESEARCH_READING_BEHAVIOR_Marketing.md`, `docs/Paperis_home_prototype.html`
+
+### Phase 2-C2 후속 fix — server journal 페이지 + UX 다듬기 (2026-05-14)
+
+커밋: `3542b75` (server journal pages), `deb2cfd` (specialty secondary 숨김 + bullet 정렬), `6d1af97` (trend periodLabel + 홈 카드 순서), `7cda77f` (trend cache v2), `2debc41` (Trends 위치), `feca728` (TrendFeaturedCard locale 명시)
+
+- **server-rendered journal 페이지 3개** (`/journal`, `/journal/specialty/[id]`, `/journal/[issn]`) — `useAppMessages`는 client hook이라 빠뜨렸음. `getServerLocale()` helper 추가 + `getMessages(locale).app` 직접 사용. `journalIndex`/`journalSpecialty`/`journalDetail` 메시지 키. specialty.name도 locale별 분기. 부수효과: `cookies()` 호출로 SSG → Dynamic 전환 (catalog fetch는 여전히 revalidate 3600 캐시)
+- **영어 모드에서 specialty 한국어 secondary 숨김** — MySpecialtiesGrid·Editor·specialty/[id] 헤더. 외국 사용자에게 무의미한 한글 표기 제거. 한국어 모드는 영어 nameEn이 secondary로 그대로 표시
+- **MiniSummary bullet 수직 가운데 정렬** — `mt-1` 제거 + `items-center` (1px 위로 떠 보이던 시각 fix)
+- **server `buildPeriod()` 영어 분기** — trend route 두 곳. 기존 "2026년 Q2 (4–6월)" 한국어 hardcoded → ko/en 분기. en은 "Q2 2026 (Apr–Jun)" / "2026 Annual"
+- **trend cache key v2 prefix bump** — Phase 2-B 시점 캐시(영어 키에 한국어 라벨)를 즉시 무효화. `trend-headline:v2:...` / `trend:v2:...`
+- **TrendFeaturedCard URL language 명시 + locale 변화 refetch** — 서버 cookie 동기화 미세 타이밍 이슈 회피. `useLocale` + hydrated 가드로 SSR-safe 첫 렌더 후 한 번만 fetch. URL `&language=locale` 명시로 캐시 키 정확 보장
+- **홈 카드 순서 최종** — Continue listening → Trends → My specialties → My journals. 트렌드 헤드라인이 시선 잡고 임상과·저널 탐색 도구가 아래
 
 ### Phase 2-C2 부수 그룹 i18n 마이그레이션 — 완료 (2026-05-14)
 
