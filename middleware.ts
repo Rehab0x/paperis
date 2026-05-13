@@ -20,6 +20,7 @@ import {
   DEFAULT_LOCALE,
   KR_COUNTRY_CODE,
   LOCALE_COOKIE,
+  LOCALE_COOKIE_MAX_AGE,
   isLocale,
   parseAcceptLanguage,
   type Locale,
@@ -65,9 +66,17 @@ export function middleware(req: NextRequest) {
     return NextResponse.redirect(new URL("/app", req.url));
   }
 
-  // 비로그인 — locale 감지 후 랜딩으로
+  // 비로그인 — locale 감지 후 랜딩으로. 감지된 locale을 cookie에도 sync해
+  // 다음 진입(예: /en 랜딩에서 /app으로 이동)에서 서버 getRequestLanguage와
+  // 클라이언트 useLocale이 모두 같은 값을 보게 한다.
   const locale = detectLocale(req);
-  return NextResponse.redirect(new URL(`/${locale}`, req.url));
+  const response = NextResponse.redirect(new URL(`/${locale}`, req.url));
+  response.cookies.set(LOCALE_COOKIE, locale, {
+    path: "/",
+    maxAge: LOCALE_COOKIE_MAX_AGE,
+    sameSite: "lax",
+  });
+  return response;
 }
 
 // 루트 / 만 가로챈다. 다른 모든 경로(/app, /journal/*, /account, /api/*, 정적
