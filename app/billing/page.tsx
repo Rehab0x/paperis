@@ -17,11 +17,14 @@ import Link from "next/link";
 import { useSession } from "next-auth/react";
 import { loadTossPayments } from "@tosspayments/payment-sdk";
 import type { CheckoutResponse } from "@/app/api/billing/checkout/route";
+import { useAppMessages } from "@/components/useAppMessages";
+import { fmt } from "@/lib/i18n";
 
 const FEATURE_AUTH = process.env.NEXT_PUBLIC_FEATURE_AUTH === "1";
 const TOSS_CLIENT_KEY = process.env.NEXT_PUBLIC_TOSS_CLIENT_KEY ?? "";
 
 export default function BillingPage() {
+  const m = useAppMessages();
   const router = useRouter();
   const { data: session, status } = useSession();
   const [loading, setLoading] = useState(false);
@@ -33,13 +36,11 @@ export default function BillingPage() {
   async function startPayment(plan: "byok" | "pro") {
     setError(null);
     if (!TOSS_CLIENT_KEY) {
-      setError(
-        "결제 시스템이 아직 활성화되지 않았습니다 (NEXT_PUBLIC_TOSS_CLIENT_KEY 미설정)."
-      );
+      setError(m.billing.tossNotConfigured);
       return;
     }
     if (!isLoggedIn) {
-      setError("로그인이 필요합니다.");
+      setError(m.billing.needSignInError);
       return;
     }
     if (!onboardingDone) {
@@ -56,7 +57,7 @@ export default function BillingPage() {
       });
       if (!checkoutRes.ok) {
         const text = await checkoutRes.text();
-        let msg = `결제 준비 실패 (${checkoutRes.status})`;
+        let msg = fmt(m.billing.checkoutFailedStatus, { status: checkoutRes.status });
         try {
           const obj = JSON.parse(text) as { error?: string };
           if (obj.error) msg = obj.error;
@@ -90,10 +91,10 @@ export default function BillingPage() {
     } catch (err) {
       console.warn("[billing] start failed", err);
       const msg =
-        err instanceof Error ? err.message : "결제 시작 중 오류가 발생했습니다.";
+        err instanceof Error ? err.message : m.billing.startFailed;
       // 사용자가 결제창에서 취소한 경우 SDK가 throw — 친절 메시지
       if (msg.includes("USER_CANCEL")) {
-        setError("결제를 취소했습니다.");
+        setError(m.billing.userCancel);
       } else {
         setError(msg);
       }
@@ -107,33 +108,32 @@ export default function BillingPage() {
         href="/app"
         className="inline-flex h-7 items-center gap-1 text-xs text-paperis-text-3 transition hover:text-paperis-text"
       >
-        ← 홈으로
+        {m.common.back}
       </Link>
       <h1 className="mt-2 font-serif text-3xl font-medium tracking-tight text-paperis-text">
-        업그레이드
+        {m.billing.title}
       </h1>
-      <p className="mt-2 text-sm text-paperis-text-2">
-        무료 한도를 우회하고 저널 큐레이션·TTS·풀텍스트 요약을 자유롭게 이용하세요.
-      </p>
+      <p className="mt-2 text-sm text-paperis-text-2">{m.billing.intro}</p>
 
       {!FEATURE_AUTH ? (
         <div className="mt-6 rounded-xl border border-paperis-accent/40 bg-paperis-accent-dim/40 p-4 text-sm text-paperis-accent">
-          결제 기능은 현재 점진 롤아웃 중입니다 (NEXT_PUBLIC_FEATURE_AUTH=0).
+          {m.billing.featureOff}
         </div>
       ) : status === "loading" ? (
         <div className="mt-6 h-32 animate-pulse rounded-xl bg-paperis-surface-2" />
       ) : !isLoggedIn ? (
         <div className="mt-6 rounded-xl border border-paperis-border bg-paperis-surface-2 p-4 text-sm text-paperis-text-2">
-          결제하려면{" "}
-          <span className="font-medium">우측 상단 Google 로그인</span>이 필요합니다.
+          {m.billing.needSignInPrefix}{" "}
+          <span className="font-medium">{m.billing.needSignInBold}</span>
+          {m.billing.needSignInSuffix}
         </div>
       ) : !onboardingDone ? (
         <div className="mt-6 rounded-xl border border-paperis-accent/40 bg-paperis-accent-dim/40 p-4 text-sm text-paperis-accent">
-          결제 전에{" "}
+          {m.billing.needOnboardingPrefix}{" "}
           <Link href="/onboarding" className="font-medium underline">
-            프로필(휴대폰·약관)
+            {m.billing.needOnboardingLink}
           </Link>
-          을 완성해 주세요.
+          {m.billing.needOnboardingSuffix}
         </div>
       ) : null}
 
@@ -141,22 +141,25 @@ export default function BillingPage() {
         {/* BYOK */}
         <div className="flex flex-col rounded-2xl border border-paperis-border bg-paperis-surface p-5">
           <div className="text-[11px] font-semibold uppercase tracking-[0.06em] text-paperis-accent">
-            평생 1회 결제
+            {m.billing.byokTag}
           </div>
           <h2 className="mt-1 font-serif text-2xl font-medium tracking-tight text-paperis-text">
-            BYOK
+            {m.billing.byokName}
           </h2>
           <div className="mt-3 text-3xl font-bold tabular-nums text-paperis-text">
-            9,900<span className="ml-0.5 text-base font-medium">원</span>
+            {m.billing.byokPrice}
+            <span className="ml-0.5 text-base font-medium">{m.billing.byokPriceUnit}</span>
           </div>
-          <p className="mt-1 text-xs text-paperis-text-3">한 번 결제, 평생 이용</p>
+          <p className="mt-1 text-xs text-paperis-text-3">{m.billing.byokSubtitle}</p>
           <ul className="mt-4 space-y-2 text-sm text-paperis-text-2">
-            <li>✓ 저널 큐레이션 무제한</li>
-            <li>✓ TTS 변환 무제한</li>
-            <li>✓ 풀텍스트 요약 무제한</li>
-            <li className="text-paperis-text-3">
-              ※ Gemini API 키를 직접 입력해도 같은 효과 (무료, 자기 키 사용)
-            </li>
+            {m.billing.byokFeatures.map((f, i) => (
+              <li
+                key={i}
+                className={i === m.billing.byokFeatures.length - 1 ? "text-paperis-text-3" : undefined}
+              >
+                {f}
+              </li>
+            ))}
           </ul>
           <button
             type="button"
@@ -164,26 +167,27 @@ export default function BillingPage() {
             disabled={loading || !FEATURE_AUTH}
             className="mt-6 inline-flex h-10 w-full items-center justify-center rounded-lg bg-paperis-accent text-sm font-medium text-paperis-bg transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
           >
-            {loading ? "결제 준비 중…" : "BYOK 결제하기"}
+            {loading ? m.billing.loading : m.billing.byokCta}
           </button>
         </div>
 
         {/* Pro */}
         <div className="flex flex-col rounded-2xl border border-paperis-accent/40 bg-paperis-accent-dim/20 p-5">
           <div className="text-[11px] font-semibold uppercase tracking-[0.06em] text-paperis-accent">
-            월 구독
+            {m.billing.proTag}
           </div>
           <h2 className="mt-1 font-serif text-2xl font-medium tracking-tight text-paperis-text">
-            Pro
+            {m.billing.proName}
           </h2>
           <div className="mt-3 text-3xl font-bold tabular-nums text-paperis-text">
-            4,900<span className="ml-0.5 text-base font-medium">원/월</span>
+            {m.billing.proPrice}
+            <span className="ml-0.5 text-base font-medium">{m.billing.proPriceUnit}</span>
           </div>
-          <p className="mt-1 text-xs text-paperis-text-3">자동 갱신, 언제든 해지</p>
+          <p className="mt-1 text-xs text-paperis-text-3">{m.billing.proSubtitle}</p>
           <ul className="mt-4 space-y-2 text-sm text-paperis-text-2">
-            <li>✓ BYOK 모든 혜택</li>
-            <li>✓ 새 기능 우선 사용</li>
-            <li>✓ 우선 고객지원</li>
+            {m.billing.proFeatures.map((f, i) => (
+              <li key={i}>{f}</li>
+            ))}
           </ul>
           <button
             type="button"
@@ -191,7 +195,7 @@ export default function BillingPage() {
             disabled={loading || !FEATURE_AUTH}
             className="mt-6 inline-flex h-10 w-full items-center justify-center rounded-lg bg-paperis-accent text-sm font-medium text-paperis-bg transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
           >
-            {loading ? "결제 준비 중…" : "Pro 구독하기"}
+            {loading ? m.billing.loading : m.billing.proCta}
           </button>
         </div>
       </div>
@@ -203,19 +207,19 @@ export default function BillingPage() {
       ) : null}
 
       <p className="mt-8 text-xs text-paperis-text-3">
-        결제 진행 시{" "}
+        {m.billing.termsPrefix}{" "}
         <Link href="/legal/terms" className="underline">
-          이용약관
+          {m.billing.termsLink}
         </Link>
         ,{" "}
         <Link href="/legal/privacy" className="underline">
-          개인정보처리방침
+          {m.billing.privacyLink}
         </Link>
         ,{" "}
         <Link href="/legal/refund" className="underline">
-          환불 정책
+          {m.billing.refundLink}
         </Link>
-        에 동의한 것으로 간주됩니다.
+        {m.billing.termsSuffix}
       </p>
     </main>
   );

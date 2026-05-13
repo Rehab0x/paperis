@@ -10,11 +10,16 @@ import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { useSession } from "next-auth/react";
 import type { SubscriptionDto } from "@/app/api/account/subscription/route";
+import { useAppMessages } from "@/components/useAppMessages";
+import { useLocale } from "@/components/useLocale";
+import { fmt } from "@/lib/i18n";
 import type { UsageSnapshot } from "@/lib/usage";
 
 const FEATURE_AUTH = process.env.NEXT_PUBLIC_FEATURE_AUTH === "1";
 
 export default function AccountPage() {
+  const m = useAppMessages();
+  const locale = useLocale();
   const { data: session, status } = useSession();
   const [sub, setSub] = useState<SubscriptionDto | null>(null);
   const [usage, setUsage] = useState<UsageSnapshot | null>(null);
@@ -34,7 +39,7 @@ export default function AccountPage() {
       if (subRes.ok) setSub((await subRes.json()) as SubscriptionDto);
       if (usageRes.ok) setUsage((await usageRes.json()) as UsageSnapshot);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "조회 실패");
+      setError(err instanceof Error ? err.message : m.account.queryFailed);
     } finally {
       setLoading(false);
     }
@@ -46,7 +51,7 @@ export default function AccountPage() {
   }, [status, reload]);
 
   async function handleCancel() {
-    if (!confirm("Pro 구독을 해지하시겠어요? 다음 결제일 이후로는 자동결제가 멈추고 Free로 전환됩니다.")) {
+    if (!confirm(m.account.confirmCancel)) {
       return;
     }
     setCancelling(true);
@@ -61,13 +66,13 @@ export default function AccountPage() {
       } catch {}
       if (!res.ok) {
         const err = (data as { error?: string } | null)?.error;
-        throw new Error(err ?? `해지 실패 (${res.status})`);
+        throw new Error(err ?? fmt(m.account.cancelFailedStatus, { status: res.status }));
       }
-      const msg = (data as { message?: string } | null)?.message ?? "구독이 해지되었습니다.";
+      const msg = (data as { message?: string } | null)?.message ?? m.account.cancelDone;
       setMessage(msg);
       await reload();
     } catch (err) {
-      setError(err instanceof Error ? err.message : "해지 실패");
+      setError(err instanceof Error ? err.message : m.account.cancelFailed);
     } finally {
       setCancelling(false);
     }
@@ -77,7 +82,7 @@ export default function AccountPage() {
     return (
       <main className="mx-auto w-full max-w-3xl flex-1 px-4 py-10 pb-32">
         <div className="rounded-xl border border-paperis-accent/40 bg-paperis-accent-dim/40 p-4 text-sm text-paperis-accent">
-          계정 기능은 현재 점진 롤아웃 중입니다 (NEXT_PUBLIC_FEATURE_AUTH=0).
+          {m.account.featureOff}
         </div>
       </main>
     );
@@ -95,18 +100,18 @@ export default function AccountPage() {
     return (
       <main className="mx-auto w-full max-w-3xl flex-1 px-4 py-10 pb-32">
         <div className="rounded-xl border border-paperis-border bg-paperis-surface-2 p-4 text-sm text-paperis-text-2">
-          계정 정보를 보려면 우측 상단에서 로그인하세요.
+          {m.account.needSignIn}
         </div>
       </main>
     );
   }
 
   const planLabel = (() => {
-    if (!sub || !sub.plan) return "Free";
-    if (sub.plan === "byok") return sub.admin ? "BYOK (관리자)" : "BYOK (평생)";
-    if (sub.status === "cancelled") return "Pro (해지 예정)";
-    if (sub.status === "suspended") return "Pro (결제 실패 — 보류)";
-    return "Pro (월 구독)";
+    if (!sub || !sub.plan) return m.account.planFree;
+    if (sub.plan === "byok") return sub.admin ? m.account.planByokAdmin : m.account.planByokLifetime;
+    if (sub.status === "cancelled") return m.account.planProCancelled;
+    if (sub.status === "suspended") return m.account.planProSuspended;
+    return m.account.planProMonthly;
   })();
   const planColor = (() => {
     if (!sub?.plan) return "text-paperis-text-2";
@@ -122,34 +127,34 @@ export default function AccountPage() {
         href="/app"
         className="inline-flex h-7 items-center gap-1 text-xs text-paperis-text-3 transition hover:text-paperis-text"
       >
-        ← 홈으로
+        {m.common.back}
       </Link>
       <h1 className="mt-2 text-2xl font-semibold tracking-tight text-paperis-text">
-        계정
+        {m.account.title}
       </h1>
 
       {/* 사용자 정보 */}
       <section className="mt-6 rounded-2xl border border-paperis-border bg-paperis-surface p-5">
         <h2 className="text-sm font-semibold text-paperis-text">
-          내 정보
+          {m.account.myInfo}
         </h2>
         <dl className="mt-3 space-y-1 text-sm text-paperis-text-2">
           <div className="flex gap-2">
-            <dt className="w-20 shrink-0 text-paperis-text-3">이름</dt>
-            <dd>{session.user.name ?? "(없음)"}</dd>
+            <dt className="w-20 shrink-0 text-paperis-text-3">{m.account.labelName}</dt>
+            <dd>{session.user.name ?? m.account.nameNone}</dd>
           </div>
           <div className="flex gap-2">
-            <dt className="w-20 shrink-0 text-paperis-text-3">이메일</dt>
+            <dt className="w-20 shrink-0 text-paperis-text-3">{m.account.labelEmail}</dt>
             <dd>{session.user.email}</dd>
           </div>
           <div className="flex gap-2">
-            <dt className="w-20 shrink-0 text-paperis-text-3">온보딩</dt>
+            <dt className="w-20 shrink-0 text-paperis-text-3">{m.account.labelOnboarding}</dt>
             <dd>
               {session.user.onboardingDone ? (
-                <span className="text-paperis-accent">완료</span>
+                <span className="text-paperis-accent">{m.account.onboardingDone}</span>
               ) : (
                 <Link href="/onboarding" className="text-paperis-accent underline">
-                  완성하기
+                  {m.account.onboardingTodo}
                 </Link>
               )}
             </dd>
@@ -160,7 +165,7 @@ export default function AccountPage() {
       {/* 구독 */}
       <section className="mt-4 rounded-2xl border border-paperis-border bg-paperis-surface p-5">
         <h2 className="text-sm font-semibold text-paperis-text">
-          구독
+          {m.account.subscription}
         </h2>
         {loading ? (
           <div className="mt-3 h-12 animate-pulse rounded-md bg-paperis-surface-2" />
@@ -171,18 +176,18 @@ export default function AccountPage() {
               <>
                 {sub.nextBillingAt ? (
                   <div className="text-xs text-paperis-text-3">
-                    다음 결제일:{" "}
+                    {m.account.nextBilling}{" "}
                     <span className="text-paperis-text-2">
-                      {formatDate(sub.nextBillingAt)}
+                      {formatDate(sub.nextBillingAt, locale)}
                     </span>
                   </div>
                 ) : sub.status === "cancelled" && sub.expiresAt ? (
                   <div className="text-xs text-paperis-text-3">
-                    {formatDate(sub.expiresAt)}까지 Pro 권한 유지. 이후 Free로 전환됩니다.
+                    {fmt(m.account.cancelledHint, { date: formatDate(sub.expiresAt, locale) })}
                   </div>
                 ) : sub.status === "suspended" ? (
                   <div className="text-xs text-paperis-accent">
-                    자동결제가 실패했습니다. 결제 페이지에서 카드를 다시 등록해 주세요.
+                    {m.account.suspendedHint}
                   </div>
                 ) : null}
                 <div className="flex gap-2 pt-1">
@@ -190,7 +195,7 @@ export default function AccountPage() {
                     href="/billing"
                     className="inline-flex h-8 items-center rounded-lg border border-paperis-border bg-paperis-surface px-3 text-xs font-medium text-paperis-text-2 transition hover:border-paperis-text-3 hover:text-paperis-text"
                   >
-                    카드 변경
+                    {m.account.changeCard}
                   </Link>
                   {sub.status !== "cancelled" ? (
                     <button
@@ -199,14 +204,14 @@ export default function AccountPage() {
                       disabled={cancelling}
                       className="inline-flex h-8 items-center rounded-lg border border-paperis-accent/40 bg-paperis-surface px-3 text-xs font-medium text-paperis-accent transition hover:bg-paperis-accent-dim/40 disabled:opacity-50"
                     >
-                      {cancelling ? "해지 중…" : "구독 해지"}
+                      {cancelling ? m.account.cancelling : m.account.cancelSubscription}
                     </button>
                   ) : null}
                 </div>
               </>
             ) : sub?.plan === "byok" ? (
               <p className="text-xs text-paperis-text-3">
-                BYOK 평생 이용권입니다. 별도 갱신·해지가 없습니다.
+                {m.account.byokLifetimeNote}
               </p>
             ) : (
               <div className="pt-1">
@@ -214,7 +219,7 @@ export default function AccountPage() {
                   href="/billing"
                   className="inline-flex h-9 items-center rounded-lg bg-paperis-accent px-4 text-sm font-medium text-paperis-bg transition hover:opacity-90"
                 >
-                  업그레이드
+                  {m.account.upgrade}
                 </Link>
               </div>
             )}
@@ -225,30 +230,30 @@ export default function AccountPage() {
       {/* 사용량 */}
       <section className="mt-4 rounded-2xl border border-paperis-border bg-paperis-surface p-5">
         <h2 className="text-sm font-semibold text-paperis-text">
-          이번 달 사용량
+          {m.account.thisMonthUsage}
         </h2>
         {usage ? (
           <div className="mt-3 grid gap-3 sm:grid-cols-3">
-            <UsageBlock label="저널 큐레이션" data={usage.curation} />
-            <UsageBlock label="TTS 변환" data={usage.tts} />
-            <UsageBlock label="풀텍스트 요약" data={usage.fulltext} />
+            <UsageBlock label={m.account.usageCuration} unlimited={m.account.unlimited} data={usage.curation} />
+            <UsageBlock label={m.account.usageTts} unlimited={m.account.unlimited} data={usage.tts} />
+            <UsageBlock label={m.account.usageFulltext} unlimited={m.account.unlimited} data={usage.fulltext} />
           </div>
         ) : (
           <div className="mt-3 h-16 animate-pulse rounded-md bg-paperis-surface-2" />
         )}
         {usage?.plan === "free" ? (
           <p className="mt-3 text-xs text-paperis-text-3">
-            매월 1일 KST 자정에 자동 초기화됩니다.{" "}
+            {m.account.freeResetHint1}{" "}
             <Link href="/billing" className="underline">
-              업그레이드
+              {m.account.upgrade}
             </Link>{" "}
-            시 한도가 사라집니다.
+            {m.account.freeResetHint2}
           </p>
         ) : usage ? (
           <p className="mt-3 text-xs text-paperis-text-3">
             {usage.plan === "byok"
-              ? "BYOK 권한 — 한도 없음."
-              : "Pro 권한 — 한도 없음."}
+              ? m.account.byokNoQuota
+              : m.account.proNoQuota}
           </p>
         ) : null}
       </section>
@@ -269,9 +274,11 @@ export default function AccountPage() {
 
 function UsageBlock({
   label,
+  unlimited,
   data,
 }: {
   label: string;
+  unlimited: string;
   data: { current: number; limit: number; remaining: number };
 }) {
   const isInf = !Number.isFinite(data.limit);
@@ -280,7 +287,7 @@ function UsageBlock({
     <div className="rounded-lg border border-paperis-border bg-paperis-surface p-3">
       <div className="text-xs text-paperis-text-3">{label}</div>
       <div className="mt-1 text-base font-semibold text-paperis-text">
-        {isInf ? "무제한" : `${data.current} / ${data.limit}`}
+        {isInf ? unlimited : `${data.current} / ${data.limit}`}
       </div>
       {!isInf ? (
         <div className="mt-1.5 h-1 w-full overflow-hidden rounded-full bg-paperis-border">
@@ -294,10 +301,10 @@ function UsageBlock({
   );
 }
 
-function formatDate(iso: string): string {
+function formatDate(iso: string, locale: "ko" | "en"): string {
   try {
     const d = new Date(iso);
-    return d.toLocaleDateString("ko-KR", {
+    return d.toLocaleDateString(locale === "en" ? "en-US" : "ko-KR", {
       year: "numeric",
       month: "long",
       day: "numeric",

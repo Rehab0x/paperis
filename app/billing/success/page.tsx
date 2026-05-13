@@ -12,6 +12,9 @@
 import { Suspense, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
+import { useAppMessages } from "@/components/useAppMessages";
+import { useLocale } from "@/components/useLocale";
+import { fmt } from "@/lib/i18n";
 
 type Status = "verifying" | "success" | "fail";
 type Flow = "byok" | "pro";
@@ -24,6 +27,8 @@ interface SuccessState {
 }
 
 function SuccessInner() {
+  const m = useAppMessages();
+  const locale = useLocale();
   const searchParams = useSearchParams();
   const flow: Flow = searchParams.get("flow") === "pro" ? "pro" : "byok";
 
@@ -52,7 +57,7 @@ function SuccessInner() {
       try {
         if (flow === "byok") {
           if (!paymentKey || !orderId || !Number.isFinite(amount)) {
-            throw new Error("결제 정보가 누락되었습니다.");
+            throw new Error(m.billing.missingPaymentInfo);
           }
           const res = await fetch("/api/billing/confirm", {
             method: "POST",
@@ -66,7 +71,7 @@ function SuccessInner() {
 
         // Pro flow
         if (!customerKey || !authKey) {
-          throw new Error("Pro 구독 인증 정보가 누락되었습니다.");
+          throw new Error(m.billing.missingProAuth);
         }
         // 1. 빌링키 발급
         const issueRes = await fetch("/api/billing/issue-billing-key", {
@@ -91,7 +96,7 @@ function SuccessInner() {
           expiresAt: chargeData.expiresAt,
         });
       } catch (err) {
-        const msg = err instanceof Error ? err.message : "결제 확정 실패";
+        const msg = err instanceof Error ? err.message : m.billing.confirmGenericFailed;
         setState({ status: "fail", message: msg, flow });
       }
     }
@@ -105,12 +110,10 @@ function SuccessInner() {
         <div className="flex items-center gap-3">
           <span className="inline-block h-4 w-4 animate-spin rounded-full border-2 border-paperis-border border-t-paperis-accent" />
           {flow === "byok"
-            ? "결제를 확정하는 중입니다…"
-            : "구독을 활성화하는 중입니다 (카드 등록 + 첫 달 결제)…"}
+            ? m.billing.successConfirming
+            : m.billing.successProActivating}
         </div>
-        <p className="mt-3 text-xs text-paperis-text-3">
-          창을 닫지 마세요. 처리에 5초 정도 걸릴 수 있습니다.
-        </p>
+        <p className="mt-3 text-xs text-paperis-text-3">{m.billing.successWait}</p>
       </div>
     );
   }
@@ -120,29 +123,30 @@ function SuccessInner() {
       <div className="rounded-xl border border-paperis-accent/40 bg-paperis-accent-dim/40 p-6">
         <div className="text-2xl">✅</div>
         <h2 className="mt-2 font-serif text-xl font-medium tracking-tight text-paperis-text">
-          {flow === "byok" ? "결제가 완료되었습니다" : "Pro 구독이 시작되었습니다"}
+          {flow === "byok" ? m.billing.successByokTitle : m.billing.successProTitle}
         </h2>
         <p className="mt-2 text-sm text-paperis-text-2">
           {flow === "byok"
-            ? "BYOK 평생 권한이 활성화되었습니다. 이제 모든 한도 없이 이용할 수 있습니다."
-            : `Pro 권한이 활성화되었습니다. 매월 자동 결제됩니다.${
-                state.expiresAt
-                  ? ` (다음 결제일: ${formatDate(state.expiresAt)})`
-                  : ""
-              }`}
+            ? m.billing.successByokBody
+            : m.billing.successProBodyBase +
+              (state.expiresAt
+                ? fmt(m.billing.successProNextDate, {
+                    date: formatDate(state.expiresAt, locale),
+                  })
+                : "")}
         </p>
         <div className="mt-5 flex gap-2">
           <Link
             href="/app"
             className="inline-flex h-9 items-center rounded-lg bg-paperis-accent px-4 text-sm font-medium text-paperis-bg transition hover:opacity-90"
           >
-            홈으로
+            {m.billing.successHome}
           </Link>
           <Link
             href="/journal"
             className="inline-flex h-9 items-center rounded-lg border border-paperis-border bg-paperis-surface px-4 text-sm font-medium text-paperis-text-2 transition hover:border-paperis-text-3 hover:text-paperis-text"
           >
-            저널 큐레이션
+            {m.billing.successJournal}
           </Link>
         </div>
       </div>
@@ -153,23 +157,22 @@ function SuccessInner() {
     <div className="rounded-xl border border-paperis-accent/40 bg-paperis-accent-dim/40 p-6">
       <div className="text-2xl">⚠️</div>
       <h2 className="mt-2 font-serif text-xl font-medium tracking-tight text-paperis-text">
-        결제 처리 중 문제가 발생했습니다
+        {m.billing.successErrorTitle}
       </h2>
       <p className="mt-2 text-sm text-paperis-accent">{state.message}</p>
       <p className="mt-4 text-xs text-paperis-text-2">
-        결제는 이미 처리되었을 수 있습니다. 위 정보와 함께 고객센터로 문의해 주세요.
-        (자세한 내용은{" "}
+        {m.billing.successErrorBody1}{" "}
         <Link href="/legal/refund" className="underline">
-          환불 정책
+          {m.billing.refundLink}
         </Link>
-        )
+        {m.billing.successErrorBody2}
       </p>
       <div className="mt-5">
         <Link
           href="/billing"
           className="inline-flex h-9 items-center rounded-lg border border-paperis-accent bg-paperis-accent px-4 text-sm font-medium text-paperis-bg transition hover:opacity-90"
         >
-          결제 페이지로
+          {m.billing.successErrorBack}
         </Link>
       </div>
     </div>
@@ -189,10 +192,10 @@ async function throwIfNotOk(res: Response): Promise<unknown> {
   return data;
 }
 
-function formatDate(iso: string): string {
+function formatDate(iso: string, locale: "ko" | "en"): string {
   try {
     const d = new Date(iso);
-    return d.toLocaleDateString("ko-KR", {
+    return d.toLocaleDateString(locale === "en" ? "en-US" : "ko-KR", {
       year: "numeric",
       month: "long",
       day: "numeric",
@@ -202,15 +205,22 @@ function formatDate(iso: string): string {
   }
 }
 
+function BackToAppLink() {
+  const m = useAppMessages();
+  return (
+    <Link
+      href="/app"
+      className="mb-3 inline-flex h-7 items-center gap-1 text-xs text-paperis-text-3 transition hover:text-paperis-text"
+    >
+      {m.common.back}
+    </Link>
+  );
+}
+
 export default function BillingSuccessPage() {
   return (
     <main className="mx-auto w-full max-w-3xl flex-1 px-4 py-10 pb-32">
-      <Link
-        href="/app"
-        className="mb-3 inline-flex h-7 items-center gap-1 text-xs text-paperis-text-3 transition hover:text-paperis-text"
-      >
-        ← 홈으로
-      </Link>
+      <BackToAppLink />
       <Suspense
         fallback={
           <div className="h-32 animate-pulse rounded-xl bg-paperis-surface-2" />

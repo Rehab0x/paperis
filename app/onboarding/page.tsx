@@ -11,8 +11,11 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { useSession } from "next-auth/react";
+import { useAppMessages } from "@/components/useAppMessages";
+import { fmt } from "@/lib/i18n";
 
 export default function OnboardingPage() {
+  const m = useAppMessages();
   const router = useRouter();
   const { data: session, status, update } = useSession();
   const [phone, setPhone] = useState("");
@@ -57,7 +60,7 @@ export default function OnboardingPage() {
       });
       if (!res.ok) {
         const text = await res.text();
-        let msg = `저장 실패 (${res.status})`;
+        let msg = fmt(m.onboarding.saveFailedStatus, { status: res.status });
         try {
           const j = JSON.parse(text);
           if (j?.error) msg = j.error;
@@ -71,7 +74,7 @@ export default function OnboardingPage() {
       await update();
       router.replace("/app");
     } catch (err) {
-      setError(err instanceof Error ? err.message : "저장 실패");
+      setError(err instanceof Error ? err.message : m.onboarding.saveFailed);
     } finally {
       setSubmitting(false);
     }
@@ -80,7 +83,7 @@ export default function OnboardingPage() {
   if (status === "loading" || !session?.user) {
     return (
       <main className="mx-auto w-full max-w-2xl flex-1 px-4 py-10">
-        <p className="text-sm text-paperis-text-3">불러오는 중…</p>
+        <p className="text-sm text-paperis-text-3">{m.onboarding.loading}</p>
       </main>
     );
   }
@@ -91,27 +94,27 @@ export default function OnboardingPage() {
         href="/app"
         className="inline-flex h-7 items-center gap-1 text-xs text-paperis-text-3 transition hover:text-paperis-text"
       >
-        ← 홈으로
+        {m.common.back}
       </Link>
       <header className="mt-2 mb-7">
         <h1 className="font-serif text-3xl font-medium tracking-tight text-paperis-text">
-          프로필 완성
+          {m.onboarding.title}
         </h1>
         <p className="mt-1.5 text-sm text-paperis-text-3">
-          {session.user.name ? `${session.user.name}님, 환영합니다. ` : ""}
-          결제·구독을 위해 휴대폰 번호와 약관 동의가 필요합니다. 한 번만 입력하면
-          됩니다.
+          {session.user.name
+            ? fmt(m.onboarding.welcomeWithName, { name: session.user.name })
+            : ""}
+          {m.onboarding.intro}
         </p>
       </header>
 
       <form onSubmit={handleSubmit} className="space-y-7">
         <section>
           <h2 className="text-sm font-semibold text-paperis-text">
-            휴대폰 번호
+            {m.onboarding.phoneTitle}
           </h2>
           <p className="mt-0.5 text-xs text-paperis-text-3">
-            Toss Payments 자동결제에 필수. 010-XXXX-XXXX 형식 또는 +82 표기 모두
-            가능.
+            {m.onboarding.phoneHint}
           </p>
           <input
             type="tel"
@@ -126,35 +129,35 @@ export default function OnboardingPage() {
 
         <section>
           <h2 className="text-sm font-semibold text-paperis-text">
-            약관 동의
+            {m.onboarding.termsTitle}
           </h2>
           <div className="mt-3 space-y-2">
             <Checkbox
               checked={terms}
               onChange={setTerms}
               required
-              label="서비스 이용약관 동의"
-              hint="필수"
+              label={m.onboarding.termsLabel}
+              hint={m.onboarding.termsHint}
             />
             <Checkbox
               checked={privacy}
               onChange={setPrivacy}
               required
-              label="개인정보 수집·이용 동의"
-              hint="필수 — 이메일/이름/휴대폰을 결제·서비스 운영 목적으로 처리"
+              label={m.onboarding.privacyLabel}
+              hint={m.onboarding.privacyHint}
             />
             <Checkbox
               checked={thirdParty}
               onChange={setThirdParty}
               required
-              label="개인정보 제3자 제공 동의 (Toss Payments)"
-              hint="필수 — 결제 처리 위해 결제사에 휴대폰/이름/이메일 제공"
+              label={m.onboarding.thirdPartyLabel}
+              hint={m.onboarding.thirdPartyHint}
             />
             <Checkbox
               checked={marketing}
               onChange={setMarketing}
-              label="마케팅 수신 동의"
-              hint="선택 — 새 기능·이벤트 안내 메일"
+              label={m.onboarding.marketingLabel}
+              hint={m.onboarding.marketingHint}
             />
           </div>
         </section>
@@ -171,14 +174,14 @@ export default function OnboardingPage() {
             onClick={() => router.replace("/app")}
             className="rounded-lg px-3 py-2 text-sm text-paperis-text-3 transition hover:text-paperis-text"
           >
-            나중에
+            {m.onboarding.later}
           </button>
           <button
             type="submit"
             disabled={!canSubmit}
             className="rounded-lg bg-paperis-accent px-4 py-2 text-sm font-medium text-paperis-bg transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
           >
-            {submitting ? "저장 중…" : "완료"}
+            {submitting ? m.onboarding.saving : m.onboarding.save}
           </button>
         </div>
       </form>
