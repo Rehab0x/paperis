@@ -147,12 +147,18 @@ export class GoogleCloudTtsProvider implements TtsProvider {
       throw new Error("합성할 텍스트가 비어 있습니다.");
     }
 
-    const voice: GoogleVoice =
-      input.voice && isGoogleVoice(input.voice)
-        ? input.voice
-        : input.language === "en"
-          ? "en-US-Neural2-F"
-          : "ko-KR-Neural2-A";
+    // voice가 language와 mismatch (예: 한국어 화자 voice인데 영어 텍스트)면
+    // 그 language의 default voice로 강제 swap. 사용자가 ko 모드에서 ko 화자를
+    // 골라 두었다가 en 모드로 옮겨와도 영어 voice로 자동 보정.
+    const defaultForLang: GoogleVoice =
+      input.language === "en" ? "en-US-Neural2-F" : "ko-KR-Neural2-A";
+    const requested =
+      input.voice && isGoogleVoice(input.voice) ? input.voice : null;
+    const voiceMatchesLang =
+      requested &&
+      ((input.language === "en" && requested.startsWith("en-")) ||
+        (input.language === "ko" && requested.startsWith("ko-")));
+    const voice: GoogleVoice = voiceMatchesLang ? requested! : defaultForLang;
     const languageCode = voice.startsWith("ko-") ? "ko-KR" : "en-US";
 
     const chunks = splitForGoogle(text);
