@@ -7,11 +7,13 @@
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import { signIn, signOut, useSession } from "next-auth/react";
+import { useAppMessages } from "@/components/useAppMessages";
 
 const FEATURE_AUTH = process.env.NEXT_PUBLIC_FEATURE_AUTH === "1";
 
 export default function AuthMenu() {
   const { data: session, status } = useSession();
+  const m = useAppMessages();
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
 
@@ -31,7 +33,7 @@ export default function AuthMenu() {
   if (status === "loading") {
     return (
       <span
-        aria-label="로그인 상태 확인 중"
+        aria-label={m.common.loading}
         className="inline-flex h-8 w-8 animate-pulse rounded-full bg-paperis-surface-2"
       />
     );
@@ -44,7 +46,7 @@ export default function AuthMenu() {
         onClick={() => signIn("google", { callbackUrl: "/app" })}
         className="inline-flex h-8 items-center rounded-lg border border-paperis-border bg-paperis-surface px-3 text-xs font-medium text-paperis-text-2 transition hover:border-paperis-text-3 hover:text-paperis-text"
       >
-        로그인
+        {m.auth.signIn}
       </button>
     );
   }
@@ -61,7 +63,7 @@ export default function AuthMenu() {
       <button
         type="button"
         onClick={() => setOpen((v) => !v)}
-        aria-label="계정 메뉴"
+        aria-label={m.auth.menu}
         aria-expanded={open}
         className="inline-flex h-8 w-8 items-center justify-center overflow-hidden rounded-full border border-paperis-border bg-paperis-surface-2 text-xs font-semibold text-paperis-text transition hover:border-paperis-text-3"
       >
@@ -69,7 +71,7 @@ export default function AuthMenu() {
           // eslint-disable-next-line @next/next/no-img-element
           <img
             src={user.image}
-            alt={user.name ?? "사용자"}
+            alt={user.name ?? m.auth.user}
             className="h-full w-full object-cover"
             referrerPolicy="no-referrer"
           />
@@ -85,7 +87,7 @@ export default function AuthMenu() {
         >
           <div className="px-2 py-1.5">
             <div className="truncate text-sm font-medium text-paperis-text">
-              {user.name ?? "(이름 없음)"}
+              {user.name ?? m.auth.noName}
             </div>
             <div className="truncate text-[11px] text-paperis-text-3">
               {user.email}
@@ -101,9 +103,9 @@ export default function AuthMenu() {
             >
               <span>📝</span>
               <span className="min-w-0 flex-1">
-                <span className="block font-medium">프로필 완성하기</span>
+                <span className="block font-medium">{m.auth.completeProfile}</span>
                 <span className="block text-[10px] opacity-80">
-                  결제·구독에 필요해요
+                  {m.auth.completeProfileHint}
                 </span>
               </span>
             </Link>
@@ -117,7 +119,7 @@ export default function AuthMenu() {
                 className="flex items-center gap-2 rounded-lg px-2 py-1.5 text-xs font-medium text-paperis-text-2 transition hover:bg-paperis-surface-2 hover:text-paperis-text"
               >
                 <span>👤</span>
-                <span>계정 · 구독</span>
+                <span>{m.auth.account}</span>
               </Link>
               <Link
                 href="/billing"
@@ -126,12 +128,12 @@ export default function AuthMenu() {
                 className="mb-1 flex items-center gap-2 rounded-lg px-2 py-1.5 text-xs font-medium text-paperis-text-2 transition hover:bg-paperis-surface-2 hover:text-paperis-text"
               >
                 <span>💎</span>
-                <span>업그레이드</span>
+                <span>{m.auth.upgrade}</span>
               </Link>
             </>
           ) : null}
           <div className="px-2 pb-1 text-[11px] text-paperis-text-3">
-            내 임상과·저널 설정이 디바이스 간 동기화됩니다.
+            {m.auth.syncHint}
           </div>
           <button
             type="button"
@@ -142,7 +144,7 @@ export default function AuthMenu() {
             }}
             className="mt-1 inline-flex h-8 w-full items-center justify-start rounded-lg px-2 text-xs font-medium text-paperis-text-2 transition hover:bg-paperis-surface-2 hover:text-paperis-text"
           >
-            로그아웃
+            {m.auth.signOut}
           </button>
         </div>
       ) : null}

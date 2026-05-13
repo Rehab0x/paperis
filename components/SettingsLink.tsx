@@ -2,16 +2,18 @@
 
 import { useState } from "react";
 import SettingsDrawer from "@/components/SettingsDrawer";
+import { useAppMessages } from "@/components/useAppMessages";
 
 export default function SettingsLink({ className }: { className?: string }) {
+  const m = useAppMessages();
   const [open, setOpen] = useState(false);
   return (
     <>
       <button
         type="button"
         onClick={() => setOpen(true)}
-        aria-label="앱 설정 열기"
-        title="앱 설정"
+        aria-label={m.header.settingsOpen}
+        title={m.header.settings}
         className={
           className ??
           "inline-flex items-center justify-center rounded-lg p-1.5 text-paperis-text-2 transition hover:bg-paperis-surface-2 hover:text-paperis-text"

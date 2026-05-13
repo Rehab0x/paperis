@@ -137,5 +137,30 @@
       "ko": "KO",
       "en": "EN"
     }
+  },
+  "app": {
+    "common": {
+      "loading": "Loading…",
+      "back": "← Home",
+      "close": "Close"
+    },
+    "header": {
+      "libraryOpen": "Open audio library",
+      "library": "Audio library",
+      "settingsOpen": "Open settings",
+      "settings": "Settings"
+    },
+    "auth": {
+      "signIn": "Sign in",
+      "signOut": "Sign out",
+      "noName": "(no name)",
+      "completeProfile": "Complete your profile",
+      "completeProfileHint": "Required for billing",
+      "account": "Account · Subscription",
+      "upgrade": "Upgrade",
+      "syncHint": "Your specialty and journal preferences sync across devices.",
+      "menu": "Account menu",
+      "user": "User"
+    }
   }
 }

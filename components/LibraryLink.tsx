@@ -2,9 +2,11 @@
 
 import { useEffect, useState } from "react";
 import LibraryDrawer from "@/components/LibraryDrawer";
+import { useAppMessages } from "@/components/useAppMessages";
 import { countTracks, subscribeAudioLibrary } from "@/lib/audio-library";
 
 export default function LibraryLink({ className }: { className?: string }) {
+  const m = useAppMessages();
   const [count, setCount] = useState<number | null>(null);
   const [open, setOpen] = useState(false);
 
@@ -33,8 +35,8 @@ export default function LibraryLink({ className }: { className?: string }) {
       <button
         type="button"
         onClick={() => setOpen(true)}
-        aria-label="오디오 라이브러리 열기"
-        title="오디오 라이브러리"
+        aria-label={m.header.libraryOpen}
+        title={m.header.library}
         className={
           className ??
           "relative inline-flex items-center justify-center rounded-lg p-1.5 text-lg text-paperis-text-2 transition hover:bg-paperis-surface-2 hover:text-paperis-text"
