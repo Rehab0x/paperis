@@ -69,6 +69,16 @@ export const LOCALE_COOKIE = "paperis.locale";
 // 1년 — 사용자가 한 번 명시적으로 토글하면 오래 유지
 export const LOCALE_COOKIE_MAX_AGE = 60 * 60 * 24 * 365;
 
+// Server component에서 사용. cookies() 호출은 async (Next 15+).
+// 미설정 시 "ko" fallback — 한국 사용자 1순위.
+export async function getServerLocale(): Promise<Locale> {
+  // dynamic import — 클라이언트 번들에 포함되지 않게.
+  const { cookies } = await import("next/headers");
+  const store = await cookies();
+  const value = store.get(LOCALE_COOKIE)?.value;
+  return isLocale(value) ? value : "ko";
+}
+
 // API 라우트가 요청에서 출력 언어를 결정할 때 쓰는 헬퍼.
 // 우선순위:
 //   1. body.language가 "ko" | "en" 명시 (테스트/디버깅·기존 호환)

@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import SpecialtyJournalsList from "@/components/SpecialtyJournalsList";
+import { fmt, getMessages, getServerLocale } from "@/lib/i18n";
 import { getSpecialty, type Specialty } from "@/lib/journals";
 import {
   getJournalByIssn,
@@ -22,11 +23,19 @@ const OVER_FETCH = 20;
 
 export async function generateMetadata({ params }: Props) {
   const { id } = await params;
-  const specialty = await getSpecialty(id);
-  if (!specialty) return { title: "임상과 — Paperis" };
+  const [specialty, locale] = await Promise.all([
+    getSpecialty(id),
+    getServerLocale(),
+  ]);
+  const m = getMessages(locale).app;
+  if (!specialty) return { title: m.journalSpecialty.metaFallback };
+  const localName = locale === "en" ? specialty.nameEn : specialty.name;
   return {
-    title: `${specialty.name} 저널 — Paperis`,
-    description: `${specialty.name}(${specialty.nameEn}) 주요 저널 — 카탈로그 시드 + OpenAlex 자동 추천`,
+    title: fmt(m.journalSpecialty.metaTitle, { name: localName }),
+    description: fmt(m.journalSpecialty.metaDescription, {
+      name: localName,
+      nameEn: specialty.nameEn,
+    }),
   };
 }
 
@@ -62,10 +71,16 @@ async function loadCandidateJournals(
 
 export default async function SpecialtyJournalsPage({ params }: Props) {
   const { id } = await params;
-  const specialty = await getSpecialty(id);
+  const [specialty, locale] = await Promise.all([
+    getSpecialty(id),
+    getServerLocale(),
+  ]);
   if (!specialty) notFound();
+  const m = getMessages(locale).app;
 
   const journals = await loadCandidateJournals(specialty, OVER_FETCH);
+  const localName = locale === "en" ? specialty.nameEn : specialty.name;
+  const secondaryName = locale === "en" ? specialty.name : specialty.nameEn;
 
   return (
     <main className="mx-auto w-full max-w-6xl flex-1 px-4 py-8 pb-32">
@@ -74,26 +89,23 @@ export default async function SpecialtyJournalsPage({ params }: Props) {
           href="/journal"
           className="text-paperis-text-3 transition hover:text-paperis-text"
         >
-          ← 임상과 목록
+          {m.journalSpecialty.back}
         </Link>
       </nav>
 
       <header className="mb-7">
         <h1 className="font-serif text-3xl font-medium tracking-tight text-paperis-text">
-          {specialty.name}
+          {localName}
         </h1>
-        <p className="mt-0.5 text-sm text-paperis-text-3">{specialty.nameEn}</p>
+        <p className="mt-0.5 text-sm text-paperis-text-3">{secondaryName}</p>
         <p className="mt-3 text-xs text-paperis-text-3">
-          카탈로그 핵심 저널 + OpenAlex 자동 추천 — 상위 {TARGET_COUNT}건. 카드
-          우상단 ✕로 이 임상과에서 숨길 수 있고, 자리는 다음 후보로 자동
-          보충됩니다.
+          {fmt(m.journalSpecialty.intro, { n: TARGET_COUNT })}
         </p>
       </header>
 
       {journals.length === 0 ? (
         <div className="rounded-2xl border border-dashed border-paperis-border bg-paperis-surface p-8 text-center text-sm text-paperis-text-3">
-          저널 추천을 가져오지 못했습니다. OpenAlex API가 일시적으로 응답하지
-          않거나 field ID 매핑이 비어 있을 수 있습니다.
+          {m.journalSpecialty.fetchFailed}
           <p className="mt-2 text-xs text-paperis-text-3">
             subfield:{" "}
             <code className="font-mono">{specialty.openAlexSubfieldId}</code>

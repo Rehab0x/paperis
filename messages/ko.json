@@ -300,6 +300,29 @@
       "scriptPanelClose": "스크립트 패널 닫기",
       "closeLabel": "닫기 ✕"
     },
+    "journalIndex": {
+      "metaTitle": "임상과 선택 — Paperis",
+      "metaDescription": "임상과별 저널 큐레이션 — 호 탐색·주제 탐색·최근 트렌드",
+      "headline": "임상과를 고르세요",
+      "subline": "임상과별 주요 저널 — 호 탐색, 주제 탐색, 최근 트렌드를 한 번에."
+    },
+    "journalSpecialty": {
+      "metaFallback": "임상과 — Paperis",
+      "metaTitle": "{name} 저널 — Paperis",
+      "metaDescription": "{name}({nameEn}) 주요 저널 — 카탈로그 시드 + OpenAlex 자동 추천",
+      "back": "← 임상과 목록",
+      "intro": "카탈로그 핵심 저널 + OpenAlex 자동 추천 — 상위 {n}건. 카드 우상단 ✕로 이 임상과에서 숨길 수 있고, 자리는 다음 후보로 자동 보충됩니다.",
+      "fetchFailed": "저널 추천을 가져오지 못했습니다. OpenAlex API가 일시적으로 응답하지 않거나 field ID 매핑이 비어 있을 수 있습니다."
+    },
+    "journalDetail": {
+      "metaFallback": "저널 — Paperis",
+      "metaTitle": "{name} — Paperis",
+      "metaDescription": "{name} 호 탐색·주제 탐색·최근 트렌드",
+      "backToSpecialty": "← {name} 저널 목록",
+      "backToIndex": "← 임상과 목록",
+      "twoYr": "2yr 인용도 {value}",
+      "papers": "논문 {count}편"
+    },
     "account": {
       "featureOff": "계정 기능은 현재 점진 롤아웃 중입니다 (NEXT_PUBLIC_FEATURE_AUTH=0).",
       "needSignIn": "계정 정보를 보려면 우측 상단에서 로그인하세요.",

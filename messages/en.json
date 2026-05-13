@@ -300,6 +300,29 @@
       "scriptPanelClose": "Close script panel",
       "closeLabel": "Close ✕"
     },
+    "journalIndex": {
+      "metaTitle": "Pick a specialty — Paperis",
+      "metaDescription": "Specialty-based journal curation — issues, topics, trends",
+      "headline": "Pick a specialty",
+      "subline": "Top journals per specialty — issues, topics, and recent trends in one place."
+    },
+    "journalSpecialty": {
+      "metaFallback": "Specialty — Paperis",
+      "metaTitle": "{name} journals — Paperis",
+      "metaDescription": "{name} ({nameEn}) top journals — catalog seed + OpenAlex auto-recommend",
+      "back": "← Specialty list",
+      "intro": "Catalog seed + OpenAlex auto-recommend — top {n}. Click ✕ on a card to hide it in this specialty; the slot is auto-refilled with the next candidate.",
+      "fetchFailed": "Couldn't fetch journal recommendations. The OpenAlex API may be temporarily unavailable or the field ID mapping may be empty."
+    },
+    "journalDetail": {
+      "metaFallback": "Journal — Paperis",
+      "metaTitle": "{name} — Paperis",
+      "metaDescription": "{name} — issues, topics, recent trends",
+      "backToSpecialty": "← {name} journals",
+      "backToIndex": "← Specialty list",
+      "twoYr": "2yr citations {value}",
+      "papers": "{count} papers"
+    },
     "account": {
       "featureOff": "Account features are gradually rolling out (NEXT_PUBLIC_FEATURE_AUTH=0).",
       "needSignIn": "Sign in via the top-right menu to view account info.",

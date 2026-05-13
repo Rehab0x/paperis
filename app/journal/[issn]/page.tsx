@@ -5,6 +5,7 @@ import JournalTabs, { type JournalTab } from "@/components/JournalTabs";
 import MarkJournalVisited from "@/components/MarkJournalVisited";
 import TopicExplorer from "@/components/TopicExplorer";
 import TrendDigest from "@/components/TrendDigest";
+import { fmt, getMessages, getServerLocale } from "@/lib/i18n";
 import { getJournalCatalog, getSpecialty } from "@/lib/journals";
 import { getJournalByIssn } from "@/lib/openalex";
 
@@ -49,12 +50,14 @@ function parseTab(value: string | undefined): JournalTab {
 export async function generateMetadata({ params }: Props) {
   const { issn: rawIssn } = await params;
   const issn = decodeURIComponent(rawIssn);
-  if (!ISSN_RE.test(issn)) return { title: "저널 — Paperis" };
+  const locale = await getServerLocale();
+  const m = getMessages(locale).app;
+  if (!ISSN_RE.test(issn)) return { title: m.journalDetail.metaFallback };
   const journal = await getJournalByIssn(issn);
-  if (!journal) return { title: "저널 — Paperis" };
+  if (!journal) return { title: m.journalDetail.metaFallback };
   return {
-    title: `${journal.name} — Paperis`,
-    description: `${journal.name} 호 탐색·주제 탐색·최근 트렌드`,
+    title: fmt(m.journalDetail.metaTitle, { name: journal.name }),
+    description: fmt(m.journalDetail.metaDescription, { name: journal.name }),
   };
 }
 
@@ -63,6 +66,8 @@ export default async function JournalHomePage({
   params,
   searchParams,
 }: Props) {
+  const locale = await getServerLocale();
+  const m = getMessages(locale).app;
   const { issn: rawIssn } = await params;
   const sp = await searchParams;
   const { tab: tabRaw, from: fromRaw } = sp;
@@ -86,15 +91,21 @@ export default async function JournalHomePage({
     tab === "topic" && fromSpecialty
       ? fromSpecialty.suggestedTopics.slice(0, 8)
       : [];
-  const specialtyName = fromSpecialty?.name ?? null;
+  const specialtyLocalName = fromSpecialty
+    ? locale === "en"
+      ? fromSpecialty.nameEn
+      : fromSpecialty.name
+    : null;
+  // TopicExplorer 추천 태그 라벨 — locale별 specialty name
+  const specialtyName = specialtyLocalName;
 
   // 뒤로 가기 — referrer가 있으면 그 임상과 저널 목록, 없으면 임상과 그리드
   const backHref = fromSpecialty
     ? `/journal/specialty/${encodeURIComponent(fromSpecialty.id)}`
     : "/journal";
-  const backLabel = fromSpecialty
-    ? `← ${fromSpecialty.name} 저널 목록`
-    : "← 임상과 목록";
+  const backLabel = specialtyLocalName
+    ? fmt(m.journalDetail.backToSpecialty, { name: specialtyLocalName })
+    : m.journalDetail.backToIndex;
 
   return (
     <main className="mx-auto w-full max-w-6xl flex-1 px-4 py-8 pb-32">
@@ -119,10 +130,18 @@ export default async function JournalHomePage({
             <span className="font-mono">ISSN-L {journal.issnL}</span>
           ) : null}
           {typeof journal.twoYearMeanCitedness === "number" ? (
-            <span>2yr 인용도 {journal.twoYearMeanCitedness.toFixed(2)}</span>
+            <span>
+              {fmt(m.journalDetail.twoYr, {
+                value: journal.twoYearMeanCitedness.toFixed(2),
+              })}
+            </span>
           ) : null}
           {journal.worksCount > 0 ? (
-            <span>논문 {journal.worksCount.toLocaleString()}편</span>
+            <span>
+              {fmt(m.journalDetail.papers, {
+                count: journal.worksCount.toLocaleString(),
+              })}
+            </span>
           ) : null}
         </p>
       </header>
