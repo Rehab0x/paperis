@@ -14,6 +14,8 @@
 
 서비스 진입은 두 단계 — `paperis.vercel.app/`은 비로그인 사용자에게 한/영 랜딩페이지(`/ko`, `/en`)를 보여주고, 로그인된 사용자나 deep link 사용자는 `/app`(앱 본체)로 바로 진입한다. 미들웨어가 쿠키 → GeoIP(`x-vercel-ip-country`) → Accept-Language(ko 토큰 우선) 순으로 자동 분기.
 
+영어 사용자의 LLM/TTS 출력도 자동으로 영어로 — `paperis.locale` 쿠키 기반. 클라이언트가 별도 명시 없으면 서버(`getRequestLanguage`)가 쿠키 보고 결정한다. ko → Clova(default), en → Google Cloud TTS. 프롬프트도 locale별로 분기(영어 출력은 한국어 의학용어 보존 지침/한국어 인사 회피 지침 자동 제거).
+
 설계 1순위 시나리오: **출퇴근길에 듣는다**. 모든 흐름이 결국 TTS → 라이브러리 → 플레이어로 수렴한다.
 
 ---
@@ -187,6 +189,7 @@ app/
     auth/[...nextauth]
 components/
   Footer                                                 글로벌 푸터 (모든 페이지, PlayerBar 보정)
+  useLocale                                              client cookie 기반 locale 훅 (Phase 2-B)
   PlayerBar PlayerProvider AudioLibrary LibraryDrawer    글로벌 미디어 (포털 마운트)
   ContinueListeningCard MySpecialtiesPicker
   TrendFeaturedCard MyJournalsNewIssues UsageBanner      홈 카드 시스템
@@ -201,7 +204,7 @@ lib/
   ai/                              types · registry · gemini · claude · openai (Grok 재사용)
   ai-preference                    사용자 provider 선호 localStorage
   branding                         COMPANY_NAME / copyright 연도 (한 곳 갱신)
-  i18n                             Locale 타입 · Accept-Language 파서 · 메시지 로더
+  i18n                             Locale 타입 · Accept-Language 파서 · getRequestLanguage
   user-keys                        BYOK 게이트 + applyUserKeysToEnv
   admin                            ADMIN_EMAILS 체크
   usage                            checkAndIncrement + getPlan + KST yearMonth

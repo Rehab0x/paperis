@@ -1,6 +1,6 @@
 # Paperis — TODO / 진척 기록
 
-> 마지막 갱신: 2026-05-13 (v3 M1~M7 + 멀티 AI provider + admin + 디자인 톤 + UX 정리 + Phase 2-A 랜딩페이지/i18n)
+> 마지막 갱신: 2026-05-14 (Phase 2-A 랜딩페이지/i18n + Phase 2-B 영어 서비스 파이프라인 완료)
 > 외부 노출 문서는 [README.md](README.md), 컨텍스트는 [CLAUDE.md](CLAUDE.md). 이 파일은 작업 일지·기술부채·의사결정 기록 보관용.
 
 ---
@@ -49,8 +49,14 @@
   - 내부 "/" 링크 14곳 → "/app" 일괄 수정 (헤더 로고/홈으로/onboarding redirect/AuthMenu callbackUrl)
   - 글로벌 Footer (`components/Footer.tsx` + `lib/branding.ts`) — 모든 페이지 © 표기, PlayerBar 높이 보정
   - **회귀 fix 2건** (Phase 2-A 직후 발견): TtsQueueBadge·LibraryDrawer가 `router.push("/?...")` 쓰던 부분 → `/app?...`
-- ⬜ **Phase 2-B** 영어 서비스 파이프라인 — TTS 분기(en→Google Cloud) + 번역 단계 조건부 제거 + 영어 Gemini 프롬프트 튜닝 + `data/journals.json` `defaultLocale` 필드
-- ⬜ **Phase 2-C** 앱 UI i18n — 헤더/버튼/placeholder 등 한국어 텍스트를 메시지 키로 마이그레이션 (큰 작업, 별도 사이클)
+- ✅ **Phase 2-B 영어 서비스 파이프라인** (2026-05-14)
+  - `lib/i18n.ts getRequestLanguage(req, body?)` — 서버가 cookie 기반 자동 결정 (body.language 명시 우선, 미명시 시 paperis.locale 쿠키)
+  - `lib/tts/index.ts resolveTtsProvider(name, language)` — 사용자가 provider 명시 안 한 경우 ko→Clova, en→Google Cloud TTS 자동 선택
+  - 프롬프트 영어 분기 — `lib/summary.ts`/`lib/gemini.ts`(read+narration)/`lib/trend.ts`(trend+headline) — 한국어 의학용어 보존 지침과 한국어 인사 회피 지침은 영어 출력 시 무의미해 자동 제거, 톤·예시는 영어로
+  - API 라우트 7개 (TTS 3·summarize 2·journal trend 2) — `body.language === "en" ? "en" : "ko"` 하드코딩 → `getRequestLanguage(req, body)` 일괄
+  - 클라이언트 `useLocale()` 훅 신설 — `paperis.locale` cookie 기반. PaperDetailPanel/TrendTtsButton의 `language: "ko"` 하드코딩 제거
+  - `lib/journals.ts SpecialtyLocaleScope("ko"|"en"|"both")` 타입 + `Specialty.defaultLocale?` optional + `isSpecialtyVisibleForLocale` 헬퍼 — Phase 2-C 온보딩 UI에서 활성 예정. JSON 자체는 그대로(GitHub web으로 점진 입력 가능)
+- ⬜ **Phase 2-C** 앱 UI i18n — 헤더/버튼/placeholder 등 한국어 텍스트를 메시지 키로 마이그레이션 (큰 작업, 별도 사이클). `isSpecialtyVisibleForLocale` 활성도 여기서
 - ⬜ **Phase 2-D** Stripe 결제 연동 (해외 사용자 USD) — 한국 사업자등록(M8) 완료 후
 
 ---
@@ -286,7 +292,7 @@ vercel.json                      cron 설정 (recurring-billing)
 
 | 버전 | 날짜 | 핵심 |
 |---|---|---|
-| **v3** (master 진화) | 2026-05-08~13 | 저널 큐레이션 + Auth + Neon + 결제 + 멀티 AI provider + 에디토리얼 디자인 + **Phase 2-A 랜딩페이지/i18n**. paperis.vercel.app 라이브 |
+| **v3** (master 진화) | 2026-05-08~14 | 저널 큐레이션 + Auth + Neon + 결제 + 멀티 AI provider + 에디토리얼 디자인 + **Phase 2-A 랜딩페이지/i18n + Phase 2-B 영어 서비스 파이프라인**. paperis.vercel.app 라이브 |
 | v2.0.4 | 2026-05-04 | 설정 패널 6개 섹션 + Google Cloud TTS + API 키 6종 + X-Paperis-Keys |
 | v2.0.3 | 2026-05-04 | 페이지네이션 + 테마(라이트/다크/시스템) + Naver Clova + 검색 안전망 |
 | v2.0.2 | 2026-04-30 | PlayerBar 동적 높이 + listTrackMetas + IndexedDB v2 |
@@ -396,6 +402,18 @@ vercel.json                      cron 설정 (recurring-billing)
 - **UX 4건** — `/app` 빈 상태 문구 provider 비종속 / SortControl 모바일 가운데 / 드로어 헤더 Audio Library·Settings (Fraunces + accent dot) / 글로벌 Footer
 
 기획·프로토타입: `docs/GLOBAL_EXPANSION_PLAN.md`, `docs/paperis_landing_prototype.html`, `docs/HOME_LAYOUT_SPEC.md`, `docs/RESEARCH_READING_BEHAVIOR_Marketing.md`, `docs/Paperis_home_prototype.html`
+
+### Phase 2-B 글로벌 확장 — 영어 서비스 파이프라인 (2026-05-14)
+
+커밋: `2fe275e`
+
+- **서버 자동 locale 결정** — `lib/i18n.ts getRequestLanguage(req, body?)`. 우선순위: body.language 명시 > paperis.locale 쿠키 > "ko" fallback. NextRequest cookies + Request raw Cookie 헤더 둘 다 호환.
+- **API 라우트 7개 일괄 적용** — `/api/tts`·`/api/tts/preview`·`/api/tts/text`·`/api/summarize`·`/api/summarize/read`·`/api/journal/trend`·`/api/journal/trend-headline`. 기존 `body.language === "en" ? "en" : "ko"` 하드코딩 제거. GET 라우트는 `{ language: searchParams.get("language") }` 형태로 헬퍼에 전달.
+- **TTS provider 언어별 default** — `resolveTtsProvider(name, language)` 확장. 사용자가 명시 안 한 경우 `DEFAULT_PROVIDER_BY_LANG`(ko→clova, en→google-cloud). 영어 narration이 한국어 전용 Clova로 가는 미스매치 방지.
+- **프롬프트 영어 분기** — 한국어 의학용어 보존 지침(`Preserve precise English medical terms ... inside the target language`)은 영어 출력 시 무의미하므로 제거. 한국어 인사 회피 지침("전공의 여러분", "안녕하세요")은 영어 인사("Hello", "Welcome", "Dear colleagues") 회피로 변환. trend narrationScript 분량 라벨 ("7–10분" ↔ "7–10 minutes"). 영향: `lib/summary.ts systemInstruction`, `lib/gemini.ts readSystemInstruction·narrationSystemInstruction`, `lib/trend.ts trendSystemInstruction·generateTrendHeadline`.
+- **클라이언트 useLocale 훅** — `components/useLocale.ts`. document.cookie에서 paperis.locale 추출. SSR-safe (첫 렌더 "ko", useEffect에서 실제 값으로 swap). 사용처: PaperDetailPanel(긴 요약 + TTS), TrendTtsButton(트렌드 narration + appendTrack 메타).
+- **클라이언트 하드코딩 제거** — `language: "ko"` 4곳 → `language: locale`. 영어 모드 사용자가 영어 화면에서 호출하면 자동으로 영어 narration·요약을 받게 됨.
+- **저널 카탈로그 locale 인프라** — `lib/journals.ts SpecialtyLocaleScope("ko"|"en"|"both")` 타입 + `Specialty.defaultLocale?` optional + `isSpecialtyVisibleForLocale(s, locale)` 헬퍼. 미설정 = "both"로 호환. `data/journals.json` 자체는 변경 없음 — 추후 GitHub web으로 점진 입력. Phase 2-C 온보딩 UI에서 활성.
 
 ---
 
