@@ -6,6 +6,9 @@
 
 import { useEffect, useMemo, useState } from "react";
 import localCatalog from "@/data/journals.json";
+import { useAppMessages } from "@/components/useAppMessages";
+import { useLocale } from "@/components/useLocale";
+import { fmt } from "@/lib/i18n";
 import type { JournalCatalog, Specialty } from "@/lib/journals";
 import {
   addSpecialty,
@@ -19,6 +22,8 @@ import {
 const catalog = localCatalog as JournalCatalog;
 
 export default function MySpecialtiesEditor() {
+  const m = useAppMessages();
+  const locale = useLocale();
   const [selected, setSelected] = useState<string[] | null>(null);
   const [adding, setAdding] = useState(false);
 
@@ -86,8 +91,7 @@ export default function MySpecialtiesEditor() {
     <div className="space-y-2">
       {isUsingDefault ? (
         <p className="rounded-lg border border-paperis-border bg-paperis-surface-2 px-2.5 py-1.5 text-[11px] text-paperis-text-3">
-          기본 임상과(처음 {visible.length}개)를 보고 있습니다. 추가·삭제·순서
-          변경하면 자동으로 내 선택이 됩니다.
+          {fmt(m.specialtyManage.editorDefaultHint, { n: visible.length })}
         </p>
       ) : null}
 
@@ -102,18 +106,18 @@ export default function MySpecialtiesEditor() {
             </span>
             <div className="min-w-0 flex-1">
               <span className="block truncate text-sm font-medium text-paperis-text">
-                {s.name}
+                {locale === "en" ? s.nameEn : s.name}
               </span>
               <span className="block truncate text-[11px] text-paperis-text-3">
-                {s.nameEn}
+                {locale === "en" ? s.name : s.nameEn}
               </span>
             </div>
             <button
               type="button"
               onClick={() => handleMove(i, i - 1)}
               disabled={i === 0}
-              aria-label="위로"
-              title="위로"
+              aria-label={m.specialtyManage.moveUp}
+              title={m.specialtyManage.moveUp}
               className="rounded p-1 text-xs text-paperis-text-3 transition hover:bg-paperis-surface-2 hover:text-paperis-text disabled:cursor-not-allowed disabled:opacity-30"
             >
               ↑
@@ -122,8 +126,8 @@ export default function MySpecialtiesEditor() {
               type="button"
               onClick={() => handleMove(i, i + 1)}
               disabled={i === visible.length - 1}
-              aria-label="아래로"
-              title="아래로"
+              aria-label={m.specialtyManage.moveDown}
+              title={m.specialtyManage.moveDown}
               className="rounded p-1 text-xs text-paperis-text-3 transition hover:bg-paperis-surface-2 hover:text-paperis-text disabled:cursor-not-allowed disabled:opacity-30"
             >
               ↓
@@ -131,8 +135,8 @@ export default function MySpecialtiesEditor() {
             <button
               type="button"
               onClick={() => handleRemove(s.id)}
-              aria-label="삭제"
-              title="삭제"
+              aria-label={m.specialtyManage.remove}
+              title={m.specialtyManage.remove}
               className="rounded p-1 text-xs text-paperis-text-3 transition hover:bg-paperis-surface-2 hover:text-paperis-text"
             >
               ✕
@@ -148,7 +152,9 @@ export default function MySpecialtiesEditor() {
             onClick={() => setAdding((v) => !v)}
             className="rounded-lg border border-paperis-border px-2.5 py-1 text-xs text-paperis-text-2 transition hover:bg-paperis-surface-2 hover:text-paperis-text"
           >
-            {adding ? "닫기" : `+ 임상과 추가 (${candidates.length}개 가능)`}
+            {adding
+              ? m.specialtyManage.close
+              : fmt(m.specialtyManage.addCta, { n: candidates.length })}
           </button>
           {adding ? (
             <ul className="mt-2 max-h-60 space-y-1 overflow-auto">
@@ -162,10 +168,10 @@ export default function MySpecialtiesEditor() {
                     <span className="text-xs text-paperis-accent">＋</span>
                     <span className="min-w-0 flex-1">
                       <span className="block truncate text-sm text-paperis-text">
-                        {s.name}
+                        {locale === "en" ? s.nameEn : s.name}
                       </span>
                       <span className="block truncate text-[11px] text-paperis-text-3">
-                        {s.nameEn}
+                        {locale === "en" ? s.name : s.nameEn}
                       </span>
                     </span>
                   </button>
@@ -176,7 +182,7 @@ export default function MySpecialtiesEditor() {
         </div>
       ) : (
         <p className="pt-1 text-[11px] text-paperis-text-3">
-          카탈로그의 모든 임상과({catalog.specialties.length}개)를 추가했습니다.
+          {fmt(m.specialtyManage.allAdded, { n: catalog.specialties.length })}
         </p>
       )}
     </div>

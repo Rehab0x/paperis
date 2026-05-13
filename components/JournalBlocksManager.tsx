@@ -9,6 +9,9 @@
 
 import { useEffect, useMemo, useState } from "react";
 import localCatalog from "@/data/journals.json";
+import { useAppMessages } from "@/components/useAppMessages";
+import { useLocale } from "@/components/useLocale";
+import { fmt } from "@/lib/i18n";
 import type { JournalCatalog } from "@/lib/journals";
 import {
   getAllJournalBlocks,
@@ -19,6 +22,8 @@ import {
 const catalog = localCatalog as JournalCatalog;
 
 export default function JournalBlocksManager() {
+  const m = useAppMessages();
+  const locale = useLocale();
   const [blocks, setBlocks] = useState<Record<string, string[]>>({});
 
   useEffect(() => {
@@ -39,8 +44,7 @@ export default function JournalBlocksManager() {
   if (groups.length === 0) {
     return (
       <p className="rounded-lg border border-paperis-border bg-paperis-surface-2 px-2.5 py-1.5 text-[11px] text-paperis-text-3">
-        차단된 저널이 없습니다. 임상과 페이지에서 카드 우상단 ✕로 숨길 수
-        있습니다.
+        {m.blocks.empty}
       </p>
     );
   }
@@ -49,13 +53,17 @@ export default function JournalBlocksManager() {
     <div className="space-y-3">
       {groups.map(([specialtyId, journalIds]) => {
         const specialty = specialtyById.get(specialtyId);
-        const label = specialty ? specialty.name : `임상과 (${specialtyId})`;
+        const specialtyLabel = specialty
+          ? locale === "en"
+            ? specialty.nameEn
+            : specialty.name
+          : fmt(m.blocks.specialtyFallback, { id: specialtyId });
         return (
           <section key={specialtyId}>
             <h4 className="mb-1 text-xs font-semibold text-paperis-text-2">
-              {label}{" "}
+              {specialtyLabel}{" "}
               <span className="font-normal text-paperis-text-3">
-                · {journalIds.length}개
+                {fmt(m.blocks.countSuffix, { n: journalIds.length })}
               </span>
             </h4>
             <ul className="space-y-1">
@@ -72,7 +80,7 @@ export default function JournalBlocksManager() {
                     onClick={() => unblockJournal(specialtyId, id)}
                     className="rounded-lg border border-paperis-border px-2 py-0.5 text-[11px] text-paperis-text-2 transition hover:bg-paperis-surface-2 hover:text-paperis-text"
                   >
-                    복구
+                    {m.blocks.unblock}
                   </button>
                 </li>
               ))}

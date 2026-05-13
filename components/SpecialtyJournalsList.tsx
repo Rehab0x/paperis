@@ -17,6 +17,8 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import JournalCard from "@/components/JournalCard";
 import JournalSearchAdder from "@/components/JournalSearchAdder";
+import { useAppMessages } from "@/components/useAppMessages";
+import { fmt } from "@/lib/i18n";
 import {
   blockJournal,
   getBlockedJournals,
@@ -50,6 +52,7 @@ export default function SpecialtyJournalsList({
   specialtyId,
   targetCount,
 }: Props) {
+  const m = useAppMessages();
   const [blocks, setBlocks] = useState<Set<string>>(() => new Set());
   const [favorites, setFavorites] = useState<Set<string>>(() => new Set());
   const [added, setAdded] = useState<JournalSummary[]>([]);
@@ -102,9 +105,7 @@ export default function SpecialtyJournalsList({
       // block ↔ favorite 상호배타
       unfavoriteJournal(specialtyId, journal.openAlexId);
       blockJournal(specialtyId, journal.openAlexId);
-      showToast(
-        `"${journal.name}"을(를) 이 임상과에서 숨겼습니다. (설정 → 차단 목록에서 복구)`
-      );
+      showToast(fmt(m.specialtyJournals.hiddenToast, { name: journal.name }));
     },
     [specialtyId]
   );
@@ -113,7 +114,7 @@ export default function SpecialtyJournalsList({
     (journal: JournalSummary) => {
       addJournal(specialtyId, journal);
       setAdderOpen(false);
-      showToast(`"${journal.name}"을(를) 추가했습니다.`);
+      showToast(fmt(m.specialtyJournals.addedToast, { name: journal.name }));
     },
     [specialtyId]
   );
@@ -121,7 +122,7 @@ export default function SpecialtyJournalsList({
   const handleRemoveAdded = useCallback(
     (journal: JournalSummary) => {
       removeAddedJournal(specialtyId, journal.openAlexId);
-      showToast(`"${journal.name}"을(를) 추가 목록에서 제거했습니다.`);
+      showToast(fmt(m.specialtyJournals.removedToast, { name: journal.name }));
     },
     [specialtyId]
   );
@@ -208,17 +209,19 @@ export default function SpecialtyJournalsList({
     <>
       <div className="mb-3 flex items-center justify-between gap-2">
         <p className="text-xs text-paperis-text-3">
-          {favoriteCount > 0 ? `⭐ ${favoriteCount} · ` : ""}
-          {added.length > 0 ? `내 추가 ${added.length}개 + ` : ""}
-          추천 {recommendedJournals.length}개
-          {hiddenInCandidates > 0 ? ` · ${hiddenInCandidates}개 숨김` : ""}
+          {favoriteCount > 0 ? fmt(m.specialtyJournals.favPrefix, { n: favoriteCount }) : ""}
+          {added.length > 0 ? fmt(m.specialtyJournals.statsAddedPrefix, { n: added.length }) : ""}
+          {fmt(m.specialtyJournals.statsRecommended, { n: recommendedJournals.length })}
+          {hiddenInCandidates > 0
+            ? fmt(m.specialtyJournals.statsHiddenSuffix, { n: hiddenInCandidates })
+            : ""}
         </p>
         <button
           type="button"
           onClick={() => setAdderOpen((v) => !v)}
           className="rounded-lg border border-paperis-border px-3 py-1 text-xs text-paperis-text-2 transition hover:bg-paperis-surface-2 hover:text-paperis-text"
         >
-          {adderOpen ? "닫기" : "+ 저널 추가"}
+          {adderOpen ? m.specialtyJournals.close : m.specialtyJournals.addJournal}
         </button>
       </div>
 
@@ -251,7 +254,7 @@ export default function SpecialtyJournalsList({
                 }
                 onToggleFavorite={() => handleToggleFavorite(j)}
                 isFavorite={favorites.has(j.openAlexId)}
-                badge={isAdded ? "내가 추가" : undefined}
+                badge={isAdded ? m.specialtyJournals.addedByYou : undefined}
               />
             </li>
           );
@@ -260,8 +263,7 @@ export default function SpecialtyJournalsList({
 
       {hiddenInCandidates > 0 ? (
         <p className="mt-4 text-xs text-paperis-text-3">
-          이 임상과에서 {hiddenInCandidates}개 저널이 숨겨져 있습니다 — 빈 자리는
-          다음 후보로 채워졌어요.
+          {fmt(m.specialtyJournals.hiddenNote, { n: hiddenInCandidates })}
         </p>
       ) : null}
 

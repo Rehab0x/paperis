@@ -10,7 +10,10 @@ import {
 import JournalBlocksManager from "@/components/JournalBlocksManager";
 import MySpecialtiesEditor from "@/components/MySpecialtiesEditor";
 import { useTheme, type Theme } from "@/components/ThemeProvider";
+import { useAppMessages } from "@/components/useAppMessages";
 import { useAutoMiniSummary } from "@/components/useAutoMiniSummary";
+import { useLocale } from "@/components/useLocale";
+import { fmt } from "@/lib/i18n";
 import { writeAutoMiniSummary } from "@/lib/auto-mini-summary";
 import {
   PROVIDER_DEFAULT_VOICE,
@@ -38,41 +41,25 @@ interface Props {
   onClose: () => void;
 }
 
-const THEME_OPTIONS: { value: Theme; label: string; hint: string }[] = [
-  { value: "light", label: "라이트", hint: "항상 밝은 화면" },
-  { value: "dark", label: "다크", hint: "항상 어두운 화면" },
-  { value: "system", label: "시스템", hint: "OS 설정을 따름" },
-];
-
-const TTS_OPTIONS: {
-  value: TtsProviderName;
-  label: string;
-  hint: string;
-}[] = [
-  {
-    value: "clova",
-    label: "Naver Clova Voice (Premium) — 기본",
-    hint: "NCP_CLOVA_CLIENT_ID/SECRET 필요 — 한국어 자연스러움 우수, 빠르고 안정적",
-  },
-  {
-    value: "google-cloud",
-    label: "Google Cloud TTS (Neural2/WaveNet)",
-    hint: "GOOGLE_CLOUD_TTS_API_KEY 필요 — 월 1M자 무료, 안정적",
-  },
-  {
-    value: "gemini",
-    label: "Gemini TTS (fallback)",
-    hint: "GEMINI_API_KEY로 동작 — preview 단계, 긴 narration에서 timeout 가능. 다른 provider 키 없을 때 자동 사용됨",
-  },
-];
-
-const SPEED_OPTIONS: { value: SpeakingRate; label: string }[] = [
-  { value: -1, label: "느림" },
-  { value: 0, label: "보통" },
-  { value: 1, label: "빠름" },
-];
+// THEME/TTS/SPEED OPTIONS는 컴포넌트 내부에서 m 메시지를 받아 동적 생성.
 
 export default function SettingsDrawer({ open, onClose }: Props) {
+  const m = useAppMessages();
+  const THEME_OPTIONS: { value: Theme; label: string; hint: string }[] = [
+    { value: "light", label: m.settings.themeLight, hint: m.settings.themeLightHint },
+    { value: "dark", label: m.settings.themeDark, hint: m.settings.themeDarkHint },
+    { value: "system", label: m.settings.themeSystem, hint: m.settings.themeSystemHint },
+  ];
+  const TTS_OPTIONS: { value: TtsProviderName; label: string; hint: string }[] = [
+    { value: "clova", label: m.settings.ttsClovaLabel, hint: m.settings.ttsClovaHint },
+    { value: "google-cloud", label: m.settings.ttsGcLabel, hint: m.settings.ttsGcHint },
+    { value: "gemini", label: m.settings.ttsGeminiLabel, hint: m.settings.ttsGeminiHint },
+  ];
+  const SPEED_OPTIONS: { value: SpeakingRate; label: string }[] = [
+    { value: -1, label: m.settings.speedSlow },
+    { value: 0, label: m.settings.speedNormal },
+    { value: 1, label: m.settings.speedFast },
+  ];
   const { theme, setTheme } = useTheme();
   const {
     provider,
@@ -121,7 +108,7 @@ export default function SettingsDrawer({ open, onClose }: Props) {
       />
       <aside
         role="dialog"
-        aria-label="앱 설정"
+        aria-label={m.settings.drawerAria}
         aria-hidden={!open}
         style={{ bottom: "var(--player-bar-h, 0px)" }}
         className={[
@@ -138,15 +125,15 @@ export default function SettingsDrawer({ open, onClose }: Props) {
             type="button"
             onClick={onClose}
             className="rounded-lg px-2 py-1 text-sm text-paperis-text-2 transition hover:bg-paperis-surface-2 hover:text-paperis-text"
-            aria-label="설정 닫기 (ESC)"
+            aria-label={m.settings.closeAria}
             title="ESC"
           >
-            닫기 ✕
+            {m.settings.closeLabel}
           </button>
         </header>
 
         <div className="flex-1 space-y-2 overflow-auto px-5 py-5 pb-12">
-          <Section title="화면 테마" description="라이트/다크/시스템 중에서 선택">
+          <Section title={m.settings.themeTitle} description={m.settings.themeDesc}>
             <RadioGroup
               name="theme"
               value={theme}
@@ -156,8 +143,8 @@ export default function SettingsDrawer({ open, onClose }: Props) {
           </Section>
 
           <Section
-            title="TTS provider"
-            description="음성 합성에 어떤 서비스를 쓸지 — 다음 변환부터 적용"
+            title={m.settings.ttsProviderTitle}
+            description={m.settings.ttsProviderDesc}
           >
             <RadioGroup
               name="tts"
@@ -168,11 +155,11 @@ export default function SettingsDrawer({ open, onClose }: Props) {
           </Section>
 
           <Section
-            title="TTS 화자 / 속도"
-            description={`현재 provider(${provider})의 화자 + 재생 속도`}
+            title={m.settings.ttsVoiceTitle}
+            description={fmt(m.settings.ttsVoiceDesc, { provider })}
           >
             <label className="mb-3 block">
-              <span className="mb-1 block text-xs text-paperis-text-3">화자</span>
+              <span className="mb-1 block text-xs text-paperis-text-3">{m.settings.voiceLabel}</span>
               <select
                 value={currentVoice}
                 onChange={(e) => setVoice(provider, e.target.value)}
@@ -185,7 +172,7 @@ export default function SettingsDrawer({ open, onClose }: Props) {
                 ))}
               </select>
             </label>
-            <span className="mb-1 block text-xs text-paperis-text-3">속도</span>
+            <span className="mb-1 block text-xs text-paperis-text-3">{m.settings.speedLabel}</span>
             <RadioGroup
               name="speed"
               value={speakingRate}
@@ -194,7 +181,7 @@ export default function SettingsDrawer({ open, onClose }: Props) {
             />
             {provider === "gemini" ? (
               <p className="mt-2 text-[11px] text-paperis-text-3">
-                Gemini는 속도 옵션을 받지 않아 “보통”으로 합성됩니다.
+                {m.settings.speedNoOpt}
               </p>
             ) : null}
             <VoicePreview
@@ -205,52 +192,52 @@ export default function SettingsDrawer({ open, onClose }: Props) {
           </Section>
 
           <Section
-            title="검색 자동 요약"
-            description="결과 상위 3건의 미니 요약을 자동으로 가져올지 — 끄면 카드를 클릭한 항목만 요약"
+            title={m.settings.autoMiniTitle}
+            description={m.settings.autoMiniDesc}
           >
             <AutoMiniSummaryToggle />
           </Section>
 
           <Section
-            title="알림"
-            description="TTS 변환이 끝나면 브라우저 알림을 표시"
+            title={m.settings.notifyTitle}
+            description={m.settings.notifyDesc}
           >
             <NotificationPermission />
           </Section>
 
           <Section
-            title="AI provider 선택"
-            description="자연어 검색·요약·트렌드 분석에 어떤 AI를 쓸지 — BYOK 결제자만 변경 가능"
+            title={m.settings.aiProviderTitle}
+            description={m.settings.aiProviderDesc}
             badge={<ByokGateBadge />}
           >
             <AiProviderSection />
           </Section>
 
           <Section
-            title="API 키 (BYOK)"
-            description="본인 API 키 입력 — BYOK 결제 후에만 활성화. 입력한 키로 모든 호출이 무제한으로 동작."
+            title={m.settings.apiKeysTitle}
+            description={m.settings.apiKeysDesc}
             badge={<ByokGateBadge />}
           >
             <ApiKeysSection />
           </Section>
 
           <Section
-            title="내 임상과"
-            description="저널 페이지에 노출할 임상과 — 추가·삭제·순서 변경"
+            title={m.settings.specialtiesTitle}
+            description={m.settings.specialtiesDesc}
           >
             <MySpecialtiesEditor />
           </Section>
 
           <Section
-            title="차단된 저널"
-            description="임상과 페이지에서 ✕로 숨긴 저널들 — 복구 가능"
+            title={m.settings.blocksTitle}
+            description={m.settings.blocksDesc}
           >
             <JournalBlocksManager />
           </Section>
 
           <Section
-            title="라이브러리 백업 / 복원"
-            description="모든 트랙(메타 + 오디오)을 한 JSON 파일로 묶어 저장·복원"
+            title={m.settings.backupTitle}
+            description={m.settings.backupDesc}
           >
             <LibraryBackup />
           </Section>
@@ -391,6 +378,7 @@ function VoicePreview({
   voice: string;
   speakingRate: SpeakingRate;
 }) {
+  const m = useAppMessages();
   const fetchWithKeys = useFetchWithKeys();
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const objectUrlRef = useRef<string | null>(null);
@@ -424,7 +412,7 @@ function VoicePreview({
       });
       if (!res.ok) {
         const rawText = await res.text().catch(() => "");
-        let msg = `미리듣기 실패 (${res.status})`;
+        let msg = fmt(m.settings.previewFailedStatus, { status: res.status });
         try {
           const parsed = JSON.parse(rawText);
           if (parsed && typeof parsed.error === "string") msg = parsed.error;
@@ -448,7 +436,7 @@ function VoicePreview({
         }
       }
     } catch (err) {
-      setError(err instanceof Error ? err.message : "미리듣기 실패");
+      setError(err instanceof Error ? err.message : m.settings.previewFailed);
     } finally {
       setBusy(false);
     }
@@ -462,7 +450,7 @@ function VoicePreview({
         disabled={busy}
         className="rounded-lg border border-paperis-border px-3 py-1.5 text-sm text-paperis-text-2 transition hover:bg-paperis-surface-2 hover:text-paperis-text disabled:cursor-not-allowed disabled:opacity-50"
       >
-        {busy ? "합성 중…" : "🔊 이 화자/속도로 미리듣기"}
+        {busy ? m.settings.previewBtnLoading : m.settings.previewBtn}
       </button>
       <audio ref={audioRef} controls className="w-full" />
       {error ? (
@@ -475,9 +463,8 @@ function VoicePreview({
 }
 
 function AutoMiniSummaryToggle() {
+  const m = useAppMessages();
   const enabled = useAutoMiniSummary();
-  // SSR/hydrate 시점에 false default. 사용자 토글 즉시 localStorage + 모든 사용처에
-  // CustomEvent로 broadcast.
   return (
     <label className="flex cursor-pointer items-start gap-3 rounded-lg border border-paperis-border px-3 py-2 transition hover:border-paperis-text-3">
       <input
@@ -488,14 +475,11 @@ function AutoMiniSummaryToggle() {
       />
       <span className="min-w-0 flex-1">
         <span className="block text-sm font-medium text-paperis-text">
-          {enabled ? "켜짐 — 결과 도착 시 상위 3건 자동 요약" : "꺼짐 — 카드 클릭 시만 요약"}
+          {enabled ? m.settings.autoMiniOn : m.settings.autoMiniOff}
         </span>
         <span className="block text-xs text-paperis-text-3">
-          출퇴근 청취 전 빠르게 스캔하는 패턴이면 켜세요. 검색을 자주 다시 하거나
-          페이지를 자주 넘기면 끄는 편이 Gemini 응답 시간을 아껴줍니다.
-          {enabled
-            ? " 현재 default를 사용자가 직접 켠 상태."
-            : " 기본값(꺼짐)을 그대로 사용 중."}
+          {m.settings.autoMiniHint1}
+          {enabled ? m.settings.autoMiniHintOn : m.settings.autoMiniHintOff}
         </span>
       </span>
     </label>
@@ -503,6 +487,7 @@ function AutoMiniSummaryToggle() {
 }
 
 function NotificationPermission() {
+  const m = useAppMessages();
   const [status, setStatus] = useState<NotificationPermission | "unsupported">(
     "default"
   );
@@ -528,24 +513,19 @@ function NotificationPermission() {
 
   if (status === "unsupported") {
     return (
-      <p className="text-xs text-paperis-text-3">
-        이 브라우저는 알림 API를 지원하지 않습니다.
-      </p>
+      <p className="text-xs text-paperis-text-3">{m.settings.notifyUnsupported}</p>
     );
   }
   if (status === "granted") {
     return (
       <p className="rounded-lg border border-paperis-accent/40 bg-paperis-accent-dim/40 px-2.5 py-1.5 text-xs text-paperis-accent">
-        ✓ 알림 허용됨 — TTS 변환 끝나면 브라우저 알림이 표시됩니다.
+        {m.settings.notifyGranted}
       </p>
     );
   }
   if (status === "denied") {
     return (
-      <p className="text-xs text-paperis-text-3">
-        알림이 차단되어 있습니다. 브라우저 주소창의 자물쇠 아이콘에서 권한을
-        다시 열어주세요.
-      </p>
+      <p className="text-xs text-paperis-text-3">{m.settings.notifyDenied}</p>
     );
   }
   return (
@@ -554,21 +534,22 @@ function NotificationPermission() {
       onClick={request}
       className="rounded-lg border border-paperis-border px-3 py-1.5 text-sm text-paperis-text-2 transition hover:bg-paperis-surface-2 hover:text-paperis-text"
     >
-      알림 권한 요청
+      {m.settings.notifyRequest}
     </button>
   );
 }
 
 function ByokGateBadge() {
+  const m = useAppMessages();
   const { isByok, loading } = useByokStatus();
   if (loading) return null;
   return isByok ? (
     <span className="rounded-full bg-paperis-accent-dim/60 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.06em] text-paperis-accent">
-      활성
+      {m.settings.keyStatusActive}
     </span>
   ) : (
     <span className="rounded-full bg-paperis-surface-2 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.06em] text-paperis-text-3">
-      잠김
+      {m.settings.keyStatusLocked}
     </span>
   );
 }
@@ -631,6 +612,7 @@ function useByokStatus(): ByokStatus {
 }
 
 function ApiKeysSection() {
+  const m = useAppMessages();
   const { keys, setKey, clearKey } = useApiKeys();
   const { isByok, loading } = useByokStatus();
   const [reveal, setReveal] = useState<Record<ApiKeyName, boolean>>({
@@ -664,18 +646,18 @@ function ApiKeysSection() {
     return (
       <div className="space-y-3">
         <p className="rounded-lg border border-paperis-border bg-paperis-surface-2 px-2.5 py-2 text-xs text-paperis-text-2">
-          본인 API 키 입력은 <strong>BYOK 결제자</strong>만 가능합니다. BYOK는
-          평생 1회 결제로 자신의 키로 모든 호출을 무제한 이용하는 권한입니다.
+          {m.settings.byokGateTitle1}{" "}
+          <strong>{m.settings.byokGateRole}</strong>
+          {m.settings.byokGateTitle2}
         </p>
         <a
           href="/billing"
           className="inline-flex h-9 items-center rounded-lg bg-paperis-accent px-3 text-xs font-medium text-paperis-bg transition hover:opacity-90"
         >
-          BYOK 결제 페이지로 →
+          {m.settings.byokGateCta}
         </a>
         <p className="text-[11px] text-paperis-text-3">
-          Free 사용자는 월별 무료 한도(큐레이션 3 / TTS 5 / 풀텍스트 3) 안에서
-          서비스를 이용할 수 있고, Pro 구독자는 우리 키로 무제한 이용합니다.
+          {m.settings.byokGateFree}
         </p>
       </div>
     );
@@ -694,7 +676,7 @@ function ApiKeysSection() {
             type={visible ? "text" : "password"}
             value={v}
             onChange={(e) => setKey(name, e.target.value)}
-            placeholder="(미설정 시 .env.local 키 사용)"
+            placeholder={m.settings.keyPlaceholder}
             className="min-w-0 flex-1 rounded-lg border border-paperis-border bg-paperis-surface px-2 py-1 text-xs text-paperis-text"
             autoComplete="off"
             spellCheck={false}
@@ -705,8 +687,8 @@ function ApiKeysSection() {
               setReveal((prev) => ({ ...prev, [name]: !prev[name] }))
             }
             className="rounded-lg border border-paperis-border px-2 text-xs text-paperis-text-3 transition hover:bg-paperis-surface-2 hover:text-paperis-text"
-            aria-label={visible ? "숨기기" : "보이기"}
-            title={visible ? "숨기기" : "보이기"}
+            aria-label={visible ? m.settings.keyHideAria : m.settings.keyShowAria}
+            title={visible ? m.settings.keyHideAria : m.settings.keyShowAria}
           >
             {visible ? "🙈" : "👁"}
           </button>
@@ -715,8 +697,8 @@ function ApiKeysSection() {
               type="button"
               onClick={() => clearKey(name)}
               className="rounded-lg border border-paperis-border px-2 text-xs text-paperis-text-3 transition hover:bg-paperis-surface-2 hover:text-paperis-text"
-              aria-label="삭제"
-              title="삭제"
+              aria-label={m.settings.keyRemoveAria}
+              title={m.settings.keyRemoveAria}
             >
               🗑
             </button>
@@ -729,21 +711,20 @@ function ApiKeysSection() {
   return (
     <div className="space-y-4">
       <p className="rounded-lg border border-paperis-accent/40 bg-paperis-accent-dim/40 px-2.5 py-1.5 text-[11px] text-paperis-accent">
-        ⚠ 키는 브라우저 localStorage에 저장됩니다. XSS 위험을 인지하시고 본인
-        브라우저에서만 사용하세요.
+        {m.settings.keyXssWarn}
       </p>
       <div>
         <h4 className="mb-2 text-[11px] font-semibold uppercase tracking-[0.06em] text-paperis-text-2">
-          AI 모델 (검색·요약·트렌드 분석)
+          {m.settings.keyGroupAi}
         </h4>
         <p className="mb-2 text-[11px] text-paperis-text-3">
-          입력한 provider 키만 활성화. "AI provider 선택"에서 어떤 걸 쓸지 결정.
+          {m.settings.keyGroupAiHint}
         </p>
         <div className="space-y-2.5">{aiFields.map(renderField)}</div>
       </div>
       <div>
         <h4 className="mb-2 text-[11px] font-semibold uppercase tracking-[0.06em] text-paperis-text-2">
-          외부 서비스 / TTS
+          {m.settings.keyGroupExt}
         </h4>
         <div className="space-y-2.5">{serviceFields.map(renderField)}</div>
       </div>
@@ -752,6 +733,7 @@ function ApiKeysSection() {
 }
 
 function AiProviderSection() {
+  const m = useAppMessages();
   const { isByok, isPro, envProviders, loading } = useByokStatus();
   const { keys } = useApiKeys();
   const [provider, setProviderState] = useState<AiProviderName>(
@@ -772,22 +754,22 @@ function AiProviderSection() {
     gemini: {
       label: "Gemini",
       keyName: "gemini",
-      note: "기본값. Flash Lite/Flash 라인업.",
+      note: m.settings.aiGeminiNote,
     },
     claude: {
       label: "Claude",
       keyName: "anthropic",
-      note: "Anthropic. Haiku 4.5 / Sonnet 4.6.",
+      note: m.settings.aiClaudeNote,
     },
     openai: {
       label: "OpenAI",
       keyName: "openai",
-      note: "gpt-4.1 라인업.",
+      note: m.settings.aiOpenAiNote,
     },
     grok: {
       label: "Grok (xAI)",
       keyName: "grok",
-      note: "grok-4 라인업.",
+      note: m.settings.aiGrokNote,
     },
   };
 
@@ -799,9 +781,7 @@ function AiProviderSection() {
   // Free 사용자 — provider 선택 불가
   if (!isByok && !isPro) {
     return (
-      <p className="text-xs text-paperis-text-3">
-        Pro/BYOK 결제자만 provider를 변경할 수 있습니다. 그 외에는 기본 Gemini 사용.
-      </p>
+      <p className="text-xs text-paperis-text-3">{m.settings.aiFreeLocked}</p>
     );
   }
 
@@ -824,11 +804,11 @@ function AiProviderSection() {
 
         // 상태 라벨: 우선순위 본인 키 > env 키 > 비활성
         const stateLabel = hasUserKey
-          ? "내 키"
+          ? m.settings.aiOwnKey
           : hasEnvKey && isPro
-            ? "기본 키"
+            ? m.settings.aiServerKey
             : hasEnvKey && isByok
-              ? "기본 키" // admin인 경우
+              ? m.settings.aiServerKey // admin인 경우
               : null;
 
         return (
@@ -870,16 +850,15 @@ function AiProviderSection() {
         );
       })}
       <p className="mt-2 text-[11px] text-paperis-text-3">
-        {isByok
-          ? "BYOK: 본인 키 입력 시 그 키로 호출 (서버 키 안 씀). 키 미입력 + 서버 등록 안 됨인 provider는 비활성."
-          : "Pro: 우리 서버 키로 호출. 서버에 등록된 provider만 활성."}{" "}
-        TTS 음성 합성은 별도 설정.
+        {isByok ? m.settings.aiByokHint : m.settings.aiProHint}{" "}
+        {m.settings.aiTtsNote}
       </p>
     </div>
   );
 }
 
 function LibraryBackup() {
+  const m = useAppMessages();
   const inputRef = useRef<HTMLInputElement | null>(null);
   const [busy, setBusy] = useState<"idle" | "exporting" | "importing">("idle");
   const [message, setMessage] = useState<string | null>(null);
@@ -891,7 +870,7 @@ function LibraryBackup() {
     try {
       const data = await exportLibrary();
       if (data.tracks.length === 0) {
-        setMessage("내보낼 트랙이 없습니다.");
+        setMessage(m.settings.backupEmpty);
         return;
       }
       const json = JSON.stringify(data);
@@ -908,9 +887,9 @@ function LibraryBackup() {
       a.click();
       document.body.removeChild(a);
       setTimeout(() => URL.revokeObjectURL(url), 1000);
-      setMessage(`✓ ${data.tracks.length}개 트랙을 내보냈습니다.`);
+      setMessage(fmt(m.settings.backupExported, { n: data.tracks.length }));
     } catch (err) {
-      setMessage(err instanceof Error ? err.message : "내보내기 실패");
+      setMessage(err instanceof Error ? err.message : m.settings.backupExportFailed);
     } finally {
       setBusy("idle");
     }
@@ -924,12 +903,16 @@ function LibraryBackup() {
       const data = JSON.parse(text) as LibraryExport;
       const result = await importLibrary(data);
       setMessage(
-        `✓ ${result.added}개 추가됨${
-          result.skipped > 0 ? `, ${result.skipped}개 건너뜀` : ""
-        }`
+        fmt(m.settings.backupRestored, {
+          added: result.added,
+          skipped:
+            result.skipped > 0
+              ? fmt(m.settings.backupSkipped, { n: result.skipped })
+              : "",
+        })
       );
     } catch (err) {
-      setMessage(err instanceof Error ? err.message : "복원 실패");
+      setMessage(err instanceof Error ? err.message : m.settings.backupImportFailed);
     } finally {
       setBusy("idle");
       if (inputRef.current) inputRef.current.value = "";
@@ -945,7 +928,7 @@ function LibraryBackup() {
           disabled={busy !== "idle"}
           className="rounded-lg border border-paperis-border px-3 py-1.5 text-sm text-paperis-text-2 transition hover:bg-paperis-surface-2 hover:text-paperis-text disabled:cursor-not-allowed disabled:opacity-50"
         >
-          {busy === "exporting" ? "내보내는 중…" : "📤 백업 내보내기"}
+          {busy === "exporting" ? m.settings.backupExportBtnLoading : m.settings.backupExportBtn}
         </button>
         <button
           type="button"
@@ -953,7 +936,7 @@ function LibraryBackup() {
           disabled={busy !== "idle"}
           className="rounded-lg border border-paperis-border px-3 py-1.5 text-sm text-paperis-text-2 transition hover:bg-paperis-surface-2 hover:text-paperis-text disabled:cursor-not-allowed disabled:opacity-50"
         >
-          {busy === "importing" ? "복원 중…" : "📥 백업 복원"}
+          {busy === "importing" ? m.settings.backupImportBtnLoading : m.settings.backupImportBtn}
         </button>
         <input
           ref={inputRef}
@@ -970,8 +953,7 @@ function LibraryBackup() {
         <p className="text-xs text-paperis-text-2">{message}</p>
       ) : null}
       <p className="text-[11px] text-paperis-text-3">
-        오디오 데이터까지 포함하므로 트랙 수에 따라 파일이 클 수 있습니다 (트랙
-        하나당 보통 1–5MB).
+        {m.settings.backupSizeHint}
       </p>
     </div>
   );

@@ -6,6 +6,8 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import { useAppMessages } from "@/components/useAppMessages";
+import { useLocale } from "@/components/useLocale";
 import {
   getMySpecialties,
   reconcileWithCatalog,
@@ -20,6 +22,8 @@ interface Props {
 const DEFAULT_VISIBLE_COUNT = 3;
 
 export default function MySpecialtiesGrid({ catalog }: Props) {
+  const m = useAppMessages();
+  const locale = useLocale();
   const allIds = catalog.specialties.map((s) => s.id);
   const defaultIds = allIds.slice(0, DEFAULT_VISIBLE_COUNT);
   const byId = new Map(catalog.specialties.map((s) => [s.id, s]));
@@ -59,12 +63,14 @@ export default function MySpecialtiesGrid({ catalog }: Props) {
               className="block h-full rounded-2xl border border-paperis-border bg-paperis-surface p-5 transition hover:-translate-y-0.5 hover:border-paperis-text-3"
             >
               <h2 className="font-serif text-lg font-medium tracking-tight text-paperis-text">
-                {s.name}
+                {locale === "en" ? s.nameEn : s.name}
               </h2>
-              <p className="mt-0.5 text-xs text-paperis-text-3">{s.nameEn}</p>
+              <p className="mt-0.5 text-xs text-paperis-text-3">
+                {locale === "en" ? s.name : s.nameEn}
+              </p>
               {s.suggestedTopics.length > 0 ? (
                 <p className="mt-3 text-xs leading-relaxed text-paperis-text-3">
-                  추천 주제 ·{" "}
+                  {m.specialtyManage.suggestedTopics} ·{" "}
                   {s.suggestedTopics.slice(0, 3).join(" / ")}
                   {s.suggestedTopics.length > 3 ? " …" : ""}
                 </p>
@@ -75,8 +81,8 @@ export default function MySpecialtiesGrid({ catalog }: Props) {
       </ul>
       <p className="mt-6 text-[11px] text-paperis-text-3">
         {usingDefault
-          ? "기본 임상과를 보고 있어요. 헤더 ⚙ 설정 → 내 임상과에서 추가·삭제·순서를 바꿀 수 있습니다."
-          : "내 임상과 목록입니다. 변경하려면 헤더 ⚙ 설정 → 내 임상과로 가세요."}
+          ? m.specialtyManage.gridDefaultHint
+          : m.specialtyManage.gridCustomHint}
       </p>
     </>
   );
