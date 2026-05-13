@@ -1,6 +1,6 @@
 # Paperis — TODO / 진척 기록
 
-> 마지막 갱신: 2026-05-14 (Phase 2-A 랜딩 + Phase 2-B 영어 서비스 + Phase 2-C1 앱 UI i18n 완료 — 핵심 사용자 흐름 영어 완주 가능)
+> 마지막 갱신: 2026-05-14 (Phase 2-A 랜딩 + Phase 2-B 영어 서비스 + Phase 2-C1 핵심 흐름 + Phase 2-C2 설정/관리/페이지 i18n 완료 — 영어 사용자 전체 앱 완주 가능, 약관만 한국어)
 > 외부 노출 문서는 [README.md](README.md), 컨텍스트는 [CLAUDE.md](CLAUDE.md). 이 파일은 작업 일지·기술부채·의사결정 기록 보관용.
 
 ---
@@ -65,7 +65,11 @@
   - 저널 큐레이션 9개: JournalTabs·JournalCard·IssueExplorer·TopicExplorer·TrendDigest·JournalPaperList·JournalSearchAdder·JournalPagination·JournalEntryLink
   - app/app/page.tsx 헤더 안내 (검색식 토글/OA/페이지네이션/empty 등)
   - **총 31개 컴포넌트 + 230+ 메시지 키**, 영어 모드 사용자 핵심 흐름 영어 완주 가능
-- ⬜ **Phase 2-C2** 부수 그룹 — 설정 드로어(SettingsDrawer 109줄), 계정/결제/온보딩 페이지, specialty 관리(MySpecialtiesGrid·Editor, SpecialtyJournalsList, JournalBlocksManager)
+- ✅ **Phase 2-C2 부수 그룹** (2026-05-14 완료) — 설정 드로어 + specialty 관리 + 페이지 5개
+  - C2-A: MySpecialtiesGrid·MySpecialtiesEditor·SpecialtyJournalsList·JournalBlocksManager (locale별 specialty name/nameEn 분기 포함)
+  - C2-B: SettingsDrawer 단일 최대 (테마/TTS provider+voice+speed/자동 미니/알림/AI provider/API 키/내 임상과/차단/백업 9개 섹션 + ByokGateBadge + VoicePreview + AutoMiniToggle + NotificationPermission + ApiKeysSection + AiProviderSection + LibraryBackup)
+  - C2-C: account·billing·billing/success·billing/fail·onboarding (날짜는 locale별 toLocaleDateString, 가격은 KRW 그대로 — Stripe 도입 전)
+  - **총 14개 컴포넌트/페이지 + 250+ 메시지 키**
 - ⬜ **Phase 2-C3** 약관 페이지 영어 번역 (legal/terms·privacy·refund — 법률 검토 필요)
 - ⬜ **Phase 2-D** Stripe 결제 연동 (해외 사용자 USD) — 한국 사업자등록(M8) 완료 후
 
@@ -412,6 +416,17 @@ vercel.json                      cron 설정 (recurring-billing)
 - **UX 4건** — `/app` 빈 상태 문구 provider 비종속 / SortControl 모바일 가운데 / 드로어 헤더 Audio Library·Settings (Fraunces + accent dot) / 글로벌 Footer
 
 기획·프로토타입: `docs/GLOBAL_EXPANSION_PLAN.md`, `docs/paperis_landing_prototype.html`, `docs/HOME_LAYOUT_SPEC.md`, `docs/RESEARCH_READING_BEHAVIOR_Marketing.md`, `docs/Paperis_home_prototype.html`
+
+### Phase 2-C2 부수 그룹 i18n 마이그레이션 — 완료 (2026-05-14)
+
+커밋: `d39e69f` (C2-A·B: specialty 관리 + SettingsDrawer), `d1c3487` (C2-C: 계정/결제/온보딩 페이지 5개)
+
+- **메시지 약 250개 추가** — settings(85)/specialtyManage(11)/blocks(4)/specialtyJournals(11)/account(40)/billing(50)/onboarding(20)
+- **SettingsDrawer 109줄 한국어 → 0** — 9개 섹션(THEME/TTS provider/voice·speed/auto mini/notify/AI provider/API keys/specialties/blocks/backup) 전체 i18n
+- **VoicePreview** — voice prefix(ko-/en-)로 PREVIEW_KO vs PREVIEW_EN 선택 그대로 유지. 미리듣기 버튼/실패 메시지만 m.* 분기
+- **specialty name 분기** — MySpecialtiesGrid·MySpecialtiesEditor·JournalBlocksManager가 locale === "en"일 때 nameEn 표시
+- **날짜 포맷** — account·billing/success가 `toLocaleDateString(locale === "en" ? "en-US" : "ko-KR")` — Pro 다음 결제일/해지 만료일 모두 locale 맞춤
+- **가격 표기** — billing 페이지 BYOK 9,900 / Pro 4,900. 영어 라벨은 "KRW"/"KRW/mo" (Toss 결제 KO 사용자만, Stripe 미도입). Phase 2-D에서 GeoIP/locale 기반 분기 예정
 
 ### Phase 2-C1 앱 UI i18n 마이그레이션 — 완료 (2026-05-14)
 
