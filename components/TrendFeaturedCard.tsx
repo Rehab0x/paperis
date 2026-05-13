@@ -22,6 +22,7 @@ import {
 import { getJournalMetas } from "@/lib/journal-meta-cache";
 import type { JournalSummary } from "@/lib/openalex";
 import { useAppMessages } from "@/components/useAppMessages";
+import { useLocale } from "@/components/useLocale";
 import { fmt } from "@/lib/i18n";
 
 interface TrendBrief {
@@ -60,6 +61,13 @@ function kstEpochDay(): number {
 
 export default function TrendFeaturedCard() {
   const m = useAppMessages();
+  const locale = useLocale();
+  // 첫 렌더는 useLocale이 SSR-safe "ko" 반환. cookie 읽고 swap된 후에만 fetch
+  // 해야 KO/EN 사이 잘못된 cache 키 사용 방지.
+  const [hydrated, setHydrated] = useState(false);
+  useEffect(() => {
+    setHydrated(true);
+  }, []);
   const [meta, setMeta] = useState<JournalSummary | null>(null);
   const [brief, setBrief] = useState<TrendBrief | null>(null);
   const [loading, setLoading] = useState(true);
@@ -104,8 +112,10 @@ export default function TrendFeaturedCard() {
   }, []);
 
   // 2) 라이트 헤드라인 fetch (Flash Lite 기반 ~5–10s, Redis 캐시 활용)
+  //    locale 변화 시 refetch. URL에 language 명시해 서버 cookie 의존 X —
+  //    KO 캐시와 EN 캐시가 항상 정확히 분리되도록 보장.
   useEffect(() => {
-    if (!meta) return;
+    if (!hydrated || !meta) return;
     const issn = meta.issnL ?? meta.issns[0] ?? null;
     if (!issn) return;
     const { year, quarter } = currentYearQuarter();
@@ -117,6 +127,7 @@ export default function TrendFeaturedCard() {
       journalName: meta.name,
       year: String(year),
       quarter,
+      language: locale,
     });
     fetch(`/api/journal/trend-headline?${params.toString()}`, { cache: "no-store" })
       .then((r) => (r.ok ? r.json() : null))
@@ -152,7 +163,7 @@ export default function TrendFeaturedCard() {
     return () => {
       cancelled = true;
     };
-  }, [meta]);
+  }, [hydrated, locale, meta]);
 
   if (!meta) return null;
   if (error) return null;
