@@ -21,6 +21,8 @@ import {
 } from "@/lib/journal-favorites";
 import { getJournalMetas } from "@/lib/journal-meta-cache";
 import type { JournalSummary } from "@/lib/openalex";
+import { useAppMessages } from "@/components/useAppMessages";
+import { fmt } from "@/lib/i18n";
 
 interface TrendBrief {
   issn: string;
@@ -57,6 +59,7 @@ function kstEpochDay(): number {
 }
 
 export default function TrendFeaturedCard() {
+  const m = useAppMessages();
   const [meta, setMeta] = useState<JournalSummary | null>(null);
   const [brief, setBrief] = useState<TrendBrief | null>(null);
   const [loading, setLoading] = useState(true);
@@ -161,28 +164,26 @@ export default function TrendFeaturedCard() {
       <section className="mb-6">
         <div className="mb-2 flex items-baseline justify-between">
           <h2 className="text-[13px] font-semibold uppercase tracking-[0.04em] text-paperis-text-2">
-            📈 이번 분기 트렌드
+            {m.home.trend.title}
           </h2>
         </div>
         <div className="rounded-2xl border border-paperis-border bg-paperis-surface p-5">
           <div className="text-[11px] font-semibold uppercase tracking-[0.06em] text-paperis-text-3">
-            {meta.name} · {year}년 {quarter}
+            {fmt(m.home.trend.metaKo, { name: meta.name, year, quarter })}
           </div>
           <div className="mt-3 flex items-center gap-2.5">
             <span
               aria-hidden
               className="inline-block h-3 w-3 shrink-0 animate-spin rounded-full border-2 border-paperis-border border-t-paperis-accent"
             />
-            <p className="text-sm text-paperis-text-2">
-              이번 분기 핵심 트렌드를 분석하는 중…
-            </p>
+            <p className="text-sm text-paperis-text-2">{m.home.trend.loading}</p>
           </div>
           <div className="mt-3 space-y-2">
             <div className="h-3 w-4/5 animate-pulse rounded bg-paperis-surface-2" />
             <div className="h-3 w-3/5 animate-pulse rounded bg-paperis-surface-2" />
           </div>
           <p className="mt-4 text-[11px] text-paperis-text-3">
-            첫 분석은 5–10초 걸려요. 다음부터는 캐시로 즉시 표시.
+            {m.home.trend.loadingHint}
           </p>
         </div>
       </section>
@@ -194,13 +195,13 @@ export default function TrendFeaturedCard() {
     <section className="mb-6">
       <div className="mb-2 flex items-baseline justify-between">
         <h2 className="text-[13px] font-semibold uppercase tracking-[0.04em] text-paperis-text-2">
-          📈 이번 분기 트렌드
+          {m.home.trend.title}
         </h2>
         <Link
           href="/journal"
           className="text-xs text-paperis-text-3 transition hover:text-paperis-text"
         >
-          다른 저널 →
+          {m.home.trend.anotherJournal}
         </Link>
       </div>
       <Link
@@ -217,7 +218,7 @@ export default function TrendFeaturedCard() {
           <span aria-hidden className="text-paperis-accent">
             →
           </span>
-          <span>전체 분석·청취·논문 목록 보기</span>
+          <span>{m.home.trend.seeAll}</span>
         </div>
       </Link>
     </section>

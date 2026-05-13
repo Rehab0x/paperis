@@ -14,9 +14,12 @@ import {
   listTrackMetas,
 } from "@/lib/audio-library";
 import { usePlayer } from "@/components/PlayerProvider";
+import { useAppMessages } from "@/components/useAppMessages";
+import { fmt } from "@/lib/i18n";
 import type { AudioTrackMeta } from "@/types";
 
 export default function ContinueListeningCard() {
+  const m = useAppMessages();
   const [tracks, setTracks] = useState<AudioTrackMeta[]>([]);
   const [latest, setLatest] = useState<AudioTrackMeta | null>(null);
   const player = usePlayer();
@@ -75,7 +78,7 @@ export default function ContinueListeningCard() {
       <button
         type="button"
         onClick={handlePlay}
-        aria-label="가장 최근 트랙 재생"
+        aria-label={m.home.continueListening.playAria}
         className="group flex w-full items-center gap-4 rounded-2xl border border-paperis-border bg-gradient-to-br from-paperis-accent-dim/30 to-paperis-surface-2 p-4 text-left transition hover:-translate-y-0.5 hover:border-paperis-accent/60"
       >
         <span
@@ -86,13 +89,13 @@ export default function ContinueListeningCard() {
         </span>
         <span className="min-w-0 flex-1">
           <span className="block text-[11px] font-semibold uppercase tracking-[0.06em] text-paperis-accent">
-            ▶ 이어 듣기
+            {m.home.continueListening.title}
           </span>
           <span className="mt-1 block truncate text-sm font-medium text-paperis-text">
             {latest.titleKo ?? latest.title}
           </span>
           <span className="mt-1 block truncate text-[11px] text-paperis-text-3">
-            {latest.journal} · 약 {totalMin}분
+            {latest.journal} · {fmt(m.home.continueListening.approxMin, { min: totalMin })}
           </span>
           {isCurrent ? (
             <span className="mt-2 block h-[3px] overflow-hidden rounded-full bg-paperis-border">

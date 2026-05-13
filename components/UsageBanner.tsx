@@ -11,6 +11,8 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import { useAppMessages } from "@/components/useAppMessages";
+import { fmt } from "@/lib/i18n";
 import type { UsageSnapshot } from "@/lib/usage";
 
 const FEATURE_AUTH = process.env.NEXT_PUBLIC_FEATURE_AUTH === "1";
@@ -23,6 +25,7 @@ interface DismissState {
 const DISMISS_KEY = "paperis.usage-banner.dismissed";
 
 export default function UsageBanner() {
+  const m = useAppMessages();
   const [usage, setUsage] = useState<UsageSnapshot | null>(null);
   const [dismissed, setDismissed] = useState(false);
 
@@ -73,9 +76,9 @@ export default function UsageBanner() {
   const isExhausted = exhausted.length > 0;
   const targets = isExhausted ? exhausted : nearing;
   const labels: Record<typeof targets[number], string> = {
-    curation: "저널 큐레이션",
-    tts: "TTS 변환",
-    fulltext: "풀텍스트 요약",
+    curation: m.usage.kind.curation,
+    tts: m.usage.kind.tts,
+    fulltext: m.usage.kind.fulltext,
   };
   const label = targets.map((k) => labels[k]).join(" · ");
 
@@ -100,23 +103,19 @@ export default function UsageBanner() {
       <div className={`flex flex-wrap items-center gap-3 rounded-lg border px-3 py-2 text-sm ${tone}`}>
         <span aria-hidden>{isExhausted ? "⚠️" : "💡"}</span>
         <span className="min-w-0 flex-1">
-          {isExhausted
-            ? `이번 달 ${label} 무료 한도를 모두 사용했습니다.`
-            : `이번 달 ${label} 무료 한도가 거의 소진됐습니다.`}{" "}
-          <span className="opacity-80">
-            BYOK(9,900원·평생) 또는 Pro(4,900원/월) 업그레이드로 한도를 해제하세요.
-          </span>
+          {fmt(isExhausted ? m.usage.exhausted : m.usage.running, { label })}{" "}
+          <span className="opacity-80">{m.usage.upgradeHint}</span>
         </span>
         <Link
           href="/billing"
           className={`inline-flex h-7 shrink-0 items-center rounded-md px-3 text-xs font-medium ${ctaTone}`}
         >
-          업그레이드
+          {m.usage.upgrade}
         </Link>
         <button
           type="button"
           onClick={handleDismiss}
-          aria-label="배너 닫기"
+          aria-label={m.usage.closeAria}
           className="inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-md opacity-60 hover:opacity-100"
         >
           ✕

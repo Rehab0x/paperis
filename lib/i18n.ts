@@ -53,6 +53,16 @@ export function parseAcceptLanguage(header: string | null): Locale | null {
   return null;
 }
 
+// 간단한 placeholder 인터폴: "about {min} min" + { min: 12 } → "about 12 min"
+export function fmt(
+  template: string,
+  params: Record<string, string | number>
+): string {
+  return template.replace(/\{(\w+)\}/g, (_, key) =>
+    key in params ? String(params[key]) : ""
+  );
+}
+
 // 쿠키 이름 (미들웨어와 클라이언트 토글 모두 사용)
 export const LOCALE_COOKIE = "paperis.locale";
 

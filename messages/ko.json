@@ -161,6 +161,48 @@
       "syncHint": "내 임상과·저널 설정이 디바이스 간 동기화됩니다.",
       "menu": "계정 메뉴",
       "user": "사용자"
+    },
+    "home": {
+      "continueListening": {
+        "title": "▶ 이어 듣기",
+        "playAria": "가장 최근 트랙 재생",
+        "approxMin": "약 {min}분"
+      },
+      "specialties": {
+        "title": "🩺 내 임상과",
+        "pick": "선택 →",
+        "manage": "관리"
+      },
+      "trend": {
+        "title": "📈 이번 분기 트렌드",
+        "metaKo": "{name} · {year}년 {quarter}",
+        "loading": "이번 분기 핵심 트렌드를 분석하는 중…",
+        "loadingHint": "첫 분석은 5–10초 걸려요. 다음부터는 캐시로 즉시 표시.",
+        "anotherJournal": "다른 저널 →",
+        "seeAll": "전체 분석·청취·논문 목록 보기"
+      },
+      "journals": {
+        "emptyTitle": "📚 관심 저널을 등록해보세요",
+        "emptyDesc": "임상과를 고르고 저널을 즐겨찾기(⭐)하면, 새 호를 한눈에 볼 수 있습니다.",
+        "emptyCta": "저널 등록하기 →",
+        "title": "📬 내 저널",
+        "seeAll": "전체 보기",
+        "newIssueAria": "새 호 가능성",
+        "newIssueTitle": "한동안 안 봤거나 처음 보는 저널 — 새 호가 나왔을 수 있어요",
+        "favoriteAria": "즐겨찾기"
+      }
+    },
+    "usage": {
+      "kind": {
+        "curation": "저널 큐레이션",
+        "tts": "TTS 변환",
+        "fulltext": "풀텍스트 요약"
+      },
+      "exhausted": "이번 달 {label} 무료 한도를 모두 사용했습니다.",
+      "running": "이번 달 {label} 무료 한도가 거의 소진됐습니다.",
+      "upgradeHint": "BYOK(9,900원·평생) 또는 Pro(4,900원/월) 업그레이드로 한도를 해제하세요.",
+      "upgrade": "업그레이드",
+      "closeAria": "배너 닫기"
     }
   }
 }

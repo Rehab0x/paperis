@@ -24,6 +24,7 @@ import {
 import { getJournalMetas } from "@/lib/journal-meta-cache";
 import { shouldShowNewIndicator } from "@/lib/journal-visits";
 import type { JournalSummary } from "@/lib/openalex";
+import { useAppMessages } from "@/components/useAppMessages";
 
 interface DisplayItem {
   meta: JournalSummary;
@@ -33,6 +34,7 @@ interface DisplayItem {
 }
 
 export default function MyJournalsNewIssues() {
+  const m = useAppMessages();
   const [items, setItems] = useState<DisplayItem[] | null>(null);
 
   useEffect(() => {
@@ -99,16 +101,16 @@ export default function MyJournalsNewIssues() {
     return (
       <section className="mb-6 rounded-2xl border border-dashed border-paperis-border bg-paperis-surface p-6">
         <h2 className="font-serif text-base font-medium text-paperis-text">
-          📚 관심 저널을 등록해보세요
+          {m.home.journals.emptyTitle}
         </h2>
         <p className="mt-1.5 text-xs text-paperis-text-2">
-          임상과를 고르고 저널을 즐겨찾기(⭐)하면, 새 호를 한눈에 볼 수 있습니다.
+          {m.home.journals.emptyDesc}
         </p>
         <Link
           href="/journal"
           className="mt-3 inline-flex h-9 items-center rounded-lg bg-paperis-accent px-3 text-xs font-medium text-paperis-bg transition hover:opacity-90"
         >
-          저널 등록하기 →
+          {m.home.journals.emptyCta}
         </Link>
       </section>
     );
@@ -118,13 +120,13 @@ export default function MyJournalsNewIssues() {
     <section className="mb-6">
       <div className="mb-3 flex items-baseline justify-between">
         <h2 className="text-[13px] font-semibold uppercase tracking-[0.04em] text-paperis-text-2">
-          📬 내 저널
+          {m.home.journals.title}
         </h2>
         <Link
           href="/journal"
           className="text-xs text-paperis-text-3 transition hover:text-paperis-text"
         >
-          전체 보기
+          {m.home.journals.seeAll}
         </Link>
       </div>
       {/* py-2: hover:-translate-y-0.5의 lift가 잘리지 않게 위·아래 헤드룸 확보. */}
@@ -140,15 +142,15 @@ export default function MyJournalsNewIssues() {
             >
               {hasNewIndicator ? (
                 <span
-                  aria-label="새 호 가능성"
-                  title="한동안 안 봤거나 처음 보는 저널 — 새 호가 나왔을 수 있어요"
+                  aria-label={m.home.journals.newIssueAria}
+                  title={m.home.journals.newIssueTitle}
                   className="absolute right-3 top-3 h-2 w-2 rounded-full bg-paperis-accent shadow-[0_0_0_4px_rgb(255_91_58/0.18)]"
                 />
               ) : null}
               <div className="flex items-start gap-1.5">
                 {isFavorite ? (
                   <span
-                    aria-label="즐겨찾기"
+                    aria-label={m.home.journals.favoriteAria}
                     className="text-[11px] leading-none text-paperis-accent"
                   >
                     ★

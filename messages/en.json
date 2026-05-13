@@ -161,6 +161,48 @@
       "syncHint": "Your specialty and journal preferences sync across devices.",
       "menu": "Account menu",
       "user": "User"
+    },
+    "home": {
+      "continueListening": {
+        "title": "▶ Continue listening",
+        "playAria": "Play most recent track",
+        "approxMin": "about {min} min"
+      },
+      "specialties": {
+        "title": "🩺 My specialties",
+        "pick": "Pick →",
+        "manage": "Manage"
+      },
+      "trend": {
+        "title": "📈 This quarter's trends",
+        "metaKo": "{name} · {quarter} {year}",
+        "loading": "Analyzing this quarter's key trends…",
+        "loadingHint": "First analysis takes 5–10 seconds. Cached afterwards.",
+        "anotherJournal": "Another journal →",
+        "seeAll": "See full analysis · audio · papers"
+      },
+      "journals": {
+        "emptyTitle": "📚 Add some journals to follow",
+        "emptyDesc": "Pick a specialty and favorite (⭐) journals to see new issues at a glance.",
+        "emptyCta": "Add journals →",
+        "title": "📬 My journals",
+        "seeAll": "See all",
+        "newIssueAria": "Possibly new issue",
+        "newIssueTitle": "Haven't viewed recently or first-time — a new issue may have been published",
+        "favoriteAria": "Favorite"
+      }
+    },
+    "usage": {
+      "kind": {
+        "curation": "Journal curation",
+        "tts": "TTS narration",
+        "fulltext": "Full-text summaries"
+      },
+      "exhausted": "You've used up your free {label} quota this month.",
+      "running": "You're close to your free {label} quota this month.",
+      "upgradeHint": "Upgrade to BYOK ($19.99 lifetime) or Pro ($7.99/mo) to remove limits.",
+      "upgrade": "Upgrade",
+      "closeAria": "Close banner"
     }
   }
 }

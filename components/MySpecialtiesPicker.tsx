@@ -11,11 +11,14 @@ import {
   getMySpecialties,
   subscribeMySpecialties,
 } from "@/lib/specialty-prefs";
+import { useAppMessages } from "@/components/useAppMessages";
+import { useLocale } from "@/components/useLocale";
 import localCatalog from "@/data/journals.json";
 
 interface SpecialtyMeta {
   id: string;
   name: string;
+  nameEn?: string;
 }
 
 const ALL: SpecialtyMeta[] = (
@@ -24,6 +27,8 @@ const ALL: SpecialtyMeta[] = (
 const DEFAULT_VISIBLE = 3;
 
 export default function MySpecialtiesPicker() {
+  const m = useAppMessages();
+  const locale = useLocale();
   const [ids, setIds] = useState<string[] | null>(null);
   const [hydrated, setHydrated] = useState(false);
 
@@ -60,13 +65,13 @@ export default function MySpecialtiesPicker() {
     <section className="mb-6">
       <div className="mb-3 flex items-baseline justify-between">
         <h2 className="text-[13px] font-semibold uppercase tracking-[0.04em] text-paperis-text-2">
-          🩺 내 임상과
+          {m.home.specialties.title}
         </h2>
         <Link
           href="/journal"
           className="text-xs text-paperis-text-3 transition hover:text-paperis-text"
         >
-          {isUsingDefault ? "선택 →" : "관리"}
+          {isUsingDefault ? m.home.specialties.pick : m.home.specialties.manage}
         </Link>
       </div>
       <div className="-mx-4 flex snap-x snap-mandatory gap-2 overflow-x-auto scroll-px-4 px-4 py-1 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
@@ -79,7 +84,7 @@ export default function MySpecialtiesPicker() {
             <span aria-hidden className="text-paperis-text-3">
               ›
             </span>
-            <span>{s.name}</span>
+            <span>{locale === "en" && s.nameEn ? s.nameEn : s.name}</span>
           </Link>
         ))}
       </div>
