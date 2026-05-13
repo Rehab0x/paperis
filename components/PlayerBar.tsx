@@ -11,6 +11,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { usePlayer } from "@/components/PlayerProvider";
+import { useAppMessages } from "@/components/useAppMessages";
 
 function formatTime(ms: number): string {
   if (!isFinite(ms) || ms < 0) ms = 0;
@@ -21,6 +22,7 @@ function formatTime(ms: number): string {
 }
 
 export default function PlayerBar() {
+  const m = useAppMessages();
   const player = usePlayer();
   const { queue, currentIndex, isPlaying, currentTimeMs, durationMs } = player;
   const [scriptOpen, setScriptOpen] = useState(false);
@@ -93,8 +95,8 @@ export default function PlayerBar() {
               type="button"
               onClick={player.togglePlay}
               className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-paperis-accent text-paperis-bg shadow transition hover:opacity-90"
-              aria-label={isPlaying ? "일시정지 (Space)" : "재생 (Space)"}
-              title={isPlaying ? "일시정지 (Space)" : "재생 (Space)"}
+              aria-label={isPlaying ? m.player.pause : m.player.play}
+              title={isPlaying ? m.player.pause : m.player.play}
             >
               {isPlaying ? <PauseIcon /> : <PlayIcon />}
             </button>
@@ -110,28 +112,28 @@ export default function PlayerBar() {
             <div className="flex shrink-0 items-center gap-0.5">
               <IconButton
                 onClick={player.prev}
-                label="이전 트랙 (Shift+←)"
+                label={m.player.prev}
                 disabled={currentIndex <= 0}
               >
                 <PrevIcon />
               </IconButton>
               <IconButton
                 onClick={() => player.seekBy(-10000)}
-                label="-10초 (←)"
+                label={m.player.back10}
                 extraClass="hidden sm:inline-flex"
               >
                 <span className="font-mono text-[10px]">−10</span>
               </IconButton>
               <IconButton
                 onClick={() => player.seekBy(10000)}
-                label="+10초 (→)"
+                label={m.player.fwd10}
                 extraClass="hidden sm:inline-flex"
               >
                 <span className="font-mono text-[10px]">+10</span>
               </IconButton>
               <IconButton
                 onClick={player.next}
-                label="다음 트랙 (Shift+→)"
+                label={m.player.next}
                 disabled={currentIndex + 1 >= queue.length}
               >
                 <NextIcon />
@@ -147,13 +149,13 @@ export default function PlayerBar() {
                     : "text-paperis-text-2 hover:bg-paperis-surface-2 hover:text-paperis-text",
                   !hasScript ? "cursor-not-allowed opacity-30" : "",
                 ].join(" ")}
-                aria-label="스크립트 보기/숨기기"
+                aria-label={m.player.scriptToggle}
                 title={
                   hasScript
                     ? scriptOpen
-                      ? "스크립트 숨기기"
-                      : "재생 중인 트랙의 narration 스크립트 보기"
-                    : "이 트랙에는 스크립트가 저장되어 있지 않습니다 (v2.0.1 이전 변환)"
+                      ? m.player.scriptHide
+                      : m.player.scriptShow
+                    : m.player.scriptUnavailable
                 }
               >
                 📜
@@ -162,8 +164,8 @@ export default function PlayerBar() {
                 type="button"
                 onClick={player.stop}
                 className="inline-flex h-8 w-8 items-center justify-center rounded-lg text-paperis-text-3 transition hover:bg-paperis-surface-2 hover:text-paperis-text"
-                aria-label="플레이어 닫기"
-                title="플레이어 닫기"
+                aria-label={m.player.close}
+                title={m.player.close}
               >
                 ✕
               </button>
@@ -199,6 +201,7 @@ function SeekBar({
   durationMs: number;
   onSeek: (ms: number) => void;
 }) {
+  const m = useAppMessages();
   const displayProgress =
     durationMs > 0 ? Math.min(100, (currentTimeMs / durationMs) * 100) : 0;
 
@@ -222,7 +225,7 @@ function SeekBar({
         step={100}
         value={Math.min(currentTimeMs, durationMs)}
         onChange={(e) => onSeek(Number(e.target.value))}
-        aria-label="재생 위치"
+        aria-label={m.player.seek}
         className="paperis-seek absolute inset-x-0 top-0 h-4 w-full"
       />
     </div>
@@ -300,6 +303,7 @@ interface ScriptPanelProps {
 }
 
 function ScriptPanel({ title, journal, year, text, onClose }: ScriptPanelProps) {
+  const m = useAppMessages();
   return (
     <div
       style={{ bottom: "var(--player-bar-h, 64px)" }}
@@ -312,16 +316,16 @@ function ScriptPanel({ title, journal, year, text, onClose }: ScriptPanelProps) 
               📜 {title}
             </p>
             <p className="truncate text-xs text-paperis-text-3">
-              {journal} · {year} · narration 스크립트
+              {journal} · {year} · {m.player.scriptHeader}
             </p>
           </div>
           <button
             type="button"
             onClick={onClose}
             className="shrink-0 rounded-md px-2 py-1 text-xs text-paperis-text-3 transition hover:bg-paperis-surface-2 hover:text-paperis-text"
-            aria-label="스크립트 패널 닫기"
+            aria-label={m.player.scriptPanelClose}
           >
-            닫기 ✕
+            {m.player.closeLabel}
           </button>
         </div>
         <div className="max-h-[45vh] overflow-auto rounded-lg border border-paperis-border bg-paperis-surface px-4 py-3 text-[15px] leading-relaxed text-paperis-text-2">

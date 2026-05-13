@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { usePlayer } from "@/components/PlayerProvider";
+import { useAppMessages } from "@/components/useAppMessages";
 import {
   clearTracks,
   getTrackAudio,
@@ -11,6 +12,7 @@ import {
   removeTrack,
   subscribeAudioLibrary,
 } from "@/lib/audio-library";
+import { fmt } from "@/lib/i18n";
 import type { AudioTrackMeta } from "@/types";
 
 interface Props {
@@ -56,11 +58,11 @@ function extensionForMime(mime: string): string {
   return "audio";
 }
 
-async function downloadTrack(track: AudioTrackMeta): Promise<void> {
+async function downloadTrack(track: AudioTrackMeta, missingMsg: string): Promise<void> {
   // 메타에는 audioBlob이 없으므로 다운로드 시점에만 IndexedDB에서 로드.
   const blob = await getTrackAudio(track.id);
   if (!blob) {
-    window.alert("이 트랙의 음원 파일을 불러올 수 없습니다.");
+    window.alert(missingMsg);
     return;
   }
   const ext = extensionForMime(blob.type || "audio/wav");
@@ -75,6 +77,7 @@ async function downloadTrack(track: AudioTrackMeta): Promise<void> {
 }
 
 export default function AudioLibrary({ onOpenPaper }: Props) {
+  const m = useAppMessages();
   const player = usePlayer();
   const [tracks, setTracks] = useState<AudioTrackMeta[]>([]);
   const [loading, setLoading] = useState(true);
@@ -88,7 +91,7 @@ export default function AudioLibrary({ onOpenPaper }: Props) {
       const list = await listTrackMetas();
       setTracks(list);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "라이브러리 로드 실패");
+      setError(err instanceof Error ? err.message : m.library.loadFailed);
     } finally {
       setLoading(false);
     }
@@ -104,7 +107,7 @@ export default function AudioLibrary({ onOpenPaper }: Props) {
 
   async function handleRemove(track: AudioTrackMeta) {
     const ok = window.confirm(
-      `이 트랙을 라이브러리에서 삭제할까요?\n\n${track.title}`
+      fmt(m.library.confirmDelete, { title: track.title })
     );
     if (!ok) return;
     await removeTrack(track.id);
@@ -113,8 +116,7 @@ export default function AudioLibrary({ onOpenPaper }: Props) {
   async function handleClearAll() {
     if (tracks.length === 0) return;
     const ok = window.confirm(
-      `라이브러리의 모든 트랙(${tracks.length}편)을 삭제할까요?\n` +
-        "오디오 파일도 같이 사라지며 되돌릴 수 없습니다."
+      fmt(m.library.confirmClearAll, { count: tracks.length })
     );
     if (!ok) return;
     await clearTracks();
@@ -133,7 +135,7 @@ export default function AudioLibrary({ onOpenPaper }: Props) {
   }
 
   if (loading) {
-    return <p className="text-sm text-paperis-text-3">불러오는 중…</p>;
+    return <p className="text-sm text-paperis-text-3">{m.library.loading}</p>;
   }
   if (error) {
     return (
@@ -145,9 +147,9 @@ export default function AudioLibrary({ onOpenPaper }: Props) {
   if (tracks.length === 0) {
     return (
       <div className="rounded-2xl border border-dashed border-paperis-border bg-paperis-surface p-8 text-center text-sm text-paperis-text-3">
-        아직 저장된 트랙이 없습니다.
+        {m.library.empty}
         <br />
-        논문을 선택해 “TTS 변환” 버튼을 눌러보세요.
+        {m.library.emptyHint}
       </div>
     );
   }
@@ -159,15 +161,18 @@ export default function AudioLibrary({ onOpenPaper }: Props) {
     <div className="space-y-3">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <p className="text-xs text-paperis-text-3">
-          {tracks.length}개 트랙 · 총 재생 {formatDuration(totalMs)} ·{" "}
-          {formatBytes(totalBytes)} (브라우저 IndexedDB 저장)
+          {fmt(m.library.stats, {
+            count: tracks.length,
+            duration: formatDuration(totalMs),
+            bytes: formatBytes(totalBytes),
+          })}
         </p>
         <button
           type="button"
           onClick={handleClearAll}
           className="rounded-lg border border-paperis-border px-2 py-1 text-xs text-paperis-text-3 transition hover:border-paperis-accent hover:bg-paperis-accent-dim/40 hover:text-paperis-accent"
         >
-          전체 비우기
+          {m.library.clearAll}
         </button>
       </div>
       <ol className="overflow-hidden rounded-xl border border-paperis-border bg-paperis-surface">
@@ -194,8 +199,8 @@ export default function AudioLibrary({ onOpenPaper }: Props) {
                 type="button"
                 onClick={() => handlePlay(track, idx)}
                 className="min-w-0 flex-1 cursor-pointer text-left"
-                aria-label={`${track.title} 재생`}
-                title="클릭해서 여기부터 재생 (이미 재생 중이면 일시정지)"
+                aria-label={fmt(m.library.playAria, { title: track.title })}
+                title={m.library.playTitle}
               >
                 <p className="truncate text-sm font-medium leading-tight text-paperis-text">
                   {playingThis ? (
@@ -206,7 +211,7 @@ export default function AudioLibrary({ onOpenPaper }: Props) {
                   {/* 트렌드 트랙 시각 구분 — pmid가 "trend:" prefix면 📊 배지 */}
                   {track.pmid.startsWith("trend:") ? (
                     <span className="mr-1.5 rounded bg-paperis-accent-dim/40 px-1.5 py-0.5 text-[9px] font-medium text-paperis-accent">
-                      📊 트렌드
+                      {m.library.trendBadge}
                     </span>
                   ) : null}
                   {track.titleKo ?? track.title}
@@ -224,8 +229,8 @@ export default function AudioLibrary({ onOpenPaper }: Props) {
                   onClick={() => moveTrackUp(track.id)}
                   disabled={isFirst}
                   className="rounded px-1 py-0.5 text-xs text-paperis-text-3 transition hover:bg-paperis-surface-2 hover:text-paperis-text disabled:opacity-20"
-                  aria-label="위로 이동"
-                  title="위로 이동"
+                  aria-label={m.library.moveUp}
+                  title={m.library.moveUp}
                 >
                   ↑
                 </button>
@@ -234,8 +239,8 @@ export default function AudioLibrary({ onOpenPaper }: Props) {
                   onClick={() => moveTrackDown(track.id)}
                   disabled={isLast}
                   className="rounded px-1 py-0.5 text-xs text-paperis-text-3 transition hover:bg-paperis-surface-2 hover:text-paperis-text disabled:opacity-20"
-                  aria-label="아래로 이동"
-                  title="아래로 이동"
+                  aria-label={m.library.moveDown}
+                  title={m.library.moveDown}
                 >
                   ↓
                 </button>
@@ -244,8 +249,8 @@ export default function AudioLibrary({ onOpenPaper }: Props) {
                     type="button"
                     onClick={() => onOpenPaper(track)}
                     className="rounded px-1.5 py-0.5 text-xs text-paperis-text-3 transition hover:bg-paperis-surface-2 hover:text-paperis-text"
-                    aria-label="논문 디테일 패널 열기"
-                    title="이 논문의 검색 디테일 패널 열기"
+                    aria-label={m.library.openPaperAria}
+                    title={m.library.openPaperTitle}
                   >
                     🔎
                   </button>
@@ -263,23 +268,23 @@ export default function AudioLibrary({ onOpenPaper }: Props) {
                       : "text-paperis-text-3 hover:bg-paperis-surface-2 hover:text-paperis-text",
                     !track.narrationText ? "opacity-30 cursor-not-allowed" : "",
                   ].join(" ")}
-                  aria-label="narration 스크립트 펼치기/접기"
+                  aria-label={m.library.scriptAria}
                   title={
                     track.narrationText
                       ? scriptOpen
-                        ? "스크립트 접기"
-                        : "narration 스크립트 펼치기"
-                      : "이 트랙엔 스크립트가 저장되어 있지 않습니다 (v2.0.1 이전 변환)"
+                        ? m.library.scriptCollapseTitle
+                        : m.library.scriptExpandTitle
+                      : m.library.scriptUnavailableTitle
                   }
                 >
                   📜
                 </button>
                 <button
                   type="button"
-                  onClick={() => void downloadTrack(track)}
+                  onClick={() => void downloadTrack(track, m.library.audioMissing)}
                   className="rounded px-1.5 py-0.5 text-xs text-paperis-text-3 transition hover:bg-paperis-surface-2 hover:text-paperis-text"
-                  aria-label="WAV 다운로드"
-                  title="WAV 파일로 다운로드"
+                  aria-label={m.library.downloadAria}
+                  title={m.library.downloadTitle}
                 >
                   💾
                 </button>
@@ -287,8 +292,8 @@ export default function AudioLibrary({ onOpenPaper }: Props) {
                   type="button"
                   onClick={() => handleRemove(track)}
                   className="rounded px-1.5 py-0.5 text-xs text-paperis-text-3 transition hover:bg-paperis-surface-2 hover:text-paperis-accent"
-                  aria-label="트랙 삭제"
-                  title="트랙 삭제 (확인 후)"
+                  aria-label={m.library.deleteAria}
+                  title={m.library.deleteTitle}
                 >
                   🗑
                 </button>
@@ -305,11 +310,7 @@ export default function AudioLibrary({ onOpenPaper }: Props) {
           );
         })}
       </ol>
-      <p className="text-[11px] text-paperis-text-3">
-        오디오 파일은 브라우저 IndexedDB에만 저장됩니다 — 서버 업로드 없음. 다른
-        기기와 자동 동기화되지 않습니다. 트랙을 삭제하면 해당 음원 파일도 함께
-        사라집니다.
-      </p>
+      <p className="text-[11px] text-paperis-text-3">{m.library.footer}</p>
     </div>
   );
 }

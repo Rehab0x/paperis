@@ -4,6 +4,8 @@ import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useTtsQueue } from "@/components/TtsQueueProvider";
 import type { TtsJob } from "@/components/TtsQueueProvider";
+import { useAppMessages } from "@/components/useAppMessages";
+import { fmt } from "@/lib/i18n";
 
 // 헤더 우측에 작게 떠 있는 배지.
 // 평소엔 "TTS 변환 중 · N편 대기" 라벨만 보이고, 클릭하면 popover로
@@ -12,6 +14,7 @@ import type { TtsJob } from "@/components/TtsQueueProvider";
 // popover는 fixed 좌표 — 헤더의 backdrop-blur가 만드는 stacking context
 // 안에서 absolute로 두면 모바일에서 잘리는 현상이 있다.
 export default function TtsQueueBadge() {
+  const m = useAppMessages();
   const { jobs } = useTtsQueue();
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -98,14 +101,14 @@ export default function TtsQueueBadge() {
         className="inline-flex h-8 items-center gap-1.5 rounded-lg border border-paperis-accent/40 bg-paperis-accent-dim/30 px-2 text-[11px] font-medium text-paperis-accent transition hover:bg-paperis-accent-dim/50"
         title={
           running
-            ? `현재 변환 중: ${running.paper.title}`
-            : `${queued.length}편 대기 중`
+            ? fmt(m.ttsQueue.convertingTitle, { title: running.paper.title })
+            : fmt(m.ttsQueue.queuedCount, { n: queued.length })
         }
         aria-haspopup="true"
         aria-expanded={open}
       >
         <span className="inline-block h-1.5 w-1.5 animate-pulse rounded-full bg-paperis-accent" />
-        {running ? "변환 중" : "대기"}
+        {running ? m.ttsQueue.labelConverting : m.ttsQueue.labelQueued}
         {queued.length > 0 ? ` · ${queued.length}` : ""}
       </button>
 
@@ -116,13 +119,13 @@ export default function TtsQueueBadge() {
           className="fixed z-50 overflow-hidden rounded-lg border border-paperis-border bg-paperis-surface shadow-xl sm:w-80"
         >
           <div className="border-b border-paperis-border bg-paperis-surface-2 px-3 py-2 text-[11px] uppercase tracking-[0.06em] text-paperis-text-2">
-            TTS 작업
+            {m.ttsQueue.panelTitle}
           </div>
           <ul className="max-h-[60vh] divide-y divide-paperis-border overflow-auto">
             {running ? (
               <JobRow
                 job={running}
-                badge="변환 중"
+                badge={m.ttsQueue.badgeConverting}
                 badgeClass="bg-paperis-accent-dim/60 text-paperis-accent"
                 onClick={() => handleOpenPaper(running)}
               />
@@ -131,15 +134,14 @@ export default function TtsQueueBadge() {
               <JobRow
                 key={j.id}
                 job={j}
-                badge={`대기 ${i + 1}`}
+                badge={fmt(m.ttsQueue.badgeQueued, { n: i + 1 })}
                 badgeClass="bg-paperis-surface-2 text-paperis-text-2"
                 onClick={() => handleOpenPaper(j)}
               />
             ))}
           </ul>
           <div className="border-t border-paperis-border px-3 py-2 text-[10px] text-paperis-text-3">
-            항목을 클릭하면 해당 논문 디테일 패널이 열립니다. 변환은 그대로
-            계속됩니다.
+            {m.ttsQueue.panelHint}
           </div>
         </div>
       ) : null}

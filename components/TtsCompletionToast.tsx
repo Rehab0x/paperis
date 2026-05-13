@@ -1,8 +1,10 @@
 "use client";
 
 import { useTtsQueue } from "@/components/TtsQueueProvider";
+import { useAppMessages } from "@/components/useAppMessages";
 
 export default function TtsCompletionToast() {
+  const m = useAppMessages();
   const { completionToast, dismissCompletionToast } = useTtsQueue();
   if (!completionToast) return null;
   return (
@@ -17,7 +19,7 @@ export default function TtsCompletionToast() {
         type="button"
         onClick={dismissCompletionToast}
         className="text-paperis-accent/70 transition hover:text-paperis-accent"
-        aria-label="알림 닫기"
+        aria-label={m.tts.toastCloseAria}
       >
         ✕
       </button>

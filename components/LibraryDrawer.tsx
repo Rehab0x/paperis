@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
 import { useRouter, useSearchParams } from "next/navigation";
 import AudioLibrary from "@/components/AudioLibrary";
+import { useAppMessages } from "@/components/useAppMessages";
 import type { AudioTrackMeta } from "@/types";
 
 interface Props {
@@ -25,6 +26,7 @@ interface Props {
 //   - max-w-3xl로 v2.0.1 보다 넓게 (트랙 메타가 한 줄에 더 잘 들어감)
 //   - body 스크롤 락은 open일 때만
 export default function LibraryDrawer({ open, onClose }: Props) {
+  const m = useAppMessages();
   const router = useRouter();
   const searchParams = useSearchParams();
   // SSR-safe portal target — 헤더의 backdrop-filter가 fixed 자식의 containing block이
@@ -85,7 +87,7 @@ export default function LibraryDrawer({ open, onClose }: Props) {
       {/* panel — 우측에서 슬라이드. PlayerBar 위에서 끝나 ▶/📜 컨트롤이 항상 노출. */}
       <aside
         role="dialog"
-        aria-label="오디오 라이브러리"
+        aria-label={m.library.drawerAria}
         aria-hidden={!open}
         style={{ bottom: "var(--player-bar-h, 0px)" }}
         className={[
@@ -102,10 +104,10 @@ export default function LibraryDrawer({ open, onClose }: Props) {
             type="button"
             onClick={onClose}
             className="rounded-lg px-2 py-1 text-sm text-paperis-text-2 transition hover:bg-paperis-surface-2 hover:text-paperis-text"
-            aria-label="라이브러리 닫기 (ESC)"
+            aria-label={m.library.drawerCloseAria}
             title="ESC"
           >
-            닫기 ✕
+            {m.library.drawerCloseLabel}
           </button>
         </header>
         <div className="flex-1 overflow-auto px-5 py-4 pb-8">

@@ -2,6 +2,8 @@
 
 import { useTtsProviderPreference } from "@/components/TtsProviderPreferenceProvider";
 import { useTtsQueue } from "@/components/TtsQueueProvider";
+import { useAppMessages } from "@/components/useAppMessages";
+import { fmt } from "@/lib/i18n";
 import type { Language, Paper } from "@/types";
 
 interface Props {
@@ -22,6 +24,7 @@ export default function TtsButton({
   voice,
   providerName,
 }: Props) {
+  const m = useAppMessages();
   const { jobs, enqueue, cancel } = useTtsQueue();
   const {
     provider: preferredProvider,
@@ -62,10 +65,10 @@ export default function TtsButton({
     });
   }
 
-  let label = "🎧 TTS 변환 → 라이브러리";
-  if (myJob?.status === "running") label = "변환 중…";
+  let label = m.tts.convert;
+  if (myJob?.status === "running") label = m.tts.converting;
   else if (myJob?.status === "queued")
-    label = aheadCount > 0 ? `대기 중 (앞에 ${aheadCount}편)` : "대기 중";
+    label = aheadCount > 0 ? fmt(m.tts.queuedAhead, { n: aheadCount }) : m.tts.queued;
 
   return (
     <div className="space-y-2">
@@ -84,29 +87,28 @@ export default function TtsButton({
             onClick={() => cancel(myJob.id)}
             className="text-xs text-paperis-text-3 underline transition hover:text-paperis-text"
           >
-            대기 취소
+            {m.tts.cancelQueue}
           </button>
         ) : null}
       </div>
       {myJob?.status === "done" ? (
         <p className="rounded-lg border border-paperis-accent/40 bg-paperis-accent-dim/40 px-2.5 py-1.5 text-xs text-paperis-accent">
-          🎉 라이브러리 끝에 추가됨 — 헤더의 라이브러리에서 들으세요
+          {m.tts.doneToast}
         </p>
       ) : null}
       {myJob?.status === "failed" ? (
         <pre className="whitespace-pre-wrap break-words rounded-lg border border-paperis-accent/40 bg-paperis-accent-dim/40 px-2.5 py-1.5 font-sans text-xs leading-relaxed text-paperis-accent">
-          {myJob.error ?? "TTS 실패"}
+          {myJob.error ?? m.tts.failed}
         </pre>
       ) : null}
       {myJob?.status === "running" ? (
         <p className="text-xs text-paperis-text-3">
-          narration 생성 + 음성 합성에 30~90초 정도 걸립니다. 변환 동안
-          검색·탐색을 계속하셔도 됩니다.
+          {m.tts.runningHint}
         </p>
       ) : null}
       {myJob?.status === "queued" ? (
         <p className="text-xs text-paperis-text-3">
-          현재 변환 작업이 끝나면 자동으로 이어서 변환합니다.
+          {m.tts.queuedHint}
         </p>
       ) : null}
     </div>
