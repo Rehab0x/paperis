@@ -300,6 +300,117 @@
       "scriptPanelClose": "스크립트 패널 닫기",
       "closeLabel": "닫기 ✕"
     },
+    "appHome": {
+      "queryToggleTitle": "변환된 검색식 보기/숨기기",
+      "queryLabel": "검색식",
+      "naturalHint1": "또는, 위 검색창에 자연어로 질문해 보세요.",
+      "naturalHint2": "PubMed 검색식으로 바꿔 돌립니다.",
+      "noResults": "검색 결과가 없습니다.",
+      "searchFailed": "검색 실패",
+      "searchFailedStatus": "검색 실패 ({status})",
+      "totalStats": "PubMed 전체 결과 {total}건 중 {from}–{to}건 표시",
+      "oaPageSortTitle": "이 페이지에서 Open Access 논문을 위로 정렬",
+      "detailPlaceholder": "왼쪽 카드를 클릭하면 상세 정보가 여기에 표시됩니다.",
+      "prevN": "← 이전 {n}건",
+      "nextN": "다음 {n}건 →",
+      "pageOf": "{page} / {total} 페이지",
+      "paginationAria": "페이지 이동"
+    },
+    "journal": {
+      "entryLink": "저널 탐색",
+      "tabs": {
+        "aria": "저널 진입 방식",
+        "issue": "📅 호 탐색",
+        "topic": "🏷️ 주제 탐색",
+        "trend": "📈 최근 트렌드"
+      },
+      "card": {
+        "twoYrCitations": "2yr 인용도",
+        "paperCount": "논문 수",
+        "totalCites": "총 인용",
+        "removeAdded": "추가 목록에서 제거",
+        "hideInSpecialty": "이 임상과에서 숨기기",
+        "favoriteAria": "즐겨찾기",
+        "unfavoriteAria": "즐겨찾기 해제",
+        "favoriteTitle": "즐겨찾기 — 이 임상과 상위로",
+        "remove": "삭제"
+      },
+      "pagination": {
+        "aria": "페이지 이동",
+        "prev": "← 이전 {n}건",
+        "next": "다음 {n}건 →",
+        "pageOf": "{page} / {total} 페이지"
+      },
+      "search": {
+        "placeholder": "저널 이름으로 검색 — 예: 'Lancet', 'Stroke'",
+        "closeAria": "닫기 (ESC)",
+        "close": "닫기",
+        "searching": "검색 중…",
+        "empty": "매칭되는 저널이 없습니다. 영어 표기로 시도해 보세요.",
+        "alreadyAdded": "이미 있음",
+        "footer": "OpenAlex 카탈로그에서 검색 — 영문 저널명이 가장 정확합니다.",
+        "failed": "검색 실패",
+        "failedStatus": "검색 실패 ({status})"
+      },
+      "list": {
+        "stats": "총 {total}건 중 {from}–{to}건 표시",
+        "oaSortTitle": "Open Access 논문을 전체 결과 상위로 정렬",
+        "oaFirst": "📖 Open Access 우선",
+        "empty": "결과가 없습니다.",
+        "placeholderDetail": "왼쪽 카드를 클릭하면 풀텍스트·요약·TTS가 여기에 표시됩니다."
+      },
+      "issue": {
+        "year": "연도",
+        "month": "월",
+        "months": ["1월","2월","3월","4월","5월","6월","7월","8월","9월","10월","11월","12월"],
+        "header": "{year}년 {month}월 호 — PubMed 전체 {total}건",
+        "headerSub": "(받은 {n}건 정렬·페이지네이션)",
+        "empty": "이 달({year}년 {month}월)에는 PubMed 인덱스에 논문이 없습니다.",
+        "emptyHint": "{journalName}는 발행 주기 또는 PubMed 인덱싱 지연으로 결과가 비어 있을 수 있습니다.",
+        "failed": "호 탐색 실패",
+        "failedStatus": "호 탐색 실패 ({status})"
+      },
+      "topic": {
+        "placeholder": "예: spasticity, post-stroke gait, Botox",
+        "search": "주제 검색",
+        "searching": "검색 중…",
+        "suggestedWithName": "{specialtyName} 추천:",
+        "suggested": "추천:",
+        "header": "{journalName} · 주제 “{topic}” — PubMed 전체 {total}건",
+        "headerSub": "(받은 {n}건 정렬·페이지네이션)",
+        "intro": "위 입력창에 키워드를 넣거나 추천 태그를 누르세요.",
+        "empty": "“{topic}” 주제로 매칭되는 논문이 없습니다.",
+        "emptyHint": "다른 키워드를 시도하거나 추천 태그를 눌러보세요.",
+        "failed": "주제 검색 실패",
+        "failedStatus": "주제 검색 실패 ({status})"
+      },
+      "trend": {
+        "dirIncreasing": "↑ 증가",
+        "dirNew": "🆕 신규",
+        "dirDebated": "⚡ 논쟁",
+        "dirOngoing": "→ 지속",
+        "periodAnnual": "연간",
+        "year": "연도",
+        "period": "기간",
+        "futureTitle": "아직 시작 전입니다",
+        "stats": "{periodLabel} · {total}건 분석 대상 (상위 {n}건 표시)",
+        "inProgress": "(진행 중)",
+        "loading": "Gemini가 abstract 모음을 themes 단위로 분석 중… 30~90초 정도 걸립니다.",
+        "insufficient": "이 기간에는 분석할 논문이 충분하지 않습니다 ({total}건).",
+        "insufficientHint": "연간(all)으로 보거나 다른 분기를 선택해보세요.",
+        "repPmids": "대표 논문 PMID:",
+        "repPmidTitle": "페이지 내 논문 카드로 이동 (없으면 PubMed 새 탭)",
+        "methodologyShift": "방법론 변화",
+        "clinicalImplication": "임상 시사점",
+        "narrationLabel": "📻 트렌드 브리핑 스크립트 ({chars}자)",
+        "expand": "펼치기",
+        "collapse": "접기",
+        "papersIntro": "아래는 분석 대상이 된 논문들 — 카드를 누르면 풀텍스트·요약·TTS로 바로 들어갑니다.",
+        "noPatterns": "이 기간에는 themes를 추출할 만큼의 패턴이 보이지 않습니다.",
+        "failed": "트렌드 분석 실패",
+        "failedStatus": "트렌드 분석 실패 ({status})"
+      }
+    },
     "library": {
       "drawerAria": "오디오 라이브러리",
       "drawerCloseAria": "라이브러리 닫기 (ESC)",

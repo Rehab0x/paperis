@@ -7,7 +7,9 @@
 
 import { useEffect, useMemo, useState } from "react";
 import JournalPaperList from "@/components/JournalPaperList";
+import { useAppMessages } from "@/components/useAppMessages";
 import { useFetchWithKeys } from "@/components/useFetchWithKeys";
+import { fmt } from "@/lib/i18n";
 import type { Paper } from "@/types";
 
 interface Props {
@@ -41,22 +43,12 @@ function buildYearOptions(): number[] {
   return out;
 }
 
-const MONTH_OPTIONS = [
-  { v: 1, label: "1월" },
-  { v: 2, label: "2월" },
-  { v: 3, label: "3월" },
-  { v: 4, label: "4월" },
-  { v: 5, label: "5월" },
-  { v: 6, label: "6월" },
-  { v: 7, label: "7월" },
-  { v: 8, label: "8월" },
-  { v: 9, label: "9월" },
-  { v: 10, label: "10월" },
-  { v: 11, label: "11월" },
-  { v: 12, label: "12월" },
-];
-
 export default function IssueExplorer({ issn, journalName }: Props) {
+  const m = useAppMessages();
+  const MONTH_OPTIONS = m.journal.issue.months.map((label, i) => ({
+    v: i + 1,
+    label,
+  }));
   const init = useMemo(defaultYearMonth, []);
   const [year, setYear] = useState<number>(init.year);
   const [month, setMonth] = useState<number>(init.month);
@@ -103,8 +95,8 @@ export default function IssueExplorer({ issn, journalName }: Props) {
             json && "error" in json && json.error
               ? json.error
               : rawText
-                ? `호 탐색 실패 (${res.status}): ${rawText.slice(0, 240)}`
-                : `호 탐색 실패 (${res.status})`;
+                ? `${fmt(m.journal.issue.failedStatus, { status: res.status })}: ${rawText.slice(0, 240)}`
+                : fmt(m.journal.issue.failedStatus, { status: res.status });
           setError(msg);
           setPapers([]);
           setTotal(0);
@@ -114,7 +106,7 @@ export default function IssueExplorer({ issn, journalName }: Props) {
         setTotal(json.total);
       } catch (err) {
         if (cancelled || (err as Error).name === "AbortError") return;
-        setError(err instanceof Error ? err.message : "호 탐색 실패");
+        setError(err instanceof Error ? err.message : m.journal.issue.failed);
         setPapers([]);
         setTotal(0);
       } finally {
@@ -132,7 +124,7 @@ export default function IssueExplorer({ issn, journalName }: Props) {
     <section className="flex flex-col gap-4">
       <div className="flex flex-wrap items-center gap-3 rounded-2xl border border-paperis-border bg-paperis-surface p-3">
         <label className="flex items-center gap-2 text-xs text-paperis-text-3">
-          <span>연도</span>
+          <span>{m.journal.issue.year}</span>
           <select
             value={year}
             onChange={(e) => setYear(Number(e.target.value))}
@@ -146,23 +138,28 @@ export default function IssueExplorer({ issn, journalName }: Props) {
           </select>
         </label>
         <label className="flex items-center gap-2 text-xs text-paperis-text-3">
-          <span>월</span>
+          <span>{m.journal.issue.month}</span>
           <select
             value={month}
             onChange={(e) => setMonth(Number(e.target.value))}
             className="rounded-md border border-paperis-border bg-paperis-surface px-2 py-1 text-sm text-paperis-text"
           >
-            {MONTH_OPTIONS.map((m) => (
-              <option key={m.v} value={m.v}>
-                {m.label}
+            {MONTH_OPTIONS.map((opt) => (
+              <option key={opt.v} value={opt.v}>
+                {opt.label}
               </option>
             ))}
           </select>
         </label>
         {!loading && total > 0 ? (
           <span className="text-xs text-paperis-text-3">
-            {year}년 {month}월 호 — PubMed 전체 {total.toLocaleString()}건
-            (받은 {papers.length}건 정렬·페이지네이션)
+            {fmt(m.journal.issue.header, {
+              year,
+              month,
+              monthName: m.journal.issue.months[month - 1],
+              total: total.toLocaleString(),
+            })}{" "}
+            {fmt(m.journal.issue.headerSub, { n: papers.length })}
           </span>
         ) : null}
       </div>
@@ -174,10 +171,15 @@ export default function IssueExplorer({ issn, journalName }: Props) {
         fetchKey={fetchKey}
         emptyMessage={
           <div className="rounded-2xl border border-dashed border-paperis-border bg-paperis-surface p-8 text-center text-sm text-paperis-text-3">
-            <p>이 달({year}년 {month}월)에는 PubMed 인덱스에 논문이 없습니다.</p>
+            <p>
+              {fmt(m.journal.issue.empty, {
+                year,
+                month,
+                monthName: m.journal.issue.months[month - 1],
+              })}
+            </p>
             <p className="mt-1 text-xs text-paperis-text-3">
-              {journalName}는 발행 주기 또는 PubMed 인덱싱 지연으로 결과가 비어
-              있을 수 있습니다.
+              {fmt(m.journal.issue.emptyHint, { journalName })}
             </p>
           </div>
         }

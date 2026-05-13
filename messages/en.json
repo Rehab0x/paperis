@@ -300,6 +300,117 @@
       "scriptPanelClose": "Close script panel",
       "closeLabel": "Close ✕"
     },
+    "appHome": {
+      "queryToggleTitle": "Show/hide translated query",
+      "queryLabel": "Query",
+      "naturalHint1": "Or ask a question in natural language above.",
+      "naturalHint2": "We'll translate it to a PubMed query.",
+      "noResults": "No search results.",
+      "searchFailed": "Search failed",
+      "searchFailedStatus": "Search failed ({status})",
+      "totalStats": "Showing {from}–{to} of {total} PubMed results",
+      "oaPageSortTitle": "Sort Open Access papers to the top of this page",
+      "detailPlaceholder": "Click a card on the left to see details here.",
+      "prevN": "← Previous {n}",
+      "nextN": "Next {n} →",
+      "pageOf": "{page} / {total}",
+      "paginationAria": "Pagination"
+    },
+    "journal": {
+      "entryLink": "Browse journals",
+      "tabs": {
+        "aria": "Journal entry",
+        "issue": "📅 Issues",
+        "topic": "🏷️ Topics",
+        "trend": "📈 Trends"
+      },
+      "card": {
+        "twoYrCitations": "2yr citations",
+        "paperCount": "Papers",
+        "totalCites": "Total cites",
+        "removeAdded": "Remove from added",
+        "hideInSpecialty": "Hide in this specialty",
+        "favoriteAria": "Favorite",
+        "unfavoriteAria": "Unfavorite",
+        "favoriteTitle": "Favorite — pin in this specialty",
+        "remove": "Remove"
+      },
+      "pagination": {
+        "aria": "Pagination",
+        "prev": "← Previous {n}",
+        "next": "Next {n} →",
+        "pageOf": "{page} / {total}"
+      },
+      "search": {
+        "placeholder": "Search by journal name — e.g. 'Lancet', 'Stroke'",
+        "closeAria": "Close (ESC)",
+        "close": "Close",
+        "searching": "Searching…",
+        "empty": "No matches. Try the English title.",
+        "alreadyAdded": "Already added",
+        "footer": "Searches the OpenAlex catalog — English journal names work best.",
+        "failed": "Search failed",
+        "failedStatus": "Search failed ({status})"
+      },
+      "list": {
+        "stats": "Showing {from}–{to} of {total}",
+        "oaSortTitle": "Sort Open Access papers to the top of the entire result set",
+        "oaFirst": "📖 Open Access first",
+        "empty": "No results.",
+        "placeholderDetail": "Click a card on the left to see full text · summary · TTS."
+      },
+      "issue": {
+        "year": "Year",
+        "month": "Month",
+        "months": ["January","February","March","April","May","June","July","August","September","October","November","December"],
+        "header": "{monthName} {year} issue — PubMed total {total}",
+        "headerSub": "({n} fetched · sorted/paginated)",
+        "empty": "No papers indexed on PubMed for {monthName} {year}.",
+        "emptyHint": "{journalName} may have issue cadence gaps or PubMed indexing delay.",
+        "failed": "Issue search failed",
+        "failedStatus": "Issue search failed ({status})"
+      },
+      "topic": {
+        "placeholder": "e.g. spasticity, post-stroke gait, Botox",
+        "search": "Search topic",
+        "searching": "Searching…",
+        "suggestedWithName": "{specialtyName} suggestions:",
+        "suggested": "Suggestions:",
+        "header": "{journalName} · topic “{topic}” — PubMed total {total}",
+        "headerSub": "({n} fetched · sorted/paginated)",
+        "intro": "Type a keyword above or click a suggested tag.",
+        "empty": "No papers found for topic “{topic}”.",
+        "emptyHint": "Try a different keyword or a suggested tag.",
+        "failed": "Topic search failed",
+        "failedStatus": "Topic search failed ({status})"
+      },
+      "trend": {
+        "dirIncreasing": "↑ Increasing",
+        "dirNew": "🆕 New",
+        "dirDebated": "⚡ Debated",
+        "dirOngoing": "→ Ongoing",
+        "periodAnnual": "Annual",
+        "year": "Year",
+        "period": "Period",
+        "futureTitle": "Period hasn't started yet",
+        "stats": "{periodLabel} · {total} abstracts analyzed (top {n} shown)",
+        "inProgress": "(in progress)",
+        "loading": "Analyzing the abstract corpus as themes… takes 30–90 seconds.",
+        "insufficient": "Not enough papers to analyze in this period ({total}).",
+        "insufficientHint": "Try the annual view or a different quarter.",
+        "repPmids": "Representative PMIDs:",
+        "repPmidTitle": "Jump to paper card on this page (PubMed in new tab if not present)",
+        "methodologyShift": "Methodology shift",
+        "clinicalImplication": "Clinical implication",
+        "narrationLabel": "📻 Trend briefing script ({chars} chars)",
+        "expand": "Expand",
+        "collapse": "Collapse",
+        "papersIntro": "Below are the analyzed papers — click any card to open full text · summary · TTS.",
+        "noPatterns": "Not enough patterns to extract themes in this period.",
+        "failed": "Trend analysis failed",
+        "failedStatus": "Trend analysis failed ({status})"
+      }
+    },
     "library": {
       "drawerAria": "Audio library",
       "drawerCloseAria": "Close library (ESC)",

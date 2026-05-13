@@ -19,8 +19,10 @@ import TrendFeaturedCard from "@/components/TrendFeaturedCard";
 // 안의 "전체 보기" + 빈 상태 CTA가 같은 동선 제공). 다른 페이지의 헤더에는 그대로 유지.
 import TtsQueueBadge from "@/components/TtsQueueBadge";
 import UsageBanner from "@/components/UsageBanner";
+import { useAppMessages } from "@/components/useAppMessages";
 import { useFetchWithKeys } from "@/components/useFetchWithKeys";
 import { getTrackByPmid } from "@/lib/audio-library";
+import { fmt } from "@/lib/i18n";
 import {
   getClientCachedQuery,
   setClientCachedQuery,
@@ -53,6 +55,7 @@ function parsePage(value: string | null): number {
 }
 
 function HomeInner() {
+  const m = useAppMessages();
   const router = useRouter();
   const searchParams = useSearchParams();
   const q = searchParams.get("q") ?? "";
@@ -285,8 +288,8 @@ function HomeInner() {
             json && "error" in json && json.error
               ? json.error
               : rawText
-                ? `검색 실패 (${res.status}): ${rawText.slice(0, 240)}`
-                : `검색 실패 (${res.status})`;
+                ? `${fmt(m.appHome.searchFailedStatus, { status: res.status })}: ${rawText.slice(0, 240)}`
+                : fmt(m.appHome.searchFailedStatus, { status: res.status });
           setError(msg);
           setPapers([]);
           setTranslated(null);
@@ -299,7 +302,7 @@ function HomeInner() {
         setClientCachedQuery(trimmed, json.query, json.note);
       } catch (err) {
         if (cancelled || (err as Error).name === "AbortError") return;
-        setError(err instanceof Error ? err.message : "검색 실패");
+        setError(err instanceof Error ? err.message : m.appHome.searchFailed);
         setPapers([]);
         setTotal(0);
       } finally {
@@ -428,9 +431,9 @@ function HomeInner() {
                 type="button"
                 onClick={() => setShowQueryDetail((v) => !v)}
                 className="font-mono text-paperis-text-3 transition hover:text-paperis-text-2"
-                title="변환된 검색식 보기/숨기기"
+                title={m.appHome.queryToggleTitle}
               >
-                {showQueryDetail ? "▾" : "▸"} 검색식
+                {showQueryDetail ? "▾" : "▸"} {m.appHome.queryLabel}
               </button>
               {showQueryDetail ? (
                 <span className="ml-2 break-all font-mono text-paperis-text-2">
@@ -470,17 +473,17 @@ function HomeInner() {
               <MyJournalsNewIssues />
               <div className="mt-2 rounded-2xl border border-dashed border-paperis-border bg-paperis-surface/50 p-5 text-center">
                 <p className="text-sm text-paperis-text-2">
-                  또는, 위 검색창에 자연어로 질문해 보세요.
+                  {m.appHome.naturalHint1}
                 </p>
                 <p className="mt-1 text-[11px] text-paperis-text-3">
-                  PubMed 검색식으로 바꿔 돌립니다.
+                  {m.appHome.naturalHint2}
                 </p>
               </div>
             </div>
           ) : null}
 
           {q.trim() && !loading && papers.length === 0 && !error ? (
-            <p className="text-sm text-paperis-text-3">검색 결과가 없습니다.</p>
+            <p className="text-sm text-paperis-text-3">{m.appHome.noResults}</p>
           ) : null}
 
           {(papers.length > 0 || loading) && (
@@ -488,9 +491,11 @@ function HomeInner() {
               {!loading && total > 0 ? (
                 <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
                   <p className="text-xs text-paperis-text-3">
-                    PubMed 전체 결과 {total.toLocaleString()}건 중{" "}
-                    {(page - 1) * PAGE_SIZE + 1}–
-                    {(page - 1) * PAGE_SIZE + papers.length}건 표시
+                    {fmt(m.appHome.totalStats, {
+                      total: total.toLocaleString(),
+                      from: (page - 1) * PAGE_SIZE + 1,
+                      to: (page - 1) * PAGE_SIZE + papers.length,
+                    })}
                   </p>
                   {papers.length > 0 ? (
                     <button
@@ -503,9 +508,9 @@ function HomeInner() {
                           ? "border-paperis-accent bg-paperis-accent-dim/40 text-paperis-accent"
                           : "border-paperis-border text-paperis-text-2 hover:border-paperis-text-3",
                       ].join(" ")}
-                      title="이 페이지에서 Open Access 논문을 위로 정렬"
+                      title={m.appHome.oaPageSortTitle}
                     >
-                      {oaFirst ? "✓ " : ""}📖 Open Access 우선{" "}
+                      {oaFirst ? "✓ " : ""}{m.journal.list.oaFirst}{" "}
                       <span className="text-paperis-text-3">
                         ({oaCountInPage}/{papers.length})
                       </span>
@@ -550,7 +555,7 @@ function HomeInner() {
             />
           ) : (
             <div className="sticky top-32 rounded-2xl border border-dashed border-paperis-border bg-paperis-surface p-6 text-sm text-paperis-text-3">
-              왼쪽 카드를 클릭하면 상세 정보가 여기에 표시됩니다.
+              {m.appHome.detailPlaceholder}
             </div>
           )}
         </aside>
@@ -568,12 +573,13 @@ function Pagination({
   totalPages: number;
   onChange: (next: number) => void;
 }) {
+  const m = useAppMessages();
   const safeTotal = Math.max(1, Math.min(totalPages, 9999));
   const isFirst = page <= 1;
   const isLast = page >= safeTotal;
   return (
     <nav
-      aria-label="페이지 이동"
+      aria-label={m.appHome.paginationAria}
       className="mt-6 flex items-center justify-between gap-3 border-t border-paperis-border pt-4"
     >
       <button
@@ -582,10 +588,13 @@ function Pagination({
         disabled={isFirst}
         className="rounded-lg border border-paperis-border px-3 py-1.5 text-sm text-paperis-text-2 transition hover:bg-paperis-surface-2 hover:text-paperis-text disabled:cursor-not-allowed disabled:opacity-30"
       >
-        ← 이전 20건
+        {fmt(m.appHome.prevN, { n: PAGE_SIZE })}
       </button>
       <span className="text-xs text-paperis-text-3">
-        {page.toLocaleString()} / {safeTotal.toLocaleString()} 페이지
+        {fmt(m.appHome.pageOf, {
+          page: page.toLocaleString(),
+          total: safeTotal.toLocaleString(),
+        })}
       </span>
       <button
         type="button"
@@ -593,7 +602,7 @@ function Pagination({
         disabled={isLast}
         className="rounded-lg border border-paperis-border px-3 py-1.5 text-sm text-paperis-text-2 transition hover:bg-paperis-surface-2 hover:text-paperis-text disabled:cursor-not-allowed disabled:opacity-30"
       >
-        다음 20건 →
+        {fmt(m.appHome.nextN, { n: PAGE_SIZE })}
       </button>
     </nav>
   );

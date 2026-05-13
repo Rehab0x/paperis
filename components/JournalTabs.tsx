@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { useAppMessages } from "@/components/useAppMessages";
 
 export type JournalTab = "issue" | "topic" | "trend";
 
@@ -12,12 +13,6 @@ interface Props {
   /** referrer 임상과 — 탭 이동 시에도 유지해 주제 탭의 추천 태그가 보존되도록 */
   fromSpecialtyId?: string;
 }
-
-const TABS: { id: JournalTab; label: string }[] = [
-  { id: "issue", label: "📅 호 탐색" },
-  { id: "topic", label: "🏷️ 주제 탐색" },
-  { id: "trend", label: "📈 최근 트렌드" },
-];
 
 function buildHref(
   baseHref: string,
@@ -32,9 +27,15 @@ function buildHref(
 }
 
 export default function JournalTabs({ current, baseHref, fromSpecialtyId }: Props) {
+  const m = useAppMessages();
+  const TABS: { id: JournalTab; label: string }[] = [
+    { id: "issue", label: m.journal.tabs.issue },
+    { id: "topic", label: m.journal.tabs.topic },
+    { id: "trend", label: m.journal.tabs.trend },
+  ];
   return (
     <nav
-      aria-label="저널 진입 방식"
+      aria-label={m.journal.tabs.aria}
       className="mb-5 flex gap-1 border-b border-paperis-border"
     >
       {TABS.map((t) => {

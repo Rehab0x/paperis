@@ -1,4 +1,7 @@
+"use client";
+
 import Link from "next/link";
+import { useAppMessages } from "@/components/useAppMessages";
 import type { JournalSummary } from "@/lib/openalex";
 
 /**
@@ -34,6 +37,7 @@ export default function JournalCard({
   /** 좌상단에 작은 라벨 — "내가 추가" 같은 출처 표시 */
   badge?: string;
 }) {
+  const m = useAppMessages();
   const inner = (
     <div
       className={[
@@ -58,7 +62,7 @@ export default function JournalCard({
         ) : null}
         {typeof journal.twoYearMeanCitedness === "number" ? (
           <>
-            <dt className="text-paperis-text-3">2yr 인용도</dt>
+            <dt className="text-paperis-text-3">{m.journal.card.twoYrCitations}</dt>
             <dd className="tabular-nums text-paperis-text-2">
               {journal.twoYearMeanCitedness.toFixed(2)}
             </dd>
@@ -66,7 +70,7 @@ export default function JournalCard({
         ) : null}
         {journal.worksCount > 0 ? (
           <>
-            <dt className="text-paperis-text-3">논문 수</dt>
+            <dt className="text-paperis-text-3">{m.journal.card.paperCount}</dt>
             <dd className="tabular-nums text-paperis-text-2">
               {journal.worksCount.toLocaleString()}
             </dd>
@@ -74,7 +78,7 @@ export default function JournalCard({
         ) : null}
         {journal.citedByCount > 0 ? (
           <>
-            <dt className="text-paperis-text-3">총 인용</dt>
+            <dt className="text-paperis-text-3">{m.journal.card.totalCites}</dt>
             <dd className="tabular-nums text-paperis-text-2">
               {journal.citedByCount.toLocaleString()}
             </dd>
@@ -87,9 +91,9 @@ export default function JournalCard({
   // ✕/⭐ 버튼은 카드 전체 클릭 영역(Link) 안에 absolute로 놓고 e.preventDefault()로
   // navigation 차단. 미지정 시엔 그려지지 않으므로 server-only 사용처는 영향 없음.
   const onActionLabel = onRemoveByUser
-    ? "추가 목록에서 제거"
+    ? m.journal.card.removeAdded
     : onBlock
-      ? "이 임상과에서 숨기기"
+      ? m.journal.card.hideInSpecialty
       : null;
   const onAction = onRemoveByUser ?? onBlock ?? null;
 
@@ -101,9 +105,9 @@ export default function JournalCard({
         e.stopPropagation();
         onToggleFavorite();
       }}
-      aria-label={isFavorite ? "즐겨찾기 해제" : "즐겨찾기"}
+      aria-label={isFavorite ? m.journal.card.unfavoriteAria : m.journal.card.favoriteAria}
       aria-pressed={isFavorite}
-      title={isFavorite ? "즐겨찾기 해제" : "즐겨찾기 — 이 임상과 상위로"}
+      title={isFavorite ? m.journal.card.unfavoriteAria : m.journal.card.favoriteTitle}
       className={[
         "inline-flex h-6 w-6 items-center justify-center rounded-md text-sm transition",
         isFavorite
@@ -123,8 +127,8 @@ export default function JournalCard({
         e.stopPropagation();
         onAction();
       }}
-      aria-label={onActionLabel ?? "삭제"}
-      title={onActionLabel ?? "삭제"}
+      aria-label={onActionLabel ?? m.journal.card.remove}
+      title={onActionLabel ?? m.journal.card.remove}
       className="inline-flex h-6 w-6 items-center justify-center rounded-md text-xs text-paperis-text-3 transition hover:bg-paperis-surface-2 hover:text-paperis-text"
     >
       ✕

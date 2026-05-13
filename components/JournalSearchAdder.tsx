@@ -5,7 +5,9 @@
 // 후 OpenAlex 검색 → 결과 목록에서 클릭으로 추가.
 
 import { useEffect, useRef, useState } from "react";
+import { useAppMessages } from "@/components/useAppMessages";
 import { useFetchWithKeys } from "@/components/useFetchWithKeys";
+import { fmt } from "@/lib/i18n";
 import type { JournalSummary } from "@/lib/openalex";
 
 interface Props {
@@ -25,6 +27,7 @@ export default function JournalSearchAdder({
   excludeIds,
   onClose,
 }: Props) {
+  const m = useAppMessages();
   const [query, setQuery] = useState("");
   const [results, setResults] = useState<JournalSummary[]>([]);
   const [loading, setLoading] = useState(false);
@@ -83,14 +86,14 @@ export default function JournalSearchAdder({
         const msg =
           json && "error" in json && json.error
             ? json.error
-            : `검색 실패 (${res.status})`;
+            : fmt(m.journal.search.failedStatus, { status: res.status });
         setError(msg);
         setResults([]);
         return;
       }
       setResults(json.journals);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "검색 실패");
+      setError(err instanceof Error ? err.message : m.journal.search.failed);
       setResults([]);
     } finally {
       setLoading(false);
@@ -105,7 +108,7 @@ export default function JournalSearchAdder({
           type="text"
           value={query}
           onChange={(e) => setQuery(e.target.value)}
-          placeholder="저널 이름으로 검색 — 예: 'Lancet', 'Stroke'"
+          placeholder={m.journal.search.placeholder}
           className="min-w-0 flex-1 rounded-lg border border-paperis-border bg-paperis-surface px-3 py-2 text-sm text-paperis-text placeholder:text-paperis-text-3"
           autoComplete="off"
           spellCheck={false}
@@ -114,9 +117,9 @@ export default function JournalSearchAdder({
           type="button"
           onClick={onClose}
           className="rounded-lg px-2 py-1 text-xs text-paperis-text-3 transition hover:bg-paperis-surface-2 hover:text-paperis-text"
-          aria-label="닫기 (ESC)"
+          aria-label={m.journal.search.closeAria}
         >
-          닫기
+          {m.journal.search.close}
         </button>
       </div>
 
@@ -127,12 +130,12 @@ export default function JournalSearchAdder({
       ) : null}
 
       {loading ? (
-        <p className="mt-3 text-xs text-paperis-text-3">검색 중…</p>
+        <p className="mt-3 text-xs text-paperis-text-3">{m.journal.search.searching}</p>
       ) : null}
 
       {!loading && query.trim() && results.length === 0 && !error ? (
         <p className="mt-3 text-xs text-paperis-text-3">
-          매칭되는 저널이 없습니다. 영어 표기로 시도해 보세요.
+          {m.journal.search.empty}
         </p>
       ) : null}
 
@@ -175,7 +178,7 @@ export default function JournalSearchAdder({
                   </span>
                   {already ? (
                     <span className="shrink-0 text-[10px] text-paperis-text-3">
-                      이미 있음
+                      {m.journal.search.alreadyAdded}
                     </span>
                   ) : null}
                 </button>
@@ -187,7 +190,7 @@ export default function JournalSearchAdder({
 
       {!query.trim() ? (
         <p className="mt-3 text-[11px] text-paperis-text-3">
-          OpenAlex 카탈로그에서 검색 — 영문 저널명이 가장 정확합니다.
+          {m.journal.search.footer}
         </p>
       ) : null}
     </div>

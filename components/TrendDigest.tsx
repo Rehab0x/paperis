@@ -14,7 +14,9 @@
 import { useEffect, useState } from "react";
 import JournalPaperList from "@/components/JournalPaperList";
 import TrendTtsButton from "@/components/TrendTtsButton";
+import { useAppMessages } from "@/components/useAppMessages";
 import { useFetchWithKeys } from "@/components/useFetchWithKeys";
+import { fmt } from "@/lib/i18n";
 import type { Paper } from "@/types";
 
 interface Props {
@@ -28,12 +30,7 @@ interface Props {
 type Quarter = "all" | "Q1" | "Q2" | "Q3" | "Q4";
 type Direction = "increasing" | "new" | "debated" | "ongoing";
 
-const DIRECTION_LABEL: Record<Direction, string> = {
-  increasing: "↑ 증가",
-  new: "🆕 신규",
-  debated: "⚡ 논쟁",
-  ongoing: "→ 지속",
-};
+// DIRECTION_LABEL은 컴포넌트 안에서 m.journal.trend.dirXxx로 동적 생성.
 
 interface TrendTheme {
   topic: string;
@@ -62,14 +59,15 @@ interface TrendResponse {
   isComplete: boolean;
 }
 
-const QUARTERS: { v: Quarter; label: string; months: [number, number] | null }[] =
-  [
-    { v: "all", label: "연간", months: null },
-    { v: "Q1", label: "Q1", months: [1, 3] },
-    { v: "Q2", label: "Q2", months: [4, 6] },
-    { v: "Q3", label: "Q3", months: [7, 9] },
-    { v: "Q4", label: "Q4", months: [10, 12] },
-  ];
+// QUARTERS도 컴포넌트 안에서 m.journal.trend.periodAnnual을 사용해 동적 생성.
+const QUARTER_VALUES: Quarter[] = ["all", "Q1", "Q2", "Q3", "Q4"];
+const QUARTER_MONTHS: Record<Quarter, [number, number] | null> = {
+  all: null,
+  Q1: [1, 3],
+  Q2: [4, 6],
+  Q3: [7, 9],
+  Q4: [10, 12],
+};
 
 const NOW = new Date();
 
@@ -83,10 +81,9 @@ function buildYearOptions(): number[] {
 /** 분기가 미래(현재 시점에 시작도 안 함)이면 비활성화 — 분석할 abstract가 없음 */
 function isFutureQuarter(year: number, q: Quarter): boolean {
   if (q === "all") return false;
-  const conf = QUARTERS.find((x) => x.v === q);
-  if (!conf || !conf.months) return false;
-  const fromMonth = conf.months[0];
-  const startMs = new Date(year, fromMonth - 1, 1).getTime();
+  const months = QUARTER_MONTHS[q];
+  if (!months) return false;
+  const startMs = new Date(year, months[0] - 1, 1).getTime();
   return startMs > Date.now();
 }
 
@@ -147,6 +144,18 @@ export default function TrendDigest({
   initialYear,
   initialQuarter,
 }: Props) {
+  const m = useAppMessages();
+  const DIRECTION_LABEL: Record<Direction, string> = {
+    increasing: m.journal.trend.dirIncreasing,
+    new: m.journal.trend.dirNew,
+    debated: m.journal.trend.dirDebated,
+    ongoing: m.journal.trend.dirOngoing,
+  };
+  const QUARTERS = QUARTER_VALUES.map((v) => ({
+    v,
+    label: v === "all" ? m.journal.trend.periodAnnual : v,
+    months: QUARTER_MONTHS[v],
+  }));
   const [year, setYear] = useState<number>(initialYear ?? NOW.getFullYear());
   const [quarter, setQuarter] = useState<Quarter>(initialQuarter ?? "all");
 
@@ -211,8 +220,8 @@ export default function TrendDigest({
             json && "error" in json && json.error
               ? json.error
               : rawText
-                ? `트렌드 분석 실패 (${res.status}): ${rawText.slice(0, 240)}`
-                : `트렌드 분석 실패 (${res.status})`;
+                ? `${fmt(m.journal.trend.failedStatus, { status: res.status })}: ${rawText.slice(0, 240)}`
+                : fmt(m.journal.trend.failedStatus, { status: res.status });
           setError(msg);
           setPapers([]);
           setTotal(0);
@@ -226,7 +235,7 @@ export default function TrendDigest({
         if (skippedHeader) setSkipped(skippedHeader);
       } catch (err) {
         if (cancelled || (err as Error).name === "AbortError") return;
-        setError(err instanceof Error ? err.message : "트렌드 분석 실패");
+        setError(err instanceof Error ? err.message : m.journal.trend.failed);
       } finally {
         if (!cancelled) setLoading(false);
       }
@@ -243,7 +252,7 @@ export default function TrendDigest({
       {/* 연도 탭 + 분기 버튼 */}
       <div className="flex flex-col gap-2 rounded-2xl border border-paperis-border bg-paperis-surface p-3">
         <div className="flex flex-wrap items-center gap-1.5">
-          <span className="mr-1 text-xs text-paperis-text-3">연도</span>
+          <span className="mr-1 text-xs text-paperis-text-3">{m.journal.trend.year}</span>
           {yearOptions.map((y) => {
             const active = year === y;
             return (
@@ -264,7 +273,7 @@ export default function TrendDigest({
           })}
         </div>
         <div className="flex flex-wrap items-center gap-1.5">
-          <span className="mr-1 text-xs text-paperis-text-3">기간</span>
+          <span className="mr-1 text-xs text-paperis-text-3">{m.journal.trend.period}</span>
           {QUARTERS.map((opt) => {
             const active = quarter === opt.v;
             const future = isFutureQuarter(year, opt.v);
@@ -274,7 +283,7 @@ export default function TrendDigest({
                 type="button"
                 onClick={() => setQuarter(opt.v)}
                 disabled={future}
-                title={future ? "아직 시작 전입니다" : opt.label}
+                title={future ? m.journal.trend.futureTitle : opt.label}
                 className={[
                   "rounded-md border px-2.5 py-1 text-xs transition",
                   active
@@ -290,10 +299,13 @@ export default function TrendDigest({
         </div>
         {periodLabel ? (
           <p className="mt-1 text-xs text-paperis-text-3">
-            {periodLabel} · {total.toLocaleString()}건 분석 대상 (상위{" "}
-            {papers.length}건 표시)
+            {fmt(m.journal.trend.stats, {
+              periodLabel,
+              total: total.toLocaleString(),
+              n: papers.length,
+            })}
             {isComplete ? null : (
-              <span className="ml-1 text-paperis-accent">(진행 중)</span>
+              <span className="ml-1 text-paperis-accent">{m.journal.trend.inProgress}</span>
             )}
           </p>
         ) : null}
@@ -309,7 +321,7 @@ export default function TrendDigest({
             <div className="h-4 w-10/12 animate-pulse rounded bg-paperis-border" />
           </div>
           <p className="mt-4 text-xs text-paperis-text-3">
-            Gemini가 abstract 모음을 themes 단위로 분석 중… 30~90초 정도 걸립니다.
+            {m.journal.trend.loading}
           </p>
         </div>
       ) : error ? (
@@ -318,9 +330,9 @@ export default function TrendDigest({
         </div>
       ) : skipped ? (
         <div className="rounded-2xl border border-dashed border-paperis-border bg-paperis-surface p-8 text-center text-sm text-paperis-text-3">
-          이 기간에는 분석할 논문이 충분하지 않습니다 ({total}건).
+          {fmt(m.journal.trend.insufficient, { total })}
           <p className="mt-1 text-xs text-paperis-text-3">
-            연간(all)으로 보거나 다른 분기를 선택해보세요.
+            {m.journal.trend.insufficientHint}
           </p>
         </div>
       ) : trend.themes.length > 0 ? (
@@ -352,14 +364,14 @@ export default function TrendDigest({
                 </p>
                 {t.representativePmids.length > 0 ? (
                   <p className="mt-2 text-[11px] text-paperis-text-3">
-                    대표 논문 PMID:{" "}
+                    {m.journal.trend.repPmids}{" "}
                     {t.representativePmids.map((pmid, idx) => (
                       <span key={pmid}>
                         {idx > 0 ? ", " : ""}
                         <button
                           type="button"
                           onClick={() => jumpToPaper(pmid)}
-                          title="페이지 내 논문 카드로 이동 (없으면 PubMed 새 탭)"
+                          title={m.journal.trend.repPmidTitle}
                           className="cursor-pointer rounded font-mono underline transition hover:text-paperis-text"
                         >
                           {pmid}
@@ -375,7 +387,7 @@ export default function TrendDigest({
           {trend.methodologyShift ? (
             <div>
               <h3 className="text-[11px] font-semibold uppercase tracking-[0.06em] text-paperis-text-2">
-                방법론 변화
+                {m.journal.trend.methodologyShift}
               </h3>
               <p className="mt-1 text-sm leading-relaxed text-paperis-text-2">
                 {trend.methodologyShift}
@@ -386,7 +398,7 @@ export default function TrendDigest({
           {trend.clinicalImplication ? (
             <div>
               <h3 className="text-[11px] font-semibold uppercase tracking-[0.06em] text-paperis-text-2">
-                임상 시사점
+                {m.journal.trend.clinicalImplication}
               </h3>
               <p className="mt-1 text-sm leading-relaxed text-paperis-text-2">
                 {trend.clinicalImplication}
@@ -408,14 +420,15 @@ export default function TrendDigest({
               <details className="group rounded-lg border border-paperis-border bg-paperis-surface">
                 <summary className="flex cursor-pointer items-center justify-between gap-2 px-3 py-2 text-sm">
                   <span className="text-paperis-text-2">
-                    📻 트렌드 브리핑 스크립트 (
-                    {trend.narrationScript.length.toLocaleString()}자)
+                    {fmt(m.journal.trend.narrationLabel, {
+                      chars: trend.narrationScript.length.toLocaleString(),
+                    })}
                   </span>
                   <span className="text-xs text-paperis-text-3 group-open:hidden">
-                    펼치기
+                    {m.journal.trend.expand}
                   </span>
                   <span className="hidden text-xs text-paperis-text-3 group-open:inline">
-                    접기
+                    {m.journal.trend.collapse}
                   </span>
                 </summary>
                 <div className="border-t border-paperis-border px-3 py-3">
@@ -428,13 +441,12 @@ export default function TrendDigest({
           ) : null}
 
           <p className="text-[11px] text-paperis-text-3">
-            아래는 분석 대상이 된 논문들 — 카드를 누르면 풀텍스트·요약·TTS로 바로
-            들어갑니다.
+            {m.journal.trend.papersIntro}
           </p>
         </article>
       ) : !loading && papers.length > 0 ? (
         <div className="rounded-2xl border border-dashed border-paperis-border bg-paperis-surface p-8 text-center text-sm text-paperis-text-3">
-          이 기간에는 themes를 추출할 만큼의 패턴이 보이지 않습니다.
+          {m.journal.trend.noPatterns}
         </div>
       ) : null}
 

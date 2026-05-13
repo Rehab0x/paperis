@@ -14,8 +14,10 @@ import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import JournalPaginationView from "@/components/JournalPagination";
 import PaperDetailPanel from "@/components/PaperDetailPanel";
 import ResultsList from "@/components/ResultsList";
+import { useAppMessages } from "@/components/useAppMessages";
 import { useAutoMiniSummary } from "@/components/useAutoMiniSummary";
 import { useFetchWithKeys } from "@/components/useFetchWithKeys";
+import { fmt } from "@/lib/i18n";
 import type {
   MiniSummary,
   Paper,
@@ -48,6 +50,7 @@ export default function JournalPaperList({
   fetchKey,
   pageSize = DEFAULT_PAGE_SIZE,
 }: Props) {
+  const m = useAppMessages();
   // 선택 pmid는 URL ?pmid=...에 동기화 — 모바일 뒤로가기로 패널 닫기.
   // setSelectedPmid 헬퍼가 router.push/replace로 URL 갱신 → history entry 1개 추가.
   // 같은 페이지 내 다른 카드 선택은 replace (history 폭주 방지), 새 선택/닫기는 push.
@@ -250,8 +253,11 @@ export default function JournalPaperList({
         {papers.length > 0 ? (
           <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
             <p className="text-xs text-paperis-text-3">
-              총 {sortedPapers.length.toLocaleString()}건 중 {showFrom}–{showTo}건
-              표시
+              {fmt(m.journal.list.stats, {
+                total: sortedPapers.length.toLocaleString(),
+                from: showFrom,
+                to: showTo,
+              })}
             </p>
             <button
               type="button"
@@ -263,9 +269,9 @@ export default function JournalPaperList({
                   ? "border-paperis-accent bg-paperis-accent-dim/40 text-paperis-accent"
                   : "border-paperis-border text-paperis-text-2 hover:border-paperis-text-3",
               ].join(" ")}
-              title="Open Access 논문을 전체 결과 상위로 정렬"
+              title={m.journal.list.oaSortTitle}
             >
-              {oaFirst ? "✓ " : ""}📖 Open Access 우선{" "}
+              {oaFirst ? "✓ " : ""}{m.journal.list.oaFirst}{" "}
               <span className="text-paperis-text-3">
                 ({oaCount}/{papers.length})
               </span>
@@ -285,7 +291,7 @@ export default function JournalPaperList({
         {!loading && papers.length === 0 && !error
           ? emptyMessage ?? (
               <div className="rounded-2xl border border-dashed border-paperis-border bg-paperis-surface p-8 text-center text-sm text-paperis-text-3">
-                결과가 없습니다.
+                {m.journal.list.empty}
               </div>
             )
           : null}
@@ -318,7 +324,7 @@ export default function JournalPaperList({
           />
         ) : (
           <div className="sticky top-32 hidden rounded-2xl border border-dashed border-paperis-border bg-paperis-surface p-6 text-sm text-paperis-text-3 lg:block">
-            왼쪽 카드를 클릭하면 풀텍스트·요약·TTS가 여기에 표시됩니다.
+            {m.journal.list.placeholderDetail}
           </div>
         )}
       </aside>
