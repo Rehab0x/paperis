@@ -469,8 +469,8 @@ function HomeInner() {
             <div className="paperis-stagger">
               <ContinueListeningCard />
               <MySpecialtiesPicker />
-              <TrendFeaturedCard />
               <MyJournalsNewIssues />
+              <TrendFeaturedCard />
               <div className="mt-2 rounded-2xl border border-dashed border-paperis-border bg-paperis-surface/50 p-5 text-center">
                 <p className="text-sm text-paperis-text-2">
                   {m.appHome.naturalHint1}

@@ -68,30 +68,35 @@ function parseQuarter(raw: string): Quarter {
   return "all";
 }
 
-function buildPeriod(year: number, quarter: Quarter) {
+function buildPeriod(year: number, quarter: Quarter, language: "ko" | "en") {
   let fromMonth = 1;
   let toMonth = 12;
-  let label = `${year}년 연간`;
+  // locale별 short label — 홈 TrendFeaturedCard의 작은 영역에 들어가는 라벨.
+  // ko: "2026년 Q2" / en: "Q2 2026" or "2026 Annual"
+  const annual = language === "en" ? `${year} Annual` : `${year}년 연간`;
+  const quarterLabel = (q: "Q1" | "Q2" | "Q3" | "Q4") =>
+    language === "en" ? `${q} ${year}` : `${year}년 ${q}`;
+  let label = annual;
   switch (quarter) {
     case "Q1":
       fromMonth = 1;
       toMonth = 3;
-      label = `${year}년 Q1`;
+      label = quarterLabel("Q1");
       break;
     case "Q2":
       fromMonth = 4;
       toMonth = 6;
-      label = `${year}년 Q2`;
+      label = quarterLabel("Q2");
       break;
     case "Q3":
       fromMonth = 7;
       toMonth = 9;
-      label = `${year}년 Q3`;
+      label = quarterLabel("Q3");
       break;
     case "Q4":
       fromMonth = 10;
       toMonth = 12;
-      label = `${year}년 Q4`;
+      label = quarterLabel("Q4");
       break;
     case "all":
       break;
@@ -122,7 +127,7 @@ export async function GET(req: Request) {
     return jsonError("year는 2000~2100 사이 정수여야 합니다.");
   }
   const year = yearRaw;
-  const period = buildPeriod(year, quarter);
+  const period = buildPeriod(year, quarter, language);
 
   // Redis 캐시 hit이면 즉시 반환 — 별도 키로 풀 trend와 분리
   const cacheKey = `trend-headline:${issn}:${year}:${quarter}:${language}`;

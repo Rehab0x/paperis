@@ -79,30 +79,52 @@ function parseQuarter(raw: string): TrendQuarter {
   return "all";
 }
 
-function buildPeriod(year: number, quarter: TrendQuarter): PeriodInfo {
+function buildPeriod(
+  year: number,
+  quarter: TrendQuarter,
+  language: "ko" | "en"
+): PeriodInfo {
   let fromMonth = 1;
   let toMonth = 12;
-  let label = `${year}년 연간`;
+  const annual = language === "en" ? `${year} Annual` : `${year}년 연간`;
+  // ko: "2026년 Q1 (1–3월)" / en: "Q1 2026 (Jan–Mar)"
+  const QUARTER_MONTHS_EN: Record<"Q1" | "Q2" | "Q3" | "Q4", string> = {
+    Q1: "Jan–Mar",
+    Q2: "Apr–Jun",
+    Q3: "Jul–Sep",
+    Q4: "Oct–Dec",
+  };
+  const QUARTER_MONTHS_KO: Record<"Q1" | "Q2" | "Q3" | "Q4", string> = {
+    Q1: "1–3월",
+    Q2: "4–6월",
+    Q3: "7–9월",
+    Q4: "10–12월",
+  };
+  const quarterLabel = (q: "Q1" | "Q2" | "Q3" | "Q4") =>
+    language === "en"
+      ? `${q} ${year} (${QUARTER_MONTHS_EN[q]})`
+      : `${year}년 ${q} (${QUARTER_MONTHS_KO[q]})`;
+  let label = annual;
   switch (quarter) {
     case "Q1":
       fromMonth = 1;
       toMonth = 3;
-      label = `${year}년 Q1 (1–3월)`;
+      label = quarterLabel("Q1");
       break;
     case "Q2":
       fromMonth = 4;
       toMonth = 6;
-      label = `${year}년 Q2 (4–6월)`;
+      label = quarterLabel("Q2");
       break;
     case "Q3":
       fromMonth = 7;
       toMonth = 9;
-      label = `${year}년 Q3 (7–9월)`;
+      label = quarterLabel("Q3");
       break;
     case "Q4":
       fromMonth = 10;
       toMonth = 12;
-      label = `${year}년 Q4 (10–12월)`;
+      label = quarterLabel("Q4");
       break;
     case "all":
       // 위 default
@@ -153,7 +175,7 @@ export async function GET(req: Request) {
   }
   const year = yearRaw;
 
-  const period = buildPeriod(year, quarter);
+  const period = buildPeriod(year, quarter, language);
   const term = buildTrendTerm(issn, period);
 
   // 캐시 hit이면 PubMed/OpenAlex/Gemini 호출 모두 스킵
