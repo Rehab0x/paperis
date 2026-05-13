@@ -179,7 +179,9 @@ export async function GET(req: Request) {
   const term = buildTrendTerm(issn, period);
 
   // 캐시 hit이면 PubMed/OpenAlex/Gemini 호출 모두 스킵
-  const cacheKey = `trend:${issn}:${year}:${quarter}:${language}`;
+  // v2 — periodLabel에 language 분기 도입 (2026-05-14). prefix bump로
+  // 이전 캐시(영어 모드인데 한국어 라벨) 즉시 무효화.
+  const cacheKey = `trend:v2:${issn}:${year}:${quarter}:${language}`;
   const cached = await getCached<TrendResponse>(cacheKey);
   if (cached) {
     return new Response(JSON.stringify(cached), {

@@ -129,8 +129,10 @@ export async function GET(req: Request) {
   const year = yearRaw;
   const period = buildPeriod(year, quarter, language);
 
-  // Redis 캐시 hit이면 즉시 반환 — 별도 키로 풀 trend와 분리
-  const cacheKey = `trend-headline:${issn}:${year}:${quarter}:${language}`;
+  // Redis 캐시 hit이면 즉시 반환 — 별도 키로 풀 trend와 분리.
+  // v2 — periodLabel에 language 분기 도입 (2026-05-14). 이전 캐시는 영어 키
+  // 안에서도 한국어 라벨 갖고 있었음. prefix bump로 즉시 무효화.
+  const cacheKey = `trend-headline:v2:${issn}:${year}:${quarter}:${language}`;
   const cached = await getCached<HeadlineResponse>(cacheKey);
   if (cached) {
     return new Response(JSON.stringify(cached), {
