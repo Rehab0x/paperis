@@ -97,7 +97,9 @@ export default async function SpecialtyJournalsPage({ params }: Props) {
         <h1 className="font-serif text-3xl font-medium tracking-tight text-paperis-text">
           {localName}
         </h1>
-        <p className="mt-0.5 text-sm text-paperis-text-3">{secondaryName}</p>
+        {locale === "en" ? null : (
+          <p className="mt-0.5 text-sm text-paperis-text-3">{secondaryName}</p>
+        )}
         <p className="mt-3 text-xs text-paperis-text-3">
           {fmt(m.journalSpecialty.intro, { n: TARGET_COUNT })}
         </p>

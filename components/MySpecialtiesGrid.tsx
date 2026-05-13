@@ -65,9 +65,9 @@ export default function MySpecialtiesGrid({ catalog }: Props) {
               <h2 className="font-serif text-lg font-medium tracking-tight text-paperis-text">
                 {locale === "en" ? s.nameEn : s.name}
               </h2>
-              <p className="mt-0.5 text-xs text-paperis-text-3">
-                {locale === "en" ? s.name : s.nameEn}
-              </p>
+              {locale === "en" ? null : (
+                <p className="mt-0.5 text-xs text-paperis-text-3">{s.nameEn}</p>
+              )}
               {s.suggestedTopics.length > 0 ? (
                 <p className="mt-3 text-xs leading-relaxed text-paperis-text-3">
                   {m.specialtyManage.suggestedTopics} ·{" "}

@@ -108,9 +108,11 @@ export default function MySpecialtiesEditor() {
               <span className="block truncate text-sm font-medium text-paperis-text">
                 {locale === "en" ? s.nameEn : s.name}
               </span>
-              <span className="block truncate text-[11px] text-paperis-text-3">
-                {locale === "en" ? s.name : s.nameEn}
-              </span>
+              {locale === "en" ? null : (
+                <span className="block truncate text-[11px] text-paperis-text-3">
+                  {s.nameEn}
+                </span>
+              )}
             </div>
             <button
               type="button"
@@ -170,9 +172,11 @@ export default function MySpecialtiesEditor() {
                       <span className="block truncate text-sm text-paperis-text">
                         {locale === "en" ? s.nameEn : s.name}
                       </span>
-                      <span className="block truncate text-[11px] text-paperis-text-3">
-                        {locale === "en" ? s.name : s.nameEn}
-                      </span>
+                      {locale === "en" ? null : (
+                        <span className="block truncate text-[11px] text-paperis-text-3">
+                          {s.nameEn}
+                        </span>
+                      )}
                     </span>
                   </button>
                 </li>

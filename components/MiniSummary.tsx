@@ -15,8 +15,8 @@ export default function MiniSummaryView({ summary, loading, onRequest }: Props) 
     return (
       <ul className="mt-2.5 space-y-1 text-sm leading-relaxed text-paperis-text-2">
         {summary.bullets.map((b, i) => (
-          <li key={i} className="flex gap-2">
-            <span className="mt-1 h-1 w-1 shrink-0 rounded-full bg-paperis-accent" />
+          <li key={i} className="flex items-center gap-2">
+            <span className="h-1 w-1 shrink-0 rounded-full bg-paperis-accent" />
             <span>{b}</span>
           </li>
         ))}
