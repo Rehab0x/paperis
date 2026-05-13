@@ -1,6 +1,6 @@
 # Paperis — TODO / 진척 기록
 
-> 마지막 갱신: 2026-05-14 (Phase 2-A 랜딩 + Phase 2-B 영어 서비스 + Phase 2-C1 진행 중 — 헤더/홈/검색·디테일/TTS·라이브러리 i18n 완료, 저널 큐레이션 그룹 남음)
+> 마지막 갱신: 2026-05-14 (Phase 2-A 랜딩 + Phase 2-B 영어 서비스 + Phase 2-C1 앱 UI i18n 완료 — 핵심 사용자 흐름 영어 완주 가능)
 > 외부 노출 문서는 [README.md](README.md), 컨텍스트는 [CLAUDE.md](CLAUDE.md). 이 파일은 작업 일지·기술부채·의사결정 기록 보관용.
 
 ---
@@ -56,15 +56,16 @@
   - API 라우트 7개 (TTS 3·summarize 2·journal trend 2) — `body.language === "en" ? "en" : "ko"` 하드코딩 → `getRequestLanguage(req, body)` 일괄
   - 클라이언트 `useLocale()` 훅 신설 — `paperis.locale` cookie 기반. PaperDetailPanel/TrendTtsButton의 `language: "ko"` 하드코딩 제거
   - `lib/journals.ts SpecialtyLocaleScope("ko"|"en"|"both")` 타입 + `Specialty.defaultLocale?` optional + `isSpecialtyVisibleForLocale` 헬퍼 — Phase 2-C 온보딩 UI에서 활성 예정. JSON 자체는 그대로(GitHub web으로 점진 입력 가능)
-- 🟡 **Phase 2-C1 앱 UI i18n** (2026-05-14 진행) — 핵심 흐름 4 그룹 완료, 저널 큐레이션 그룹 남음
-  - ✅ 인프라: `messages/app.*` 네임스페이스 + `useAppMessages` 클라이언트 훅 + `fmt(template, params)` 인터폴 헬퍼
-  - ✅ 헤더: LibraryLink·SettingsLink·AuthMenu (aria/메뉴/완성 안내)
-  - ✅ 홈 카드 5개: ContinueListening·MySpecialtiesPicker·TrendFeaturedCard·MyJournalsNewIssues·UsageBanner
-  - ✅ 검색·결과·디테일 8개: SearchBar·SortControl·PaperCard·MiniSummary·PaperDetailPanel·FullTextView·PdfUpload (ResultsList는 텍스트 0)
-  - ✅ TTS·플레이어·라이브러리 6개: TtsButton·TtsCompletionToast·TtsQueueBadge·PlayerBar(ScriptPanel 포함)·AudioLibrary·LibraryDrawer
-  - ⬜ C1-6 저널 큐레이션: JournalTabs·JournalCard·IssueExplorer·TopicExplorer·TrendDigest·JournalPaperList·JournalSearchAdder·JournalPagination·JournalEntryLink (다음 사이클)
-  - ⬜ app/app/page.tsx 헤더 안내 문구 ("PubMed 전체 결과 …", OA 우선 토글, 검색식 토글 등)
-- ⬜ **Phase 2-C2** 부수 그룹 — 설정 드로어(SettingsDrawer 109줄), 계정/결제/온보딩 페이지
+- ✅ **Phase 2-C1 앱 UI i18n** (2026-05-14 완료) — 핵심 사용자 흐름 전체 영어 완주
+  - 인프라: `messages/app.*` 네임스페이스 + `useAppMessages` 클라이언트 훅 + `fmt(template, params)` 인터폴 헬퍼
+  - 헤더 3개: LibraryLink·SettingsLink·AuthMenu
+  - 홈 카드 5개: ContinueListening·MySpecialtiesPicker·TrendFeaturedCard·MyJournalsNewIssues·UsageBanner
+  - 검색·결과·디테일 8개: SearchBar·SortControl·PaperCard·MiniSummary·PaperDetailPanel·FullTextView·PdfUpload
+  - TTS·플레이어·라이브러리 6개: TtsButton·TtsCompletionToast·TtsQueueBadge·PlayerBar(ScriptPanel)·AudioLibrary·LibraryDrawer
+  - 저널 큐레이션 9개: JournalTabs·JournalCard·IssueExplorer·TopicExplorer·TrendDigest·JournalPaperList·JournalSearchAdder·JournalPagination·JournalEntryLink
+  - app/app/page.tsx 헤더 안내 (검색식 토글/OA/페이지네이션/empty 등)
+  - **총 31개 컴포넌트 + 230+ 메시지 키**, 영어 모드 사용자 핵심 흐름 영어 완주 가능
+- ⬜ **Phase 2-C2** 부수 그룹 — 설정 드로어(SettingsDrawer 109줄), 계정/결제/온보딩 페이지, specialty 관리(MySpecialtiesGrid·Editor, SpecialtyJournalsList, JournalBlocksManager)
 - ⬜ **Phase 2-C3** 약관 페이지 영어 번역 (legal/terms·privacy·refund — 법률 검토 필요)
 - ⬜ **Phase 2-D** Stripe 결제 연동 (해외 사용자 USD) — 한국 사업자등록(M8) 완료 후
 
@@ -412,15 +413,18 @@ vercel.json                      cron 설정 (recurring-billing)
 
 기획·프로토타입: `docs/GLOBAL_EXPANSION_PLAN.md`, `docs/paperis_landing_prototype.html`, `docs/HOME_LAYOUT_SPEC.md`, `docs/RESEARCH_READING_BEHAVIOR_Marketing.md`, `docs/Paperis_home_prototype.html`
 
-### Phase 2-C1 앱 UI i18n 마이그레이션 — 핵심 사용자 흐름 (2026-05-14)
+### Phase 2-C1 앱 UI i18n 마이그레이션 — 완료 (2026-05-14)
 
-커밋: `d6b4f24` (인프라+헤더), `dc47cb0` (홈 카드), `09677b1` (검색·디테일), `6f6e591` (TTS·라이브러리)
+커밋: `d6b4f24` (인프라+헤더), `dc47cb0` (홈 카드), `09677b1` (검색·디테일), `6f6e591` (TTS·라이브러리), `733af58` (저널 큐레이션+앱 홈)
 
 - **인프라** — `messages/{ko,en}.json`에 `app.*` 네임스페이스. `components/useAppMessages.ts` (useLocale + getMessages 묶음). `lib/i18n.ts fmt()` placeholder 인터폴 헬퍼 (`"about {min} min"` + `{ min: 12 }` 패턴)
-- **핵심 4 그룹 i18n 완료** — 헤더(3) + 홈 카드(5) + 검색·디테일(8) + TTS·라이브러리(6) = 22개 컴포넌트, 메시지 키 100+개
+- **31개 컴포넌트 + 230+ 메시지 키** — 헤더(3) + 홈 카드(5) + 검색·디테일(8) + TTS·라이브러리(6) + 저널 큐레이션(9) + 앱 홈 헤더
 - **specialty.nameEn 분기** — MySpecialtiesPicker가 locale === "en"이면 nameEn 표시 (lib/journals.ts `defaultLocale` 후속 활용은 C2)
 - **클라이언트 useLocale 훅 ↔ 서버 getRequestLanguage** — Phase 2-B cookie sync와 자연스럽게 연동. 사용자가 /en에 도착하면 모든 UI/API가 일관되게 영어
-- **하단 그룹**: 저널 큐레이션 9개 컴포넌트 + app 홈 헤더 안내 (별도 사이클 C1-6)
+- **JournalCard "use client" 전환** — 기존 server-friendly였지만 useAppMessages 훅 필요로 client component로. server pages에서 import 그대로 가능
+- **저널 카탈로그 월 이름 i18n** — IssueExplorer가 ko={1월..12월} / en={January..December} 배열로 분기
+- **TrendDigest direction 라벨** — `↑ 증가/🆕 신규/⚡ 논쟁/→ 지속` ↔ `↑ Increasing/🆕 New/⚡ Debated/→ Ongoing` locale별
+- **남은 한국어**: 설정 드로어 (SettingsDrawer 109줄), 계정/결제/온보딩 페이지, 약관 (legal/*), specialty 관리 UI 4개 — C2/C3
 
 ### Phase 2-B 글로벌 확장 — 영어 서비스 파이프라인 (2026-05-14)
 
