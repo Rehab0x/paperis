@@ -203,6 +203,63 @@
       "upgradeHint": "BYOK(9,900원·평생) 또는 Pro(4,900원/월) 업그레이드로 한도를 해제하세요.",
       "upgrade": "업그레이드",
       "closeAria": "배너 닫기"
+    },
+    "search": {
+      "placeholder": "자연어로 논문 검색...",
+      "aria": "자연어 검색어",
+      "submit": "검색",
+      "searching": "검색 중…"
+    },
+    "sort": {
+      "aria": "정렬",
+      "relevance": "적합도순",
+      "relevanceHint": "PubMed 관련도 점수 (기본)",
+      "recency": "최신순",
+      "recencyHint": "발행일 내림차순",
+      "citations": "인용수순",
+      "citationsHint": "이 페이지 결과 안에서만 인용수로 재정렬"
+    },
+    "paper": {
+      "noTitle": "(제목 없음)",
+      "cited": "인용 {n}",
+      "noAbstract": "초록이 제공되지 않습니다."
+    },
+    "mini": {
+      "title": "📋 한눈에 요약",
+      "subtitleReview": "Review · 미니 요약",
+      "subtitleResearch": "Research · 미니 요약"
+    },
+    "detail": {
+      "backToResults": "← 결과 목록으로",
+      "fulltext": "풀텍스트",
+      "fulltextSearching": "Unpaywall → Europe PMC → PMC 순으로 본문을 찾는 중…",
+      "longSummary": "긴 요약",
+      "summarizing": "요약 중…",
+      "regenerate": "다시 생성",
+      "startSummary": "요약 시작",
+      "summaryFailed": "요약 실패",
+      "summaryBasedOn": "{label} 기반으로 요약합니다.",
+      "summaryAbstractOnly": "Abstract만으로 요약합니다 (전체 본문 미확보).",
+      "listen": "청취",
+      "listenHint": "변환된 트랙은 라이브러리 끝에 조용히 추가됩니다 (자동 재생 X).",
+      "fulltextFailed": "풀텍스트 자동 확보 실패 — 단계별 결과:"
+    },
+    "fulltextView": {
+      "preprintWarn": "⚠ 프리프린트(peer review 전) 버전입니다 — 최종 출판본과 내용이 다를 수 있습니다.",
+      "secured": "본문 {chars}자 확보",
+      "expand": "펼치기",
+      "collapse": "접기",
+      "viewOriginal": "원문 보기 ↗",
+      "previewHint": "(위는 미리보기 — 요약/TTS는 전체 본문을 사용합니다)",
+      "sourceMedrxiv": "medRxiv 프리프린트",
+      "sourcePdf": "업로드 PDF"
+    },
+    "pdf": {
+      "title": "풀텍스트를 자동 확보하지 못했습니다. 보유한 PDF가 있다면 업로드해 주세요.",
+      "hint": "업로드된 PDF는 서버에 저장되지 않습니다 (텍스트만 추출).",
+      "extracting": "PDF에서 텍스트 추출 중…",
+      "uploadFailed": "업로드 실패",
+      "uploadFailedStatus": "업로드 실패 ({status})"
     }
   }
 }

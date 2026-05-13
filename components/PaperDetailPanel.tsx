@@ -4,8 +4,10 @@ import { useEffect, useRef, useState } from "react";
 import FullTextView from "@/components/FullTextView";
 import PdfUpload from "@/components/PdfUpload";
 import TtsButton from "@/components/TtsButton";
+import { useAppMessages } from "@/components/useAppMessages";
 import { useFetchWithKeys } from "@/components/useFetchWithKeys";
 import { useLocale } from "@/components/useLocale";
+import { fmt } from "@/lib/i18n";
 import type {
   FullTextAttempt,
   FullTextResponse,
@@ -48,6 +50,7 @@ const SOURCE_LABEL: Record<FullTextSource, string> = {
 };
 
 export default function PaperDetailPanel({ paper, onBack }: Props) {
+  const m = useAppMessages();
   const locale = useLocale();
   const [ft, setFt] = useState<FullTextState>(initial);
   const [summary, setSummary] = useState<string>("");
@@ -158,7 +161,7 @@ export default function PaperDetailPanel({ paper, onBack }: Props) {
       });
       if (!res.ok || !res.body) {
         const txt = await res.text();
-        setSummaryError(txt || `요약 실패 (${res.status})`);
+        setSummaryError(txt || `${m.detail.summaryFailed} (${res.status})`);
         return;
       }
       const reader = res.body.getReader();
@@ -172,7 +175,7 @@ export default function PaperDetailPanel({ paper, onBack }: Props) {
       }
     } catch (err) {
       if ((err as Error).name === "AbortError") return;
-      setSummaryError(err instanceof Error ? err.message : "요약 실패");
+      setSummaryError(err instanceof Error ? err.message : m.detail.summaryFailed);
     } finally {
       setSummarizing(false);
     }
@@ -186,7 +189,7 @@ export default function PaperDetailPanel({ paper, onBack }: Props) {
           onClick={onBack}
           className="mb-3 inline-flex items-center gap-1 rounded-lg border border-paperis-border px-2 py-1 text-xs text-paperis-text-2 transition hover:bg-paperis-surface-2 hover:text-paperis-text lg:hidden"
         >
-          ← 결과 목록으로
+          {m.detail.backToResults}
         </button>
       ) : null}
       <h2 className="font-serif text-lg font-medium leading-snug tracking-tight text-paperis-text">
@@ -218,11 +221,11 @@ export default function PaperDetailPanel({ paper, onBack }: Props) {
 
       <section className="mt-4 space-y-2">
         <h3 className="text-[11px] font-semibold uppercase tracking-[0.06em] text-paperis-text-2">
-          풀텍스트
+          {m.detail.fulltext}
         </h3>
         {ft.status === "loading" ? (
           <div className="rounded-lg border border-paperis-border bg-paperis-surface-2 p-3 text-xs text-paperis-text-3">
-            Unpaywall → Europe PMC → PMC 순으로 본문을 찾는 중…
+            {m.detail.fulltextSearching}
           </div>
         ) : ft.status === "ready" ? (
           <FullTextView
@@ -242,7 +245,7 @@ export default function PaperDetailPanel({ paper, onBack }: Props) {
       <section className="mt-5 space-y-2">
         <div className="flex items-center justify-between">
           <h3 className="text-[11px] font-semibold uppercase tracking-[0.06em] text-paperis-text-2">
-            긴 요약
+            {m.detail.longSummary}
           </h3>
           <button
             type="button"
@@ -250,7 +253,7 @@ export default function PaperDetailPanel({ paper, onBack }: Props) {
             disabled={summarizing}
             className="rounded-lg bg-paperis-accent px-2.5 py-1 text-xs font-medium text-paperis-bg transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
           >
-            {summarizing ? "요약 중…" : summary ? "다시 생성" : "요약 시작"}
+            {summarizing ? m.detail.summarizing : summary ? m.detail.regenerate : m.detail.startSummary}
           </button>
         </div>
         {summaryError ? (
@@ -265,15 +268,17 @@ export default function PaperDetailPanel({ paper, onBack }: Props) {
         ) : !summarizing ? (
           <p className="text-xs text-paperis-text-3">
             {ft.status === "ready"
-              ? `${SOURCE_LABEL[ft.source as FullTextSource]} 기반으로 요약합니다.`
-              : "Abstract만으로 요약합니다 (전체 본문 미확보)."}
+              ? fmt(m.detail.summaryBasedOn, {
+                  label: SOURCE_LABEL[ft.source as FullTextSource],
+                })
+              : m.detail.summaryAbstractOnly}
           </p>
         ) : null}
       </section>
 
       <section className="mt-5">
         <h3 className="text-[11px] font-semibold uppercase tracking-[0.06em] text-paperis-text-2">
-          청취
+          {m.detail.listen}
         </h3>
         <div className="mt-2">
           <TtsButton
@@ -287,7 +292,7 @@ export default function PaperDetailPanel({ paper, onBack }: Props) {
             }
           />
           <p className="mt-2 text-[11px] text-paperis-text-3">
-            변환된 트랙은 라이브러리 끝에 조용히 추가됩니다 (자동 재생 X).
+            {m.detail.listenHint}
           </p>
         </div>
       </section>
@@ -296,11 +301,12 @@ export default function PaperDetailPanel({ paper, onBack }: Props) {
 }
 
 function FullTextDiagnostic({ attempts }: { attempts: FullTextAttempt[] }) {
+  const m = useAppMessages();
   if (attempts.length === 0) return null;
   return (
     <div className="rounded-lg border border-paperis-border bg-paperis-surface-2 p-3 text-xs">
       <p className="mb-1.5 font-medium text-paperis-text">
-        풀텍스트 자동 확보 실패 — 단계별 결과:
+        {m.detail.fulltextFailed}
       </p>
       <ul className="space-y-1 text-paperis-text-3">
         {attempts.map((a, i) => (

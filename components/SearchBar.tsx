@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useAppMessages } from "@/components/useAppMessages";
 
 interface Props {
   initialValue: string;
@@ -9,6 +10,7 @@ interface Props {
 }
 
 export default function SearchBar({ initialValue, loading, onSubmit }: Props) {
+  const m = useAppMessages();
   const [value, setValue] = useState(initialValue);
 
   // URL이 바뀌면(예: 뒤로가기) 입력값도 동기화. master 패턴.
@@ -36,18 +38,18 @@ export default function SearchBar({ initialValue, loading, onSubmit }: Props) {
         type="text"
         value={value}
         onChange={(e) => setValue(e.target.value)}
-        placeholder="자연어로 논문 검색..."
+        placeholder={m.search.placeholder}
         autoFocus
         disabled={loading}
         className="flex-1 bg-transparent px-1 py-2 text-base text-paperis-text outline-none placeholder:text-paperis-text-3 disabled:opacity-60"
-        aria-label="자연어 검색어"
+        aria-label={m.search.aria}
       />
       <button
         type="submit"
         disabled={loading || value.trim().length === 0}
         className="rounded-xl bg-paperis-accent px-4 py-2 text-sm font-medium text-paperis-bg transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-40"
       >
-        {loading ? "검색 중…" : "검색"}
+        {loading ? m.search.searching : m.search.submit}
       </button>
     </form>
   );

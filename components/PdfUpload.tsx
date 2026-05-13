@@ -1,7 +1,9 @@
 "use client";
 
 import { useRef, useState } from "react";
+import { useAppMessages } from "@/components/useAppMessages";
 import { useFetchWithKeys } from "@/components/useFetchWithKeys";
+import { fmt } from "@/lib/i18n";
 
 interface Props {
   onExtracted: (text: string) => void;
@@ -15,6 +17,7 @@ interface UploadResponse {
 }
 
 export default function PdfUpload({ onExtracted }: Props) {
+  const m = useAppMessages();
   const inputRef = useRef<HTMLInputElement | null>(null);
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -32,12 +35,12 @@ export default function PdfUpload({ onExtracted }: Props) {
       });
       const json = (await res.json()) as UploadResponse;
       if (!res.ok || !json.text) {
-        setError(json.error ?? `업로드 실패 (${res.status})`);
+        setError(json.error ?? fmt(m.pdf.uploadFailedStatus, { status: res.status }));
         return;
       }
       onExtracted(json.text);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "업로드 실패");
+      setError(err instanceof Error ? err.message : m.pdf.uploadFailed);
     } finally {
       setUploading(false);
       if (inputRef.current) inputRef.current.value = "";
@@ -46,13 +49,8 @@ export default function PdfUpload({ onExtracted }: Props) {
 
   return (
     <div className="rounded-lg border border-dashed border-paperis-border bg-paperis-surface-2 p-3 text-sm">
-      <p className="text-paperis-text-2">
-        풀텍스트를 자동 확보하지 못했습니다. 보유한 PDF가 있다면 업로드해
-        주세요.
-      </p>
-      <p className="mt-1 text-[11px] text-paperis-text-3">
-        업로드된 PDF는 서버에 저장되지 않습니다 (텍스트만 추출).
-      </p>
+      <p className="text-paperis-text-2">{m.pdf.title}</p>
+      <p className="mt-1 text-[11px] text-paperis-text-3">{m.pdf.hint}</p>
       <div className="mt-2 flex items-center gap-2">
         <input
           ref={inputRef}
@@ -67,7 +65,7 @@ export default function PdfUpload({ onExtracted }: Props) {
         />
       </div>
       {uploading ? (
-        <p className="mt-2 text-xs text-paperis-text-3">PDF에서 텍스트 추출 중…</p>
+        <p className="mt-2 text-xs text-paperis-text-3">{m.pdf.extracting}</p>
       ) : null}
       {error ? <p className="mt-2 text-xs text-paperis-accent">{error}</p> : null}
     </div>

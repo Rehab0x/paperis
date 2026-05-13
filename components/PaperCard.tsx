@@ -1,6 +1,8 @@
 "use client";
 
 import MiniSummaryView from "@/components/MiniSummary";
+import { useAppMessages } from "@/components/useAppMessages";
+import { fmt } from "@/lib/i18n";
 import type { MiniSummary, Paper } from "@/types";
 
 interface Props {
@@ -40,6 +42,7 @@ export default function PaperCard({
   onSelect,
   onLoadMini,
 }: Props) {
+  const m = useAppMessages();
   const cited = formatCitations(paper.citedByCount);
 
   return (
@@ -61,7 +64,7 @@ export default function PaperCard({
         </span>
         <div className="min-w-0 flex-1">
           <h3 className="font-serif text-base font-medium leading-snug tracking-tight text-paperis-text">
-            {paper.title || "(제목 없음)"}
+            {paper.title || m.paper.noTitle}
           </h3>
           <p className="mt-1.5 text-xs text-paperis-text-3">
             {formatAuthors(paper.authors)}
@@ -74,7 +77,7 @@ export default function PaperCard({
                 Open Access
               </span>
             ) : null}
-            {cited ? <span>· 인용 {cited}</span> : null}
+            {cited ? <span>· {fmt(m.paper.cited, { n: cited })}</span> : null}
             {isReview(paper) ? (
               <span className="rounded bg-paperis-surface-2 px-1.5 py-0.5 text-[10px] font-medium text-paperis-text-2">
                 Review
@@ -101,7 +104,7 @@ export default function PaperCard({
             </>
           ) : (
             <p className="mt-2.5 text-xs italic text-paperis-text-3">
-              초록이 제공되지 않습니다.
+              {m.paper.noAbstract}
             </p>
           )}
         </div>

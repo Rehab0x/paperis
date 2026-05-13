@@ -1,5 +1,6 @@
 "use client";
 
+import { useAppMessages } from "@/components/useAppMessages";
 import type { MiniSummary } from "@/types";
 
 interface Props {
@@ -9,6 +10,7 @@ interface Props {
 }
 
 export default function MiniSummaryView({ summary, loading, onRequest }: Props) {
+  const m = useAppMessages();
   if (summary) {
     return (
       <ul className="mt-2.5 space-y-1 text-sm leading-relaxed text-paperis-text-2">
@@ -19,7 +21,7 @@ export default function MiniSummaryView({ summary, loading, onRequest }: Props) 
           </li>
         ))}
         <li className="pt-1 text-[10px] uppercase tracking-[0.06em] text-paperis-text-3">
-          {summary.paperType === "review" ? "Review" : "Research"} · 미니 요약
+          {summary.paperType === "review" ? m.mini.subtitleReview : m.mini.subtitleResearch}
         </li>
       </ul>
     );
@@ -46,7 +48,7 @@ export default function MiniSummaryView({ summary, loading, onRequest }: Props) 
       }}
       className="mt-2 inline-flex items-center gap-1 rounded-lg border border-paperis-border bg-paperis-surface px-2 py-1 text-xs font-medium text-paperis-text-2 transition hover:border-paperis-text-3 hover:text-paperis-text"
     >
-      📋 한눈에 요약
+      {m.mini.title}
     </button>
   );
 }

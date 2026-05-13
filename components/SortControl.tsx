@@ -1,5 +1,6 @@
 "use client";
 
+import { useAppMessages } from "@/components/useAppMessages";
 import type { SortMode } from "@/types";
 
 interface Props {
@@ -8,21 +9,18 @@ interface Props {
   disabled?: boolean;
 }
 
-const OPTIONS: ReadonlyArray<{ value: SortMode; label: string; hint: string }> = [
-  { value: "relevance", label: "적합도순", hint: "PubMed 관련도 점수 (기본)" },
-  { value: "recency", label: "최신순", hint: "발행일 내림차순" },
-  {
-    value: "citations",
-    label: "인용수순",
-    hint: "이 페이지 결과 안에서만 인용수로 재정렬",
-  },
-];
-
 export default function SortControl({ value, onChange, disabled }: Props) {
+  const m = useAppMessages();
+  const OPTIONS: ReadonlyArray<{ value: SortMode; label: string; hint: string }> = [
+    { value: "relevance", label: m.sort.relevance, hint: m.sort.relevanceHint },
+    { value: "recency", label: m.sort.recency, hint: m.sort.recencyHint },
+    { value: "citations", label: m.sort.citations, hint: m.sort.citationsHint },
+  ];
+
   return (
     <div
       role="radiogroup"
-      aria-label="정렬"
+      aria-label={m.sort.aria}
       className="inline-flex flex-wrap items-center gap-1 rounded-xl border border-paperis-border bg-paperis-surface p-1 text-sm"
     >
       {OPTIONS.map((opt) => {

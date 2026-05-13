@@ -203,6 +203,63 @@
       "upgradeHint": "Upgrade to BYOK ($19.99 lifetime) or Pro ($7.99/mo) to remove limits.",
       "upgrade": "Upgrade",
       "closeAria": "Close banner"
+    },
+    "search": {
+      "placeholder": "Search papers in natural language...",
+      "aria": "Natural language search",
+      "submit": "Search",
+      "searching": "Searching…"
+    },
+    "sort": {
+      "aria": "Sort",
+      "relevance": "Relevance",
+      "relevanceHint": "PubMed relevance score (default)",
+      "recency": "Recent",
+      "recencyHint": "By publication date, newest first",
+      "citations": "Citations",
+      "citationsHint": "Re-sort current page by citation count"
+    },
+    "paper": {
+      "noTitle": "(no title)",
+      "cited": "Cited {n}",
+      "noAbstract": "No abstract provided."
+    },
+    "mini": {
+      "title": "📋 At a glance",
+      "subtitleReview": "Review · Quick summary",
+      "subtitleResearch": "Research · Quick summary"
+    },
+    "detail": {
+      "backToResults": "← Back to results",
+      "fulltext": "Full text",
+      "fulltextSearching": "Searching Unpaywall → Europe PMC → PMC…",
+      "longSummary": "Long summary",
+      "summarizing": "Summarizing…",
+      "regenerate": "Regenerate",
+      "startSummary": "Start summary",
+      "summaryFailed": "Summary failed",
+      "summaryBasedOn": "Summarizing based on {label}.",
+      "summaryAbstractOnly": "Summarizing from abstract only (full text unavailable).",
+      "listen": "Listen",
+      "listenHint": "Converted tracks are added quietly to the library (no auto-play).",
+      "fulltextFailed": "Full-text retrieval failed — step-by-step:"
+    },
+    "fulltextView": {
+      "preprintWarn": "⚠ This is a preprint (pre-peer-review) version — may differ from the final published article.",
+      "secured": "{chars} chars secured",
+      "expand": "Expand",
+      "collapse": "Collapse",
+      "viewOriginal": "View original ↗",
+      "previewHint": "(Preview above — summary/TTS uses the full text)",
+      "sourceMedrxiv": "medRxiv preprint",
+      "sourcePdf": "Uploaded PDF"
+    },
+    "pdf": {
+      "title": "Couldn't auto-retrieve full text. If you have the PDF, upload it here.",
+      "hint": "Uploaded PDFs are not stored on the server (text extracted only).",
+      "extracting": "Extracting text from PDF…",
+      "uploadFailed": "Upload failed",
+      "uploadFailedStatus": "Upload failed ({status})"
     }
   }
 }

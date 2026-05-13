@@ -1,5 +1,7 @@
 "use client";
 
+import { useAppMessages } from "@/components/useAppMessages";
+import { fmt } from "@/lib/i18n";
 import type { FullTextSource } from "@/types";
 
 interface Props {
@@ -9,22 +11,6 @@ interface Props {
   charCount: number;
 }
 
-const SOURCE_LABEL: Record<FullTextSource, string> = {
-  unpaywall: "Unpaywall (OA)",
-  openalex: "OpenAlex (OA)",
-  europepmc: "Europe PMC",
-  pmc: "PMC",
-  s2: "Semantic Scholar (OA)",
-  medrxiv: "medRxiv 프리프린트",
-  pdf: "업로드 PDF",
-};
-
-/** 본문이 최종 출판본이 아닌 경우 사용자에게 명시할 안내 */
-const SOURCE_CAVEAT: Partial<Record<FullTextSource, string>> = {
-  medrxiv:
-    "⚠ 프리프린트(peer review 전) 버전입니다 — 최종 출판본과 내용이 다를 수 있습니다.",
-};
-
 const PREVIEW_CHARS = 1200;
 
 export default function FullTextView({
@@ -33,6 +19,19 @@ export default function FullTextView({
   sourceUrl,
   charCount,
 }: Props) {
+  const m = useAppMessages();
+  const SOURCE_LABEL: Record<FullTextSource, string> = {
+    unpaywall: "Unpaywall (OA)",
+    openalex: "OpenAlex (OA)",
+    europepmc: "Europe PMC",
+    pmc: "PMC",
+    s2: "Semantic Scholar (OA)",
+    medrxiv: m.fulltextView.sourceMedrxiv,
+    pdf: m.fulltextView.sourcePdf,
+  };
+  const SOURCE_CAVEAT: Partial<Record<FullTextSource, string>> = {
+    medrxiv: m.fulltextView.preprintWarn,
+  };
   const long = text.length > PREVIEW_CHARS;
   return (
     <details className="group rounded-lg border border-paperis-border bg-paperis-surface">
@@ -42,11 +41,11 @@ export default function FullTextView({
             {SOURCE_LABEL[source]}
           </span>
           <span className="text-paperis-text-2">
-            본문 {charCount.toLocaleString()}자 확보
+            {fmt(m.fulltextView.secured, { chars: charCount.toLocaleString() })}
           </span>
         </span>
-        <span className="text-xs text-paperis-text-3 group-open:hidden">펼치기</span>
-        <span className="hidden text-xs text-paperis-text-3 group-open:inline">접기</span>
+        <span className="text-xs text-paperis-text-3 group-open:hidden">{m.fulltextView.expand}</span>
+        <span className="hidden text-xs text-paperis-text-3 group-open:inline">{m.fulltextView.collapse}</span>
       </summary>
       <div className="border-t border-paperis-border px-3 py-3 text-sm leading-relaxed">
         {SOURCE_CAVEAT[source] ? (
@@ -61,7 +60,7 @@ export default function FullTextView({
             rel="noopener noreferrer"
             className="mb-2 inline-block text-xs text-paperis-text-3 underline transition hover:text-paperis-text"
           >
-            원문 보기 ↗
+            {m.fulltextView.viewOriginal}
           </a>
         ) : null}
         <pre className="max-h-[60vh] overflow-auto whitespace-pre-wrap break-words font-sans text-[13px] text-paperis-text-2">
@@ -69,7 +68,7 @@ export default function FullTextView({
         </pre>
         {long ? (
           <p className="mt-2 text-xs text-paperis-text-3">
-            (위는 미리보기 — 요약/TTS는 전체 본문을 사용합니다)
+            {m.fulltextView.previewHint}
           </p>
         ) : null}
       </div>
