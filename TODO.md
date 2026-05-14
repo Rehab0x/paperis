@@ -1,6 +1,6 @@
 # Paperis — TODO / 진척 기록
 
-> 마지막 갱신: 2026-05-14 (Phase 2-A~C2 + server journal + UX 다듬기 완료 — 영어 사용자 전체 앱 완주, 약관만 한국어)
+> 마지막 갱신: 2026-05-15 (라이브러리 소스 배지 + reading UX + noise 필터 + 명시적 submit + BYOK API Key 가이드)
 > 외부 노출 문서는 [README.md](README.md), 컨텍스트는 [CLAUDE.md](CLAUDE.md). 이 파일은 작업 일지·기술부채·의사결정 기록 보관용.
 
 ---
@@ -71,6 +71,14 @@
   - C2-C: account·billing·billing/success·billing/fail·onboarding (날짜는 locale별 toLocaleDateString, 가격은 KRW 그대로 — Stripe 도입 전)
   - **총 14개 컴포넌트/페이지 + 250+ 메시지 키**
   - **후속 fix (같은 날)**: server-rendered journal 페이지 3개 누락분 (`getServerLocale` helper) + specialty 영어 모드 한국어 secondary 숨김 + MiniSummary bullet 정렬 + trend periodLabel ko/en 분기 + trend cache v2 prefix bump + TrendFeaturedCard URL language 명시(locale 변화 refetch + hydrated 가드) + 홈 카드 순서 최종
+- ✅ **Phase 2-C2 추가 다듬기 (2026-05-15)**
+  - **라이브러리 소스 배지** — `AudioTrack.sourceLabel` 필드 + AudioLibrary가 트랜드/풀텍스트/초록 3종 배지 표시 (`📊 Trend` / `📄 Full text` / `🧾 Abstract`). PlayerBar metaLine에 voice 추가(모바일에서도 화자 노출). PaperDetailPanel SOURCE_LABEL 맵 (Unpaywall/EPMC/PMC 별 라벨)
+  - **Reading UX 4건** — (1) Korean TTS 스크립트 문단 분할 (Gemini narration prompt에 "3-4문장마다 빈 줄" 지침, 한국어 출력에도 적용) (2) PaperDetailPanel Abstract `<details>` 섹션 (open default) (3) FullTextView "📥 Download PDF" / "View original ↗" 라벨 분기 (unpaywall/s2/medrxiv는 PDF) (4) 풀텍스트 확보 시 abstract도 요약/TTS 가능하도록 입력 소스 토글
+  - **입력 소스 토글 재배치** — Long Summary 안에 있던 풀텍스트/초록 토글을 Long Summary 위 별도 섹션 "요약·TTS 소스"로 분리 (요약만 토글 가능하다는 오해 제거). "전체 본문 미확보" 문구 → 깔끔한 "초록 기반으로 요약합니다."
+  - **호 탐색 noise 필터** — `lib/paper-filter.ts` NOISE_PUBLICATION_TYPES + isSubstantivePaper + countNoise. IssueExplorer에서 Editorial/Letter/Erratum 등 기본 ON 필터 + 사용자 토글 (DOI 직접 접속 case 지원)
+  - **호 탐색·트렌드 명시적 submit** — pending(사용자 입력) vs committed(fetch 트리거) 상태 분리 + Search/Analyze 버튼. select 변경 즉시 fetch 거슬림 해결. 버튼은 우측 정렬 + 항상 accent 색상 (비활성도 같은 색, opacity로만 표시)
+  - **트렌드 안내 문구 정돈** — "Gemini가 abstract 모음을..." → "abstract 모음을..." (멀티 AI provider 시대)
+  - **BYOK API Key 발급 가이드** — (A) `KEY_HELP_URLS` 상수 + SettingsDrawer renderField 옆 인라인 "발급 ↗" 링크 (8개 provider, Unpaywall만 이메일이라 제외) (B) `/help/api-keys` 가이드 페이지 — 서버 컴포넌트 + `getServerLocale()` 분기 ko/en, 8개 provider 단계별 스크린샷 없는 텍스트 가이드, ApiKeysSection 상단에 진입 링크
 - ⬜ **Phase 2-C3** 약관 페이지 영어 번역 (legal/terms·privacy·refund — 법률 검토 필요)
 - ⬜ **Phase 2-D** Stripe 결제 연동 (해외 사용자 USD) — 한국 사업자등록(M8) 완료 후
 
@@ -198,6 +206,9 @@
 
 ### UI / 데이터 흐름
 
+- **호 탐색·트렌드는 명시적 submit** — pending(select 입력) vs committed(fetch 트리거) 상태 분리. 사용자가 연도만 바꾸려는데 즉시 fetch되는 거슬림 회피. Search/Analyze 버튼 우측 정렬 + 항상 accent 색상 (비활성은 opacity로만 표시 — 위치·역할 인지 보존)
+- **호 탐색 noise 필터 default ON** — Editorial/Letter/Erratum 등은 substantive paper 아니라 시선 부담. `lib/paper-filter.ts` NOISE_PUBLICATION_TYPES set. 사용자 토글로 모두 보기 가능 (DOI 직접 진입 case 지원)
+- **입력 소스 토글은 Long Summary 위 별도 섹션** — Long Summary 안에 두면 "요약만 풀텍스트/초록 토글 가능"한 것처럼 보임. 토글이 요약·TTS 양쪽에 적용된다는 mental model 표시
 - **PaperDetailPanel dedupe ref 가드 금지** — Strict Mode mount→cleanup→remount cycle에서 가드가 두 번째 mount 막아 무한 loading. `cancelled` flag + `AbortController`만
 - **테마 = class 기반 dark + FOUC inline script + suppressHydrationWarning** — globals.css `@variant dark`. 신규 라우트 wrapping 검증
 - **카드 상태 캐시는 pmid 키** — `lib/card-cache.ts` 모듈 단위 Map

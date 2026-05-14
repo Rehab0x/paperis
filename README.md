@@ -27,17 +27,20 @@
 ### 검색·요약·TTS
 - **자연어 → PubMed 검색식**: 사용자가 선택한 AI provider(기본 Gemini)가 검색식 + 한 줄 요약 생성. 서버 LRU + 클라 localStorage 양쪽 캐시
 - **미니 요약**: 논문 타입(연구/리뷰)별로 강조점이 다른 4–5 bullet. 자동 batch 모드 토글
-- **풀텍스트 체인**: Unpaywall → OpenAlex OA → Europe PMC → PMC efetch → Semantic Scholar → medRxiv → 사용자 PDF 업로드
-- **긴 요약 스트리밍**: 풀텍스트 또는 abstract 기반. AI provider별 generateStream
-- **TTS narration**: 자동 재생 X. 라이브러리에 append만. 글로벌 PlayerBar에서 큐 재생. 트랙 제목은 자동 한국어 번역
+- **풀텍스트 체인**: Unpaywall → OpenAlex OA → Europe PMC → PMC efetch → Semantic Scholar → medRxiv → 사용자 PDF 업로드. unpaywall/s2/medrxiv 출처는 "📥 Download PDF" 라벨로 직접 다운로드
+- **긴 요약 스트리밍**: 풀텍스트 또는 abstract 기반. AI provider별 generateStream. 풀텍스트 확보 시에도 abstract 선택 가능한 입력 소스 토글 (Long Summary 위 별도 섹션)
+- **Abstract `<details>` 섹션**: PaperDetailPanel에서 원문 abstract 깔끔하게 펼침 (open default)
+- **TTS narration**: 자동 재생 X. 라이브러리에 append만. 글로벌 PlayerBar에서 큐 재생. 트랙 제목은 자동 한국어 번역. 한국어 narration도 3-4문장마다 빈 줄로 문단 분리 (영어와 동일한 가독성)
+- **라이브러리 소스 배지**: 트랙이 트렌드/풀텍스트/초록 어느 소스에서 만들어졌는지 한눈에 (`📊 Trend` / `📄 Full text` / `🧾 Abstract`)
 
 ### 저널 큐레이션 (v3 메인)
 - **임상과 카탈로그**: 25개 임상과 (GitHub raw fetch + 로컬 fallback). 사용자가 즐겨찾기 / 직접 추가 / 차단
-- **호 탐색**: 특정 월호의 논문 + 경향 + top 5 요약
+- **호 탐색**: 특정 월호의 논문 + 경향 + top 5 요약. Editorial/Letter/Erratum 등 비-substantive 페이퍼 기본 필터 (사용자 토글로 모두 보기 가능)
 - **주제 탐색**: 저널 내 키워드/MeSH로 모아보기
 - **트렌드 분석 (v2)**: 연도·분기 단위 themes 분석 + 방법론 변화 + 임상 시사점 + narration 스크립트. 트렌드 자체를 TTS로 청취 가능
 - **트렌드 헤드라인 (라이트)**: 홈 피처드 카드용 — 한 문장 추출 (~5–10초, Flash Lite)
 - **OA 우선 정렬**: 호/주제/트렌드 결과를 전체 단위로 OA 위로
+- **명시적 submit**: 호 탐색·트렌드는 연도/월/분기 입력 후 우측 accent 버튼(Search/Analyze) 눌러야 fetch — select 변경 즉시 fetch 거슬림 회피
 
 ### 홈 화면 카드 시스템
 - **이어 듣기**: IndexedDB의 가장 최근 트랙. 클릭 시 큐 재생
@@ -57,6 +60,7 @@
 - **BYOK 1회 결제 (9,900원)**: 평생 권한. 본인 API 키 입력 + 무제한
 - **Pro 월 구독 (4,900원/월)**: 우리 서버 키 + 무제한 + provider 자유 선택
 - **Admin (ADMIN_EMAILS env)**: 결제 없이 BYOK 효과. 본인 키 OR 서버 env fallback
+- **API 키 발급 가이드**: 설정 → API 키 섹션 옆 "발급 ↗" 인라인 링크 (8개 provider) + `/help/api-keys` 단계별 가이드 페이지 (ko/en 자동 분기, 보안 안내 + 목차)
 
 ### 멀티 AI Provider
 사용자가 선택한 provider로 모든 LLM 호출 (검색/요약/트렌드).
@@ -182,6 +186,7 @@ app/
     specialty/[id]/page.tsx       임상과별 저널 추천
     [issn]/page.tsx               저널 홈 (호/주제/트렌드 탭)
   legal/{terms,privacy,refund}/   약관·개인정보·환불 페이지
+  help/api-keys/                  BYOK API 키 발급 가이드 (서버 컴포넌트, ko/en 자동)
   api/
     search summarize summarize/read fulltext pdf tts tts/preview tts/text
     journal/{search,issues,topic,trend,trend-headline}
@@ -213,6 +218,7 @@ lib/
   usage                            checkAndIncrement + getPlan + KST yearMonth
   billing                          Toss Payments wrapper
   journals openalex pubmed         카탈로그 + 메타 + 검색
+  paper-filter                     호 탐색 noise(Editorial/Letter/Erratum 등) 필터
   trend                            generateJournalTrend + generateTrendHeadline (lite)
   summary query-translator gemini  미니 요약 + 검색식 변환 + Gemini provider
   fulltext/                        unpaywall openalex europe-pmc pmc s2 medrxiv asset-fetcher
