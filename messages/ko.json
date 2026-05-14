@@ -690,7 +690,7 @@
         "futureTitle": "아직 시작 전입니다",
         "stats": "{periodLabel} · {total}건 분석 대상 (상위 {n}건 표시)",
         "inProgress": "(진행 중)",
-        "loading": "Gemini가 abstract 모음을 themes 단위로 분석 중… 30~90초 정도 걸립니다.",
+        "loading": "abstract 모음을 themes 단위로 분석 중… 30~90초 정도 걸립니다.",
         "insufficient": "이 기간에는 분석할 논문이 충분하지 않습니다 ({total}건).",
         "insufficientHint": "연간(all)으로 보거나 다른 분기를 선택해보세요.",
         "repPmids": "대표 논문 PMID:",
