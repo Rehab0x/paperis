@@ -156,8 +156,23 @@ export default function TrendDigest({
     label: v === "all" ? m.journal.trend.periodAnnual : v,
     months: QUARTER_MONTHS[v],
   }));
+  // pending = 사용자가 버튼으로 선택만 한 값. year/quarter = 실제 fetch 트리거하는
+  // commit된 값. "분석" 버튼이 pending → commit 적용. 연도/분기 변경 시 자동
+  // 30~90초 분석이 즉시 일어나던 동작을 명시적 submit으로.
+  const [pendingYear, setPendingYear] = useState<number>(
+    initialYear ?? NOW.getFullYear()
+  );
+  const [pendingQuarter, setPendingQuarter] = useState<Quarter>(
+    initialQuarter ?? "all"
+  );
   const [year, setYear] = useState<number>(initialYear ?? NOW.getFullYear());
   const [quarter, setQuarter] = useState<Quarter>(initialQuarter ?? "all");
+
+  const isDirty = pendingYear !== year || pendingQuarter !== quarter;
+  function applyAnalyze() {
+    setYear(pendingYear);
+    setQuarter(pendingQuarter);
+  }
 
   const [papers, setPapers] = useState<Paper[]>([]);
   const [total, setTotal] = useState(0);
@@ -254,12 +269,12 @@ export default function TrendDigest({
         <div className="flex flex-wrap items-center gap-1.5">
           <span className="mr-1 text-xs text-paperis-text-3">{m.journal.trend.year}</span>
           {yearOptions.map((y) => {
-            const active = year === y;
+            const active = pendingYear === y;
             return (
               <button
                 key={y}
                 type="button"
-                onClick={() => setYear(y)}
+                onClick={() => setPendingYear(y)}
                 className={[
                   "rounded-md border px-2.5 py-1 text-xs transition",
                   active
@@ -275,13 +290,13 @@ export default function TrendDigest({
         <div className="flex flex-wrap items-center gap-1.5">
           <span className="mr-1 text-xs text-paperis-text-3">{m.journal.trend.period}</span>
           {QUARTERS.map((opt) => {
-            const active = quarter === opt.v;
-            const future = isFutureQuarter(year, opt.v);
+            const active = pendingQuarter === opt.v;
+            const future = isFutureQuarter(pendingYear, opt.v);
             return (
               <button
                 key={opt.v}
                 type="button"
-                onClick={() => setQuarter(opt.v)}
+                onClick={() => setPendingQuarter(opt.v)}
                 disabled={future}
                 title={future ? m.journal.trend.futureTitle : opt.label}
                 className={[
@@ -296,6 +311,21 @@ export default function TrendDigest({
               </button>
             );
           })}
+          <button
+            type="button"
+            onClick={applyAnalyze}
+            disabled={!isDirty || loading}
+            title={isDirty ? m.journal.trend.dirtyHint : undefined}
+            className={[
+              "ml-2 rounded-md border px-3 py-1 text-xs font-medium transition",
+              isDirty && !loading
+                ? "border-paperis-accent bg-paperis-accent text-paperis-bg hover:opacity-90"
+                : "border-paperis-border text-paperis-text-3",
+              !isDirty || loading ? "cursor-not-allowed" : "",
+            ].join(" ")}
+          >
+            {m.journal.trend.analyzeBtn}
+          </button>
         </div>
         {periodLabel ? (
           <p className="mt-1 text-xs text-paperis-text-3">

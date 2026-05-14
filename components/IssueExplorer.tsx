@@ -51,6 +51,12 @@ export default function IssueExplorer({ issn, journalName }: Props) {
     label,
   }));
   const init = useMemo(defaultYearMonth, []);
+  // pending = 사용자가 select에서 변경하는 값. year/month = 실제 fetch 트리거하는
+  // commit된 값. "검색" 버튼이 pending → commit 적용. select 매번 fetch 일어나던
+  // 동작을 명시적 submit으로 — 연도만 바꾸려는데 month default로 즉시 fetch되는
+  // 거슬림 해결.
+  const [pendingYear, setPendingYear] = useState<number>(init.year);
+  const [pendingMonth, setPendingMonth] = useState<number>(init.month);
   const [year, setYear] = useState<number>(init.year);
   const [month, setMonth] = useState<number>(init.month);
 
@@ -61,6 +67,12 @@ export default function IssueExplorer({ issn, journalName }: Props) {
   // noise 필터 — 기본 ON. 호 탐색에선 editorial/letter/erratum이 흔히 같이 잡혀
   // 사용자 시선 부담. 토글로 모두 보기 가능 (DOI로 직접 들어가 보고 싶을 때).
   const [includeNoise, setIncludeNoise] = useState(false);
+
+  const isDirty = pendingYear !== year || pendingMonth !== month;
+  function applySearch() {
+    setYear(pendingYear);
+    setMonth(pendingMonth);
+  }
 
   const fetchWithKeys = useFetchWithKeys();
   const fetchKey = `${issn}::${year}::${month}`;
@@ -140,8 +152,8 @@ export default function IssueExplorer({ issn, journalName }: Props) {
         <label className="flex items-center gap-2 text-xs text-paperis-text-3">
           <span>{m.journal.issue.year}</span>
           <select
-            value={year}
-            onChange={(e) => setYear(Number(e.target.value))}
+            value={pendingYear}
+            onChange={(e) => setPendingYear(Number(e.target.value))}
             className="rounded-md border border-paperis-border bg-paperis-surface px-2 py-1 text-sm text-paperis-text"
           >
             {yearOptions.map((y) => (
@@ -154,8 +166,8 @@ export default function IssueExplorer({ issn, journalName }: Props) {
         <label className="flex items-center gap-2 text-xs text-paperis-text-3">
           <span>{m.journal.issue.month}</span>
           <select
-            value={month}
-            onChange={(e) => setMonth(Number(e.target.value))}
+            value={pendingMonth}
+            onChange={(e) => setPendingMonth(Number(e.target.value))}
             className="rounded-md border border-paperis-border bg-paperis-surface px-2 py-1 text-sm text-paperis-text"
           >
             {MONTH_OPTIONS.map((opt) => (
@@ -165,6 +177,21 @@ export default function IssueExplorer({ issn, journalName }: Props) {
             ))}
           </select>
         </label>
+        <button
+          type="button"
+          onClick={applySearch}
+          disabled={!isDirty || loading}
+          title={isDirty ? m.journal.issue.dirtyHint : undefined}
+          className={[
+            "rounded-md border px-3 py-1 text-xs font-medium transition",
+            isDirty && !loading
+              ? "border-paperis-accent bg-paperis-accent text-paperis-bg hover:opacity-90"
+              : "border-paperis-border text-paperis-text-3",
+            !isDirty || loading ? "cursor-not-allowed" : "",
+          ].join(" ")}
+        >
+          {m.journal.issue.searchBtn}
+        </button>
         {!loading && total > 0 ? (
           <span className="text-xs text-paperis-text-3">
             {fmt(m.journal.issue.header, {

@@ -661,7 +661,9 @@
         "failedStatus": "Issue search failed ({status})",
         "includeNoise": "📰 Include notes",
         "includeNoiseTitle": "Show editorials, letters, errata too",
-        "filteredCount": "({n} hidden)"
+        "filteredCount": "({n} hidden)",
+        "searchBtn": "Search",
+        "dirtyHint": "Conditions changed — click Search to apply"
       },
       "topic": {
         "placeholder": "e.g. spasticity, post-stroke gait, Botox",
@@ -701,7 +703,9 @@
         "papersIntro": "Below are the analyzed papers — click any card to open full text · summary · TTS.",
         "noPatterns": "Not enough patterns to extract themes in this period.",
         "failed": "Trend analysis failed",
-        "failedStatus": "Trend analysis failed ({status})"
+        "failedStatus": "Trend analysis failed ({status})",
+        "analyzeBtn": "Analyze",
+        "dirtyHint": "Conditions changed — click Analyze to apply"
       }
     },
     "library": {

@@ -661,7 +661,9 @@
         "failedStatus": "호 탐색 실패 ({status})",
         "includeNoise": "📰 노이즈 포함",
         "includeNoiseTitle": "Editorial·Letter·Erratum 등도 함께 표시",
-        "filteredCount": "({n}건 숨김)"
+        "filteredCount": "({n}건 숨김)",
+        "searchBtn": "검색",
+        "dirtyHint": "변경된 조건 — 검색을 눌러 적용하세요"
       },
       "topic": {
         "placeholder": "예: spasticity, post-stroke gait, Botox",
@@ -701,7 +703,9 @@
         "papersIntro": "아래는 분석 대상이 된 논문들 — 카드를 누르면 풀텍스트·요약·TTS로 바로 들어갑니다.",
         "noPatterns": "이 기간에는 themes를 추출할 만큼의 패턴이 보이지 않습니다.",
         "failed": "트렌드 분석 실패",
-        "failedStatus": "트렌드 분석 실패 ({status})"
+        "failedStatus": "트렌드 분석 실패 ({status})",
+        "analyzeBtn": "분석",
+        "dirtyHint": "변경된 조건 — 분석을 눌러 적용하세요"
       }
     },
     "library": {
