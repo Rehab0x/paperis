@@ -537,6 +537,8 @@
       "keyGroupAi": "AI 모델 (검색·요약·트렌드 분석)",
       "keyGroupAiHint": "입력한 provider 키만 활성화. \"AI provider 선택\"에서 어떤 걸 쓸지 결정.",
       "keyGroupExt": "외부 서비스 / TTS",
+      "keyHelpLink": "발급 ↗",
+      "keyGuideLink": "📖 API 키 발급 가이드 보기 →",
       "aiGeminiNote": "기본값. Flash Lite/Flash 라인업.",
       "aiClaudeNote": "haiku 4.5 / sonnet 4.6 라인업.",
       "aiOpenAiNote": "gpt-4.1 라인업.",

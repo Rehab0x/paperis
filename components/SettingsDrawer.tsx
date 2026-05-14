@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import {
   API_KEY_LABELS,
+  KEY_HELP_URLS,
   useApiKeys,
   type ApiKeyName,
 } from "@/components/ApiKeysProvider";
@@ -666,10 +667,23 @@ function ApiKeysSection() {
   const renderField = (name: ApiKeyName) => {
     const v = keys[name] ?? "";
     const visible = reveal[name];
+    const helpUrl = KEY_HELP_URLS[name];
     return (
       <label key={name} className="block">
-        <span className="mb-1 block font-mono text-[10px] uppercase tracking-wide text-paperis-text-3">
-          {API_KEY_LABELS[name]}
+        <span className="mb-1 flex items-center justify-between gap-2">
+          <span className="font-mono text-[10px] uppercase tracking-wide text-paperis-text-3">
+            {API_KEY_LABELS[name]}
+          </span>
+          {helpUrl ? (
+            <a
+              href={helpUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-[10px] text-paperis-text-3 underline-offset-2 transition hover:text-paperis-accent hover:underline"
+            >
+              {m.settings.keyHelpLink}
+            </a>
+          ) : null}
         </span>
         <div className="flex gap-1">
           <input
@@ -713,6 +727,14 @@ function ApiKeysSection() {
       <p className="rounded-lg border border-paperis-accent/40 bg-paperis-accent-dim/40 px-2.5 py-1.5 text-[11px] text-paperis-accent">
         {m.settings.keyXssWarn}
       </p>
+      <a
+        href="/help/api-keys"
+        target="_blank"
+        rel="noopener noreferrer"
+        className="block rounded-lg border border-paperis-border bg-paperis-surface-2 px-2.5 py-1.5 text-[11px] text-paperis-text-2 transition hover:border-paperis-accent hover:text-paperis-accent"
+      >
+        {m.settings.keyGuideLink}
+      </a>
       <div>
         <h4 className="mb-2 text-[11px] font-semibold uppercase tracking-[0.06em] text-paperis-text-2">
           {m.settings.keyGroupAi}

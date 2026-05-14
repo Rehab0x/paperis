@@ -55,6 +55,19 @@ export const SERVICE_KEYS: ReadonlyArray<ApiKeyName> = [
   "unpaywall",
 ];
 
+/** 각 키 발급 페이지 URL — 설정 패널의 "Get key ↗" 인라인 링크에 사용.
+ * unpaywall은 키 발급이 아니라 이메일 입력만이라 URL 없음. */
+export const KEY_HELP_URLS: Partial<Record<ApiKeyName, string>> = {
+  gemini: "https://aistudio.google.com/apikey",
+  anthropic: "https://console.anthropic.com/settings/keys",
+  openai: "https://platform.openai.com/api-keys",
+  grok: "https://console.x.ai/",
+  googleCloud: "https://console.cloud.google.com/apis/credentials",
+  clovaId: "https://www.ncloud.com/",
+  clovaSecret: "https://www.ncloud.com/",
+  pubmed: "https://www.ncbi.nlm.nih.gov/account/settings/",
+};
+
 export type ApiKeys = Partial<Record<ApiKeyName, string>>;
 
 const STORAGE_KEY = "paperis.api_keys";

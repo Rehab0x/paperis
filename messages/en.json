@@ -537,6 +537,8 @@
       "keyGroupAi": "AI models (search · summary · trend analysis)",
       "keyGroupAiHint": "Only providers with a key entered are activated. \"AI provider\" picks which one to use.",
       "keyGroupExt": "External services / TTS",
+      "keyHelpLink": "Get key ↗",
+      "keyGuideLink": "📖 API key setup guide →",
       "aiGeminiNote": "Default. Flash Lite / Flash family.",
       "aiClaudeNote": "Haiku 4.5 / Sonnet 4.6 family.",
       "aiOpenAiNote": "gpt-4.1 family.",
