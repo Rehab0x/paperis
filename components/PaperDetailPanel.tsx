@@ -56,6 +56,12 @@ export default function PaperDetailPanel({ paper, onBack }: Props) {
   const [summary, setSummary] = useState<string>("");
   const [summarizing, setSummarizing] = useState(false);
   const [summaryError, setSummaryError] = useState<string | null>(null);
+  // 풀텍스트 ready일 때 입력 source 선택 — default = fulltext (정보 풍부).
+  // abstract도 선택 가능해야 한다는 사용자 요구: 우리 앱 포인트는 짧은 청취라
+  // 풀텍스트가 있어도 abstract만 듣고 싶을 때가 있음.
+  const [summarySource, setSummarySource] = useState<"fulltext" | "abstract">(
+    "fulltext"
+  );
 
   const summaryAbortRef = useRef<AbortController | null>(null);
   const fetchWithKeys = useFetchWithKeys();
@@ -141,9 +147,13 @@ export default function PaperDetailPanel({ paper, onBack }: Props) {
     const controller = new AbortController();
     summaryAbortRef.current = controller;
 
+    // 사용자가 abstract를 선택했거나 풀텍스트 미확보면 abstract 기반.
+    // 그 외(풀텍스트 ready + summarySource="fulltext")만 fullText 전달.
+    const useFullText =
+      ft.status === "ready" && summarySource === "fulltext";
     const sourceLabel =
-      ft.status === "ready" && ft.source ? SOURCE_LABEL[ft.source] : undefined;
-    const fullText = ft.status === "ready" ? ft.text : null;
+      useFullText && ft.source ? SOURCE_LABEL[ft.source] : undefined;
+    const fullText = useFullText ? ft.text : null;
 
     const body: SummarizeReadRequest & { fullText?: string } = {
       paper,
@@ -219,6 +229,38 @@ export default function PaperDetailPanel({ paper, onBack }: Props) {
         ) : null}
       </div>
 
+      {/* Abstract 원문 — 사용자가 TTS·요약 받기 전에 원문을 가독성 있게 확인할 수
+          있도록. PubMed abstract는 보통 단일 paragraph 또는 OBJECTIVE/METHODS/...
+          구조의 줄바꿈 텍스트. whitespace-pre-line + 단락 split으로 둘 다 자연스러움. */}
+      <section className="mt-4 space-y-2">
+        <h3 className="text-[11px] font-semibold uppercase tracking-[0.06em] text-paperis-text-2">
+          {m.detail.abstract}
+        </h3>
+        {paper.abstract ? (
+          <details className="group rounded-lg border border-paperis-border bg-paperis-surface" open>
+            <summary className="cursor-pointer list-none px-3 py-2 text-[11px] text-paperis-text-3 transition hover:text-paperis-text">
+              <span className="group-open:hidden">{m.fulltextView.expand}</span>
+              <span className="hidden group-open:inline">{m.fulltextView.collapse}</span>
+            </summary>
+            <div className="max-h-[40vh] space-y-3 overflow-auto border-t border-paperis-border px-3 py-3 text-sm leading-relaxed text-paperis-text-2">
+              {paper.abstract
+                .split(/\n\s*\n/)
+                .map((p) => p.trim())
+                .filter(Boolean)
+                .map((para, i) => (
+                  <p key={i} className="whitespace-pre-line">
+                    {para}
+                  </p>
+                ))}
+            </div>
+          </details>
+        ) : (
+          <p className="rounded-lg border border-paperis-border bg-paperis-surface-2 px-3 py-2 text-xs italic text-paperis-text-3">
+            {m.detail.abstractEmpty}
+          </p>
+        )}
+      </section>
+
       <section className="mt-4 space-y-2">
         <h3 className="text-[11px] font-semibold uppercase tracking-[0.06em] text-paperis-text-2">
           {m.detail.fulltext}
@@ -256,6 +298,36 @@ export default function PaperDetailPanel({ paper, onBack }: Props) {
             {summarizing ? m.detail.summarizing : summary ? m.detail.regenerate : m.detail.startSummary}
           </button>
         </div>
+        {/* 풀텍스트 ready 상태일 때만 입력 source 토글 노출. abstract만 있으면
+            선택지가 abstract 하나라 토글 의미 X. 토글은 긴 요약·청취 둘 다 영향. */}
+        {ft.status === "ready" ? (
+          <div className="inline-flex flex-wrap items-center gap-1 rounded-lg border border-paperis-border bg-paperis-surface p-1 text-[11px]">
+            <button
+              type="button"
+              onClick={() => setSummarySource("fulltext")}
+              className={[
+                "rounded-md px-2 py-0.5 transition",
+                summarySource === "fulltext"
+                  ? "bg-paperis-accent text-paperis-bg"
+                  : "text-paperis-text-2 hover:bg-paperis-surface-2",
+              ].join(" ")}
+            >
+              {m.detail.useFullText}
+            </button>
+            <button
+              type="button"
+              onClick={() => setSummarySource("abstract")}
+              className={[
+                "rounded-md px-2 py-0.5 transition",
+                summarySource === "abstract"
+                  ? "bg-paperis-accent text-paperis-bg"
+                  : "text-paperis-text-2 hover:bg-paperis-surface-2",
+              ].join(" ")}
+            >
+              {m.detail.useAbstract}
+            </button>
+          </div>
+        ) : null}
         {summaryError ? (
           <div className="rounded-lg border border-paperis-accent/40 bg-paperis-accent-dim/30 p-2 text-xs text-paperis-accent">
             {summaryError}
@@ -267,7 +339,7 @@ export default function PaperDetailPanel({ paper, onBack }: Props) {
           </pre>
         ) : !summarizing ? (
           <p className="text-xs text-paperis-text-3">
-            {ft.status === "ready"
+            {ft.status === "ready" && summarySource === "fulltext"
               ? fmt(m.detail.summaryBasedOn, {
                   label: SOURCE_LABEL[ft.source as FullTextSource],
                 })
@@ -284,9 +356,15 @@ export default function PaperDetailPanel({ paper, onBack }: Props) {
           <TtsButton
             paper={paper}
             language={locale}
-            fullText={ft.status === "ready" ? ft.text : null}
+            fullText={
+              ft.status === "ready" && summarySource === "fulltext"
+                ? ft.text
+                : null
+            }
             sourceLabel={
-              ft.status === "ready" && ft.source
+              ft.status === "ready" &&
+              summarySource === "fulltext" &&
+              ft.source
                 ? SOURCE_LABEL[ft.source]
                 : undefined
             }

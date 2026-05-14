@@ -231,6 +231,10 @@
     },
     "detail": {
       "backToResults": "← Back to results",
+      "abstract": "Abstract",
+      "abstractEmpty": "No abstract provided.",
+      "useFullText": "📄 From full text",
+      "useAbstract": "🧾 From abstract",
       "fulltext": "Full text",
       "fulltextSearching": "Searching Unpaywall → Europe PMC → PMC…",
       "longSummary": "Long summary",
@@ -250,6 +254,7 @@
       "expand": "Expand",
       "collapse": "Collapse",
       "viewOriginal": "View original ↗",
+      "downloadPdf": "📥 Download PDF",
       "previewHint": "(Preview above — summary/TTS uses the full text)",
       "sourceMedrxiv": "medRxiv preprint",
       "sourcePdf": "Uploaded PDF"

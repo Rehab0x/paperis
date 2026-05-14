@@ -53,16 +53,24 @@ export default function FullTextView({
             {SOURCE_CAVEAT[source]}
           </p>
         ) : null}
-        {sourceUrl ? (
-          <a
-            href={sourceUrl}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="mb-2 inline-block text-xs text-paperis-text-3 underline transition hover:text-paperis-text"
-          >
-            {m.fulltextView.viewOriginal}
-          </a>
-        ) : null}
+        {sourceUrl ? (() => {
+          // unpaywall/s2/medrxiv는 거의 항상 PDF URL — "Download PDF" 라벨.
+          // 브라우저가 cross-origin download attribute는 무시하지만, PDF URL이면
+          // PDF viewer를 열고 그 안에서 다운로드 가능 (사용자 인지 부담 X).
+          // openalex/europepmc/pmc는 publisher/landing 페이지일 가능성 높아 "View original".
+          const isLikelyPdf =
+            source === "unpaywall" || source === "s2" || source === "medrxiv";
+          return (
+            <a
+              href={sourceUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="mb-2 inline-block text-xs text-paperis-text-3 underline transition hover:text-paperis-text"
+            >
+              {isLikelyPdf ? m.fulltextView.downloadPdf : m.fulltextView.viewOriginal}
+            </a>
+          );
+        })() : null}
         <pre className="max-h-[60vh] overflow-auto whitespace-pre-wrap break-words font-sans text-[13px] text-paperis-text-2">
           {long ? text.slice(0, PREVIEW_CHARS) + "\n\n…" : text}
         </pre>

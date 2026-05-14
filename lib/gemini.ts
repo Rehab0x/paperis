@@ -169,6 +169,7 @@ function narrationSystemInstruction(
       "DO NOT begin with greetings, audience addresses, or self-introduction (no 'Hello', no 'Welcome', no 'Today we will look at...', no 'Dear colleagues'). Open by stating the paper's central question/topic in one sentence and dive directly into the substance.",
       "Tone: clinically experienced narrator speaking to a single anonymous listener — neutral, focused, paced for spoken playback. Avoid second-person addresses ('you', 'we', 'everyone').",
       "Write natural conversational prose suitable for TTS. No headings, no bullet points, no markdown.",
+      "Break the script into natural paragraphs roughly every 3–4 sentences — separate paragraphs with a blank line (two consecutive newlines, \\n\\n). Each paragraph centers on one coherent theme (e.g. study design, primary outcome, clinical takeaway).",
       "Briefly explain a jargon term the first time it matters (e.g. NIHSS, CIMT, MCID), assuming a clinician audience.",
       hasFullText
         ? "Use the full text the user gave you to ground numbers and details. Do NOT add a disclaimer about abstract-only."
@@ -181,6 +182,7 @@ function narrationSystemInstruction(
     "DO NOT begin with greetings, audience addresses, or self-introduction (no '전공의 여러분', no '안녕하세요', no 'Welcome', no 'Today we will look at...'). Open by stating the paper's central question/topic in one sentence and dive directly into the substance.",
     "Tone: clinically experienced narrator speaking to a single anonymous listener — neutral, focused, paced for spoken playback. Avoid words like '여러분', 'we', 'you'.",
     "Write natural conversational prose suitable for TTS. No headings, no bullet points, no markdown.",
+    "Break the script into natural paragraphs roughly every 3–4 sentences — separate paragraphs with a blank line (two consecutive newlines, \\n\\n). Each paragraph centers on one coherent theme (e.g. study design, primary outcome, clinical takeaway). This applies to Korean output as well.",
     "Preserve precise English medical terms (spasticity, FIM, NIHSS, CIMT, FES, Fugl-Meyer) inside the target language. Explain a jargon term briefly the first time it matters.",
     hasFullText
       ? "Use the full text the user gave you to ground numbers and details. Do NOT add a disclaimer about abstract-only."
