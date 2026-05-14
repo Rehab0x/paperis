@@ -70,9 +70,10 @@ export default function PaperCard({
             {paper.title || m.paper.noTitle}
           </h3>
           {/* 한국어 보조 번역 — 영문 제목과 다를 때만 노출. 영문은 식별·인용
-              용도로 유지. 설정 OFF or en locale 시 koTitle은 항상 undefined. */}
+              용도로 유지. 설정 OFF or en locale 시 koTitle은 항상 undefined.
+              text-sm(14px) + text-2 — 메인(16px)과 충분히 구분되면서 가독성. */}
           {koTitle && koTitle !== paper.title ? (
-            <p className="mt-0.5 text-[13px] leading-snug text-paperis-text-3">
+            <p className="mt-1 text-sm leading-snug text-paperis-text-2">
               {koTitle}
             </p>
           ) : null}

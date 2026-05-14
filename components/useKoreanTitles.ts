@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useFetchWithKeys } from "@/components/useFetchWithKeys";
 import { useLocale } from "@/components/useLocale";
 import { useShowKoreanTitles } from "@/components/useShowKoreanTitles";
@@ -26,7 +26,12 @@ interface BatchResponse {
  *   3. localStorage 캐시에 없는 pmid가 1건 이상
  *
  * 반환되는 Map은 캐시 hit + fresh fetch 합집합. 즉시 사용 가능.
- * fetchKey가 바뀔 때마다 재평가 — 검색식 변경/페이지 이동 시 새 batch.
+ *
+ * 의존성 — fetchKey는 부모 컨텍스트(검색식·호·페이지) 식별용이지만, 실제
+ * effect 재실행 트리거는 `pmidKey`(papers의 pmid join). 이유: 부모가 papers를
+ * 비동기로 fetch하므로 fetchKey가 먼저 set되고 papers는 나중에 도착. fetchKey만
+ * 의존성으로 두면 첫 실행은 빈 papers로 일어나 빈 Map 반환 후 영영 재실행되지
+ * 않는 버그 발생.
  */
 export function useKoreanTitles(
   papers: InputPaper[],
@@ -37,18 +42,20 @@ export function useKoreanTitles(
   const fetchWithKeys = useFetchWithKeys();
   const [titles, setTitles] = useState<Map<string, string>>(new Map());
 
+  // pmids 직렬화 — 같은 페이지 같은 papers면 안정. effect 재실행 트리거.
+  const pmidKey = useMemo(
+    () => papers.map((p) => p.pmid).filter(Boolean).join(","),
+    [papers]
+  );
+
   useEffect(() => {
     // 비활성/EN 모드면 빈 맵
-    if (!enabled || locale !== "ko" || papers.length === 0) {
+    if (!enabled || locale !== "ko" || !pmidKey) {
       setTitles(new Map());
       return;
     }
 
-    const pmids = papers.map((p) => p.pmid).filter(Boolean);
-    if (pmids.length === 0) {
-      setTitles(new Map());
-      return;
-    }
+    const pmids = pmidKey.split(",");
 
     // 1) 캐시 우선 — 첫 렌더에서 보유한 만큼 즉시 표시
     const cached = readManyKoreanTitles(pmids);
@@ -101,9 +108,9 @@ export function useKoreanTitles(
       cancelled = true;
       controller.abort();
     };
-    // fetchKey가 바뀌면 새 batch. papers는 fetchKey 기반으로 부모가 안정 보장.
+    // papers는 pmidKey로 안정 비교. fetchKey는 부모 컨텍스트 기록용으로만 의존.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [fetchKey, enabled, locale]);
+  }, [pmidKey, enabled, locale, fetchKey]);
 
   return titles;
 }

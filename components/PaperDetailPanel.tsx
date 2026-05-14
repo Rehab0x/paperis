@@ -216,7 +216,7 @@ export default function PaperDetailPanel({ paper, onBack }: Props) {
       {/* 디테일 패널은 papers 1개라 useKoreanTitles의 batch overhead 의미 없지만
           캐시·설정 게이트를 그대로 재사용. ko locale + 설정 ON일 때만 표시. */}
       {koTitle && koTitle !== paper.title ? (
-        <p className="mt-0.5 text-sm leading-snug text-paperis-text-3">
+        <p className="mt-1 text-base leading-snug text-paperis-text-2">
           {koTitle}
         </p>
       ) : null}
