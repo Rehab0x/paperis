@@ -32,6 +32,7 @@
 - **Abstract `<details>` 섹션**: PaperDetailPanel에서 원문 abstract 깔끔하게 펼침 (open default)
 - **TTS narration**: 자동 재생 X. 라이브러리에 append만. 글로벌 PlayerBar에서 큐 재생. 트랙 제목은 자동 한국어 번역. 한국어 narration도 3-4문장마다 빈 줄로 문단 분리 (영어와 동일한 가독성)
 - **라이브러리 소스 배지**: 트랙이 트렌드/풀텍스트/초록 어느 소스에서 만들어졌는지 한눈에 (`📊 Trend` / `📄 Full text` / `🧾 Abstract`)
+- **한국어 제목 보조 표시 (ko 사이트 전용, 설정 토글 default OFF)**: 검색·호 탐색·주제 탐색·트렌드 모든 카드에서 영문 제목 아래에 한글 번역을 작은 회색으로 표시. 영문 원제목은 인용·식별성 위해 그대로 유지. 한 번 번역된 제목은 pmid 키로 클라 localStorage + 서버 Redis에 영구 캐시
 
 ### 저널 큐레이션 (v3 메인)
 - **임상과 카탈로그**: 25개 임상과 (GitHub raw fetch + 로컬 fallback). 사용자가 즐겨찾기 / 직접 추가 / 차단
