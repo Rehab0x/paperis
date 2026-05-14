@@ -58,7 +58,16 @@ export default function PlayerBar() {
   const track = queue[currentIndex];
   const dur = durationMs || track.durationMs || 0;
   const hasScript = Boolean(track.narrationText);
-  const metaLine = `${track.journal}${track.year ? ` · ${track.year}` : ""} · ${currentIndex + 1}/${queue.length}`;
+  // metaLine — journal · year · voice · queuePos. voice는 모바일/데스크탑 모두 표시
+  // (이전엔 데스크탑 라이브러리 드로어에서만 보여서 모바일 사용자가 화자 확인 어려움).
+  const metaLine = [
+    track.journal,
+    track.year || null,
+    track.voice || null,
+    `${currentIndex + 1}/${queue.length}`,
+  ]
+    .filter(Boolean)
+    .join(" · ");
   const titleDisplay = track.titleKo ?? track.title;
   const timeLabel = `${formatTime(currentTimeMs)} / ${formatTime(dur)}`;
 

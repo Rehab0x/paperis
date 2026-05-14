@@ -250,6 +250,7 @@ export default function TtsQueueProvider({
             durationMs,
             narrationText,
             titleKo,
+            sourceLabel: next.sourceLabel,
           });
           updateJob(next.id, {
             status: "done",

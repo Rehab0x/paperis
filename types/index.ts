@@ -151,6 +151,13 @@ export interface AudioTrack {
    * 라이브러리/PlayerBar는 titleKo ?? title 순으로 표시.
    */
   titleKo?: string;
+  /**
+   * TTS 변환에 사용된 소스 라벨 — 풀텍스트 출처 (예: "PMC full text",
+   * "Unpaywall full text", "User-uploaded PDF") 또는 미설정 시 abstract 기반.
+   * Phase 2 후속: 라이브러리에서 풀텍스트/abstract/트렌드 구분 배지에 사용.
+   * pmid가 "trend:" prefix이면 트렌드 브리핑(별도 분류).
+   */
+  sourceLabel?: string;
 }
 
 // 라이브러리 목록 조회용 — audioBlob을 의도적으로 제외해 메모리 폭주를 막는다.
@@ -173,5 +180,7 @@ export interface AudioTrackMeta {
   paperSnapshot: Paper;
   narrationText?: string;
   titleKo?: string;
+  /** AudioTrack.sourceLabel와 동일 — 라이브러리 카드의 source 배지에 사용. */
+  sourceLabel?: string;
   audioByteSize: number;
 }

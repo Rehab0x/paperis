@@ -711,6 +711,8 @@
       "playAria": "{title} 재생",
       "playTitle": "클릭해서 여기부터 재생 (이미 재생 중이면 일시정지)",
       "trendBadge": "📊 트렌드",
+      "fulltextBadge": "📄 풀텍스트",
+      "abstractBadge": "🧾 초록",
       "moveUp": "위로 이동",
       "moveDown": "아래로 이동",
       "scriptAria": "narration 스크립트 펼치기/접기",

@@ -95,6 +95,8 @@ export interface AppendTrackInput {
   narrationText?: string;
   /** 영어 제목의 한국어 번역 (한국어 TTS만, 서버가 동봉) */
   titleKo?: string;
+  /** 풀텍스트 출처 라벨. 미설정 시 abstract 기반. 트렌드는 pmid prefix로 별도 판별. */
+  sourceLabel?: string;
 }
 
 function newId(): string {
@@ -136,6 +138,7 @@ export async function appendTrack(input: AppendTrackInput): Promise<AudioTrack> 
     paperSnapshot: input.paper,
     narrationText: input.narrationText,
     titleKo: input.titleKo,
+    sourceLabel: input.sourceLabel,
   };
   await db.add(STORE, track);
   notifyChange();
@@ -171,6 +174,7 @@ export async function listTrackMetas(): Promise<AudioTrackMeta[]> {
       paperSnapshot: v.paperSnapshot,
       narrationText: v.narrationText,
       titleKo: v.titleKo,
+      sourceLabel: v.sourceLabel,
       audioByteSize: v.audioBlob?.size ?? 0,
     });
     cursor = await cursor.continue();

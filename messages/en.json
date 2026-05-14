@@ -711,6 +711,8 @@
       "playAria": "Play {title}",
       "playTitle": "Click to play from here (pauses if already playing)",
       "trendBadge": "📊 Trend",
+      "fulltextBadge": "📄 Full text",
+      "abstractBadge": "🧾 Abstract",
       "moveUp": "Move up",
       "moveDown": "Move down",
       "scriptAria": "Expand/collapse narration script",

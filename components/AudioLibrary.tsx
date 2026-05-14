@@ -208,12 +208,26 @@ export default function AudioLibrary({ onOpenPaper }: Props) {
                       {player.isPlaying ? "▶" : "⏸"}
                     </span>
                   ) : null}
-                  {/* 트렌드 트랙 시각 구분 — pmid가 "trend:" prefix면 📊 배지 */}
-                  {track.pmid.startsWith("trend:") ? (
-                    <span className="mr-1.5 rounded bg-paperis-accent-dim/40 px-1.5 py-0.5 text-[9px] font-medium text-paperis-accent">
-                      {m.library.trendBadge}
-                    </span>
-                  ) : null}
+                  {/* 소스 배지 — pmid "trend:" prefix면 트렌드, 아니면 sourceLabel
+                      유무로 풀텍스트/abstract 구분. legacy 트랙(sourceLabel 없음)은
+                      모두 abstract로 표시. */}
+                  {(() => {
+                    const isTrend = track.pmid.startsWith("trend:");
+                    const isFull = !isTrend && Boolean(track.sourceLabel);
+                    const label = isTrend
+                      ? m.library.trendBadge
+                      : isFull
+                        ? m.library.fulltextBadge
+                        : m.library.abstractBadge;
+                    return (
+                      <span
+                        className="mr-1.5 rounded bg-paperis-accent-dim/40 px-1.5 py-0.5 text-[9px] font-medium text-paperis-accent"
+                        title={isFull ? track.sourceLabel : undefined}
+                      >
+                        {label}
+                      </span>
+                    );
+                  })()}
                   {track.titleKo ?? track.title}
                 </p>
                 <p className="mt-0.5 truncate text-[11px] leading-tight text-paperis-text-3">
