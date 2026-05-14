@@ -243,7 +243,8 @@
       "startSummary": "요약 시작",
       "summaryFailed": "요약 실패",
       "summaryBasedOn": "{label} 기반으로 요약합니다.",
-      "summaryAbstractOnly": "Abstract만으로 요약합니다 (전체 본문 미확보).",
+      "summaryAbstractOnly": "초록 기반으로 요약합니다.",
+      "inputSource": "요약·청취 입력",
       "listen": "청취",
       "listenHint": "변환된 트랙은 라이브러리 끝에 조용히 추가됩니다 (자동 재생 X).",
       "fulltextFailed": "풀텍스트 자동 확보 실패 — 단계별 결과:"
@@ -657,7 +658,10 @@
         "empty": "이 달({year}년 {month}월)에는 PubMed 인덱스에 논문이 없습니다.",
         "emptyHint": "{journalName}는 발행 주기 또는 PubMed 인덱싱 지연으로 결과가 비어 있을 수 있습니다.",
         "failed": "호 탐색 실패",
-        "failedStatus": "호 탐색 실패 ({status})"
+        "failedStatus": "호 탐색 실패 ({status})",
+        "includeNoise": "📰 노이즈 포함",
+        "includeNoiseTitle": "Editorial·Letter·Erratum 등도 함께 표시",
+        "filteredCount": "({n}건 숨김)"
       },
       "topic": {
         "placeholder": "예: spasticity, post-stroke gait, Botox",

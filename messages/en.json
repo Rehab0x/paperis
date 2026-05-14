@@ -242,8 +242,9 @@
       "regenerate": "Regenerate",
       "startSummary": "Start summary",
       "summaryFailed": "Summary failed",
-      "summaryBasedOn": "Summarizing based on {label}.",
-      "summaryAbstractOnly": "Summarizing from abstract only (full text unavailable).",
+      "summaryBasedOn": "Based on {label}.",
+      "summaryAbstractOnly": "Based on abstract.",
+      "inputSource": "Summary & TTS source",
       "listen": "Listen",
       "listenHint": "Converted tracks are added quietly to the library (no auto-play).",
       "fulltextFailed": "Full-text retrieval failed — step-by-step:"
@@ -657,7 +658,10 @@
         "empty": "No papers indexed on PubMed for {monthName} {year}.",
         "emptyHint": "{journalName} may have issue cadence gaps or PubMed indexing delay.",
         "failed": "Issue search failed",
-        "failedStatus": "Issue search failed ({status})"
+        "failedStatus": "Issue search failed ({status})",
+        "includeNoise": "📰 Include notes",
+        "includeNoiseTitle": "Show editorials, letters, errata too",
+        "filteredCount": "({n} hidden)"
       },
       "topic": {
         "placeholder": "e.g. spasticity, post-stroke gait, Botox",

@@ -10,6 +10,7 @@ import JournalPaperList from "@/components/JournalPaperList";
 import { useAppMessages } from "@/components/useAppMessages";
 import { useFetchWithKeys } from "@/components/useFetchWithKeys";
 import { fmt } from "@/lib/i18n";
+import { countNoise, isSubstantivePaper } from "@/lib/paper-filter";
 import type { Paper } from "@/types";
 
 interface Props {
@@ -57,10 +58,23 @@ export default function IssueExplorer({ issn, journalName }: Props) {
   const [total, setTotal] = useState(0);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // noise 필터 — 기본 ON. 호 탐색에선 editorial/letter/erratum이 흔히 같이 잡혀
+  // 사용자 시선 부담. 토글로 모두 보기 가능 (DOI로 직접 들어가 보고 싶을 때).
+  const [includeNoise, setIncludeNoise] = useState(false);
 
   const fetchWithKeys = useFetchWithKeys();
   const fetchKey = `${issn}::${year}::${month}`;
   const yearOptions = useMemo(buildYearOptions, []);
+
+  // 필터링·noise 카운트는 papers 변할 때만 재계산.
+  const filteredPapers = useMemo(
+    () => (includeNoise ? papers : papers.filter(isSubstantivePaper)),
+    [papers, includeNoise]
+  );
+  const noiseCount = useMemo(() => countNoise(papers), [papers]);
+  // JournalPaperList는 fetchKey가 바뀌면 페이지/선택 리셋 — 토글 변화도 새 키에
+  // 포함시켜 1페이지로 자연스럽게 돌아가게.
+  const listKey = `${fetchKey}::${includeNoise ? "all" : "sub"}`;
 
   // dedupe ref 가드는 의도적으로 사용하지 않는다 — Strict Mode 무한 loading 회피.
   useEffect(() => {
@@ -160,15 +174,39 @@ export default function IssueExplorer({ issn, journalName }: Props) {
               total: total.toLocaleString(),
             })}{" "}
             {fmt(m.journal.issue.headerSub, { n: papers.length })}
+            {!includeNoise && noiseCount > 0 ? (
+              <span className="ml-1 text-paperis-text-3">
+                {fmt(m.journal.issue.filteredCount, { n: noiseCount })}
+              </span>
+            ) : null}
           </span>
+        ) : null}
+        {/* noise 토글 — Editorial/Letter/Erratum 등 substantive 아닌 paper 표시 여부.
+            default OFF (필터 ON) — 호 탐색의 기본은 깨끗한 결과. 사용자가 토글 ON 시
+            모든 paper 표시 (DOI 직접 진입 등 의도된 사용 case 지원). */}
+        {!loading && papers.length > 0 ? (
+          <button
+            type="button"
+            onClick={() => setIncludeNoise((v) => !v)}
+            aria-pressed={includeNoise}
+            title={m.journal.issue.includeNoiseTitle}
+            className={[
+              "rounded-full border px-3 py-1 text-xs transition",
+              includeNoise
+                ? "border-paperis-accent bg-paperis-accent-dim/40 text-paperis-accent"
+                : "border-paperis-border text-paperis-text-2 hover:border-paperis-text-3",
+            ].join(" ")}
+          >
+            {includeNoise ? "✓ " : ""}{m.journal.issue.includeNoise}
+          </button>
         ) : null}
       </div>
 
       <JournalPaperList
-        papers={papers}
+        papers={filteredPapers}
         loading={loading}
         error={error}
-        fetchKey={fetchKey}
+        fetchKey={listKey}
         emptyMessage={
           <div className="rounded-2xl border border-dashed border-paperis-border bg-paperis-surface p-8 text-center text-sm text-paperis-text-3">
             <p>
