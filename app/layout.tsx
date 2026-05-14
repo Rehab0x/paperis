@@ -7,6 +7,7 @@ import AccountSyncProvider from "@/components/AccountSyncProvider";
 import ApiKeysProvider from "@/components/ApiKeysProvider";
 import AuthSessionProvider from "@/components/AuthSessionProvider";
 import Footer from "@/components/Footer";
+import PaperPanelCacheProvider from "@/components/PaperPanelCacheProvider";
 import RegisterSW from "@/components/RegisterSW";
 import ThemeProvider from "@/components/ThemeProvider";
 import TtsCompletionToast from "@/components/TtsCompletionToast";
@@ -94,7 +95,9 @@ export default function RootLayout({
                 <TtsProviderPreferenceProvider>
                   <TtsQueueProvider>
                     <PlayerProvider>
-                      {children}
+                      <PaperPanelCacheProvider>
+                        {children}
+                      </PaperPanelCacheProvider>
                       <Footer />
                       <PlayerBar />
                       <TtsCompletionToast />

@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import FullTextView from "@/components/FullTextView";
+import { usePaperPanelCache } from "@/components/PaperPanelCacheProvider";
 import PdfUpload from "@/components/PdfUpload";
 import TtsButton from "@/components/TtsButton";
 import { useAppMessages } from "@/components/useAppMessages";
@@ -53,19 +54,37 @@ const SOURCE_LABEL: Record<FullTextSource, string> = {
 export default function PaperDetailPanel({ paper, onBack }: Props) {
   const m = useAppMessages();
   const locale = useLocale();
-  const [ft, setFt] = useState<FullTextState>(initial);
-  const [summary, setSummary] = useState<string>("");
+
+  // 세션 캐시 — 사용자가 같은 논문 다시 들어와도 풀텍스트/긴 요약/입력 토글
+  // 보존. PDF 업로드는 사용자 directly의 투자라 특히 중요. key={pmid}
+  // remount로 컴포넌트 자체는 새로 만들어지지만 useState 초기값을 캐시에서.
+  const panelCache = usePaperPanelCache();
+  const cachedInit = panelCache.get(paper.pmid);
+
+  const [ft, setFt] = useState<FullTextState>(cachedInit?.ft ?? initial);
+  const [summary, setSummary] = useState<string>(cachedInit?.summary ?? "");
   const [summarizing, setSummarizing] = useState(false);
   const [summaryError, setSummaryError] = useState<string | null>(null);
   // 풀텍스트 ready일 때 입력 source 선택 — default = fulltext (정보 풍부).
   // abstract도 선택 가능해야 한다는 사용자 요구: 우리 앱 포인트는 짧은 청취라
   // 풀텍스트가 있어도 abstract만 듣고 싶을 때가 있음.
   const [summarySource, setSummarySource] = useState<"fulltext" | "abstract">(
-    "fulltext"
+    cachedInit?.summarySource ?? "fulltext"
   );
 
   const summaryAbortRef = useRef<AbortController | null>(null);
   const fetchWithKeys = useFetchWithKeys();
+
+  // ft/summary/summarySource 변경 시 캐시 동기화. transient(summarizing/error)는 제외.
+  useEffect(() => {
+    panelCache.patch(paper.pmid, { ft });
+  }, [paper.pmid, ft, panelCache]);
+  useEffect(() => {
+    panelCache.patch(paper.pmid, { summary });
+  }, [paper.pmid, summary, panelCache]);
+  useEffect(() => {
+    panelCache.patch(paper.pmid, { summarySource });
+  }, [paper.pmid, summarySource, panelCache]);
 
   // ko locale + 설정 ON 때만 1건 batch (캐시 hit이면 즉시 표시).
   const koTitleMap = useKoreanTitles(
@@ -79,7 +98,20 @@ export default function PaperDetailPanel({ paper, onBack }: Props) {
   // 오히려 그런 가드를 두면 React 19/Next 16 Strict Mode의 mount→cleanup→mount 루틴에서
   // 두 번째 mount가 가드에 막혀 fetch가 새로 안 일어나고, 첫 mount의 응답은 cancelled=true로 버려져
   // status=loading이 영원히 안 풀린다.
+  //
+  // 단, 세션 캐시에 이 pmid의 결과가 이미 있으면 fetch 스킵 — 사용자가 업로드한
+  // PDF나 자동 추출 결과가 그대로 보존된다. cached가 status="loading"이면 이전
+  // 페치가 cancel된 채로 캐시에 들어갔을 수 있으니 새로 시도.
   useEffect(() => {
+    const cached = panelCache.get(paper.pmid);
+    if (
+      cached?.ft &&
+      (cached.ft.status === "ready" || cached.ft.status === "missing")
+    ) {
+      // 캐시된 결과 이미 state에 반영(useState 초기값) — 추가 fetch 불필요.
+      return;
+    }
+
     setFt({ ...initial, status: "loading" });
     setSummary("");
     setSummaryError(null);
@@ -133,6 +165,8 @@ export default function PaperDetailPanel({ paper, onBack }: Props) {
     return () => {
       cancelled = true;
     };
+    // panelCache는 ref 기반이라 안정 — deps에 포함 안 함.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [paper.pmid, paper.doi, paper.pmcId]);
 
   function handlePdfExtracted(text: string) {

@@ -1,6 +1,6 @@
 # Paperis — TODO / 진척 기록
 
-> 마지막 갱신: 2026-05-15 (라이브러리 소스 배지 + reading UX + noise 필터 + 명시적 submit + BYOK API Key 가이드 + 한국어 제목 보조 표시)
+> 마지막 갱신: 2026-05-15 (라이브러리 소스 배지 + reading UX + noise 필터 + 명시적 submit + BYOK API Key 가이드 + 한국어 제목 보조 표시 + 패널 세션 캐시)
 > 외부 노출 문서는 [README.md](README.md), 컨텍스트는 [CLAUDE.md](CLAUDE.md). 이 파일은 작업 일지·기술부채·의사결정 기록 보관용.
 
 ---
@@ -80,6 +80,7 @@
   - **트렌드 안내 문구 정돈** — "Gemini가 abstract 모음을..." → "abstract 모음을..." (멀티 AI provider 시대)
   - **BYOK API Key 발급 가이드** — (A) `KEY_HELP_URLS` 상수 + SettingsDrawer renderField 옆 인라인 "발급 ↗" 링크 (8개 provider, Unpaywall만 이메일이라 제외) (B) `/help/api-keys` 가이드 페이지 — 서버 컴포넌트 + `getServerLocale()` 분기 ko/en, 8개 provider 단계별 스크린샷 없는 텍스트 가이드, ApiKeysSection 상단에 진입 링크
   - **한국어 제목 보조 표시 (ko 사이트 전용)** — 영문 제목 그대로 + 그 아래 작은 회색으로 한글 번역. 영문 원제목을 보존해 인용·식별성 유지. 설정 토글(default OFF) — 번역 비용은 사용자가 켤 때만 발생. ko locale에서만 토글 노출(en은 숨김). 인프라: `lib/title-translate.ts`(JSON batch Flash Lite, 50건 cap) + `app/api/translate-titles` 라우트(Redis `title-ko:{pmid}` 영구 캐시) + `lib/title-ko-cache.ts`(localStorage map, MAX 5000) + `useKoreanTitles(papers, fetchKey)` 훅. 적용: PaperCard·ResultsList(검색/호/주제/트렌드 모든 카드) + PaperDetailPanel
+  - **PaperDetailPanel 세션 캐시** — 사용자가 PDF 업로드 후 다른 논문 탐색하고 돌아오면 첨부 PDF/긴 요약/입력 토글 모두 사라지던 문제 해결. `components/PaperPanelCacheProvider`(in-memory `Map<pmid, { ft, summary, summarySource }>`, MAX 100 FIFO, root layout mount). PaperDetailPanel은 useState 초기값을 캐시에서 + ft/summary 변경 시 patch + 자동 풀텍스트 fetch는 cached.ft.status가 ready/missing이면 스킵. 새로고침 시는 사라짐(in-memory only) — PDF 영속화는 별도 "내 첨부 PDF 라이브러리" 메뉴로 추후 검토
 - ⬜ **Phase 2-C3** 약관 페이지 영어 번역 (legal/terms·privacy·refund — 법률 검토 필요)
 - ⬜ **Phase 2-D** Stripe 결제 연동 (해외 사용자 USD) — 한국 사업자등록(M8) 완료 후
 
