@@ -14,8 +14,10 @@ import { useTheme, type Theme } from "@/components/ThemeProvider";
 import { useAppMessages } from "@/components/useAppMessages";
 import { useAutoMiniSummary } from "@/components/useAutoMiniSummary";
 import { useLocale } from "@/components/useLocale";
+import { useShowKoreanTitles } from "@/components/useShowKoreanTitles";
 import { fmt } from "@/lib/i18n";
 import { writeAutoMiniSummary } from "@/lib/auto-mini-summary";
+import { writeShowKoreanTitles } from "@/lib/show-korean-titles";
 import {
   PROVIDER_DEFAULT_VOICE,
   PROVIDER_VOICES,
@@ -62,6 +64,7 @@ export default function SettingsDrawer({ open, onClose }: Props) {
     { value: 1, label: m.settings.speedFast },
   ];
   const { theme, setTheme } = useTheme();
+  const locale = useLocale();
   const {
     provider,
     setProvider,
@@ -198,6 +201,15 @@ export default function SettingsDrawer({ open, onClose }: Props) {
           >
             <AutoMiniSummaryToggle />
           </Section>
+
+          {locale === "ko" ? (
+            <Section
+              title={m.settings.titleKoTitle}
+              description={m.settings.titleKoDesc}
+            >
+              <KoreanTitlesToggle />
+            </Section>
+          ) : null}
 
           <Section
             title={m.settings.notifyTitle}
@@ -481,6 +493,29 @@ function AutoMiniSummaryToggle() {
         <span className="block text-xs text-paperis-text-3">
           {m.settings.autoMiniHint1}
           {enabled ? m.settings.autoMiniHintOn : m.settings.autoMiniHintOff}
+        </span>
+      </span>
+    </label>
+  );
+}
+
+function KoreanTitlesToggle() {
+  const m = useAppMessages();
+  const enabled = useShowKoreanTitles();
+  return (
+    <label className="flex cursor-pointer items-start gap-3 rounded-lg border border-paperis-border px-3 py-2 transition hover:border-paperis-text-3">
+      <input
+        type="checkbox"
+        checked={enabled}
+        onChange={(e) => writeShowKoreanTitles(e.target.checked)}
+        className="mt-1"
+      />
+      <span className="min-w-0 flex-1">
+        <span className="block text-sm font-medium text-paperis-text">
+          {enabled ? m.settings.titleKoOn : m.settings.titleKoOff}
+        </span>
+        <span className="block text-xs text-paperis-text-3">
+          {m.settings.titleKoHint}
         </span>
       </span>
     </label>

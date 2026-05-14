@@ -6,6 +6,7 @@ import PdfUpload from "@/components/PdfUpload";
 import TtsButton from "@/components/TtsButton";
 import { useAppMessages } from "@/components/useAppMessages";
 import { useFetchWithKeys } from "@/components/useFetchWithKeys";
+import { useKoreanTitles } from "@/components/useKoreanTitles";
 import { useLocale } from "@/components/useLocale";
 import { fmt } from "@/lib/i18n";
 import type {
@@ -65,6 +66,13 @@ export default function PaperDetailPanel({ paper, onBack }: Props) {
 
   const summaryAbortRef = useRef<AbortController | null>(null);
   const fetchWithKeys = useFetchWithKeys();
+
+  // ko locale + 설정 ON 때만 1건 batch (캐시 hit이면 즉시 표시).
+  const koTitleMap = useKoreanTitles(
+    [{ pmid: paper.pmid, title: paper.title }],
+    `detail::${paper.pmid}`
+  );
+  const koTitle = koTitleMap.get(paper.pmid);
 
   // 새 논문 선택 시 풀텍스트 자동 시도.
   // key={pmid}로 부모가 remount를 보장하므로 별도 dedupe ref 불필요.
@@ -205,6 +213,13 @@ export default function PaperDetailPanel({ paper, onBack }: Props) {
       <h2 className="font-serif text-lg font-medium leading-snug tracking-tight text-paperis-text">
         {paper.title}
       </h2>
+      {/* 디테일 패널은 papers 1개라 useKoreanTitles의 batch overhead 의미 없지만
+          캐시·설정 게이트를 그대로 재사용. ko locale + 설정 ON일 때만 표시. */}
+      {koTitle && koTitle !== paper.title ? (
+        <p className="mt-0.5 text-sm leading-snug text-paperis-text-3">
+          {koTitle}
+        </p>
+      ) : null}
       <p className="mt-1 text-xs text-paperis-text-3">
         {paper.journal} · {paper.year} · PMID {paper.pmid}
       </p>

@@ -5,6 +5,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import AuthMenu from "@/components/AuthMenu";
 import { useAutoMiniSummary } from "@/components/useAutoMiniSummary";
+import { useKoreanTitles } from "@/components/useKoreanTitles";
 import LibraryLink from "@/components/LibraryLink";
 import PaperDetailPanel from "@/components/PaperDetailPanel";
 import ResultsList from "@/components/ResultsList";
@@ -387,6 +388,12 @@ function HomeInner() {
     [papers]
   );
 
+  // 한국어 제목 batch 번역 — 현재 페이지 결과만. 설정 OFF or en locale 시 빈 Map.
+  const koTitles = useKoreanTitles(
+    displayedPapers.map((p) => ({ pmid: p.pmid, title: p.title })),
+    `${q.trim()}::${sort}::${page}`
+  );
+
   return (
     <div className="flex w-full flex-1 flex-col">
       <header className="sticky top-0 z-10 border-b border-paperis-border bg-paperis-bg/85 backdrop-blur-xl">
@@ -524,6 +531,7 @@ function HomeInner() {
                 selectedPmid={selectedPmid}
                 miniSummaries={miniSummaries}
                 miniLoading={miniLoading}
+                koTitles={koTitles}
                 onSelect={handleSelect}
                 onLoadMini={handleLoadMini}
               />

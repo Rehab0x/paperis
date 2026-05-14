@@ -9,6 +9,8 @@ interface Props {
   selectedPmid: string | null;
   miniSummaries: Map<string, MiniSummary>;
   miniLoading: Set<string>;
+  /** pmid → 한국어 보조 제목 (옵션). useKoreanTitles에서 부모가 받아 넘김 */
+  koTitles?: Map<string, string>;
   onSelect: (pmid: string) => void;
   onLoadMini: (pmid: string) => void;
 }
@@ -36,6 +38,7 @@ export default function ResultsList({
   selectedPmid,
   miniSummaries,
   miniLoading,
+  koTitles,
   onSelect,
   onLoadMini,
 }: Props) {
@@ -63,6 +66,7 @@ export default function ResultsList({
           selected={selectedPmid === paper.pmid}
           miniSummary={miniSummaries.get(paper.pmid)}
           miniLoading={miniLoading.has(paper.pmid)}
+          koTitle={koTitles?.get(paper.pmid)}
           onSelect={onSelect}
           onLoadMini={onLoadMini}
         />

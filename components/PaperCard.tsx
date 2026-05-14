@@ -13,6 +13,8 @@ interface Props {
   miniLoading: boolean;
   onSelect: (pmid: string) => void;
   onLoadMini: (pmid: string) => void;
+  /** 한국어 제목 (선택). useKoreanTitles 훅이 batch 후 부모가 매핑해 넘김 */
+  koTitle?: string;
 }
 
 function formatAuthors(authors: string[]): string {
@@ -41,6 +43,7 @@ export default function PaperCard({
   miniLoading,
   onSelect,
   onLoadMini,
+  koTitle,
 }: Props) {
   const m = useAppMessages();
   const cited = formatCitations(paper.citedByCount);
@@ -66,6 +69,13 @@ export default function PaperCard({
           <h3 className="font-serif text-base font-medium leading-snug tracking-tight text-paperis-text">
             {paper.title || m.paper.noTitle}
           </h3>
+          {/* 한국어 보조 번역 — 영문 제목과 다를 때만 노출. 영문은 식별·인용
+              용도로 유지. 설정 OFF or en locale 시 koTitle은 항상 undefined. */}
+          {koTitle && koTitle !== paper.title ? (
+            <p className="mt-0.5 text-[13px] leading-snug text-paperis-text-3">
+              {koTitle}
+            </p>
+          ) : null}
           <p className="mt-1.5 text-xs text-paperis-text-3">
             {formatAuthors(paper.authors)}
           </p>

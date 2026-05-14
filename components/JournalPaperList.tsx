@@ -17,6 +17,7 @@ import ResultsList from "@/components/ResultsList";
 import { useAppMessages } from "@/components/useAppMessages";
 import { useAutoMiniSummary } from "@/components/useAutoMiniSummary";
 import { useFetchWithKeys } from "@/components/useFetchWithKeys";
+import { useKoreanTitles } from "@/components/useKoreanTitles";
 import { fmt } from "@/lib/i18n";
 import type {
   MiniSummary,
@@ -125,6 +126,13 @@ export default function JournalPaperList({
     sortedPapers.length > 0
       ? (safePage - 1) * pageSize + pagedPapers.length
       : 0;
+
+  // 한국어 제목 batch 번역 — 현재 페이지 papers만. 페이지 이동 시 새 batch.
+  // 설정 OFF or en locale 시 훅이 빈 Map 반환 (서버 호출 안 함).
+  const koTitles = useKoreanTitles(
+    pagedPapers.map((p) => ({ pmid: p.pmid, title: p.title })),
+    `${fetchKey}::page=${safePage}`
+  );
 
   const handlePageChange = useCallback((next: number) => {
     setPage(next);
@@ -302,6 +310,7 @@ export default function JournalPaperList({
           selectedPmid={selectedPmid}
           miniSummaries={miniSummaries}
           miniLoading={miniLoading}
+          koTitles={koTitles}
           onSelect={handleSelect}
           onLoadMini={handleLoadMini}
         />
