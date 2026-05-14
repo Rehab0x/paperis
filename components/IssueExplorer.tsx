@@ -183,11 +183,10 @@ export default function IssueExplorer({ issn, journalName }: Props) {
           disabled={!isDirty || loading}
           title={isDirty ? m.journal.issue.dirtyHint : undefined}
           className={[
-            "rounded-md border px-3 py-1 text-xs font-medium transition",
-            isDirty && !loading
-              ? "border-paperis-accent bg-paperis-accent text-paperis-bg hover:opacity-90"
-              : "border-paperis-border text-paperis-text-3",
-            !isDirty || loading ? "cursor-not-allowed" : "",
+            // 항상 accent — 비활성도 같은 색이라 사용자가 위치·역할 즉시 인지.
+            // disabled는 opacity로만 표시. ml-auto로 우측 정렬.
+            "ml-auto rounded-md bg-paperis-accent px-3 py-1 text-xs font-medium text-paperis-bg transition hover:opacity-90",
+            !isDirty || loading ? "cursor-not-allowed opacity-50" : "",
           ].join(" ")}
         >
           {m.journal.issue.searchBtn}

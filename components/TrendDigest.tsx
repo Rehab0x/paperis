@@ -317,11 +317,9 @@ export default function TrendDigest({
             disabled={!isDirty || loading}
             title={isDirty ? m.journal.trend.dirtyHint : undefined}
             className={[
-              "ml-2 rounded-md border px-3 py-1 text-xs font-medium transition",
-              isDirty && !loading
-                ? "border-paperis-accent bg-paperis-accent text-paperis-bg hover:opacity-90"
-                : "border-paperis-border text-paperis-text-3",
-              !isDirty || loading ? "cursor-not-allowed" : "",
+              // 항상 accent + ml-auto로 우측 정렬. 비활성은 opacity로 표시.
+              "ml-auto rounded-md bg-paperis-accent px-3 py-1 text-xs font-medium text-paperis-bg transition hover:opacity-90",
+              !isDirty || loading ? "cursor-not-allowed opacity-50" : "",
             ].join(" ")}
           >
             {m.journal.trend.analyzeBtn}

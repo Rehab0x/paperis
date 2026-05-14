@@ -284,23 +284,13 @@ export default function PaperDetailPanel({ paper, onBack }: Props) {
         ) : null}
       </section>
 
-      <section className="mt-5 space-y-2">
-        <div className="flex items-center justify-between">
+      {/* 요약·청취 입력 source — 두 섹션 공통 토글. 풀텍스트 ready일 때만 토글
+          활성, 그 외엔 자동 abstract (사용자가 선택할 여지 없음 — 표시 안 함). */}
+      {ft.status === "ready" ? (
+        <section className="mt-5 space-y-2">
           <h3 className="text-[11px] font-semibold uppercase tracking-[0.06em] text-paperis-text-2">
-            {m.detail.longSummary}
+            {m.detail.inputSource}
           </h3>
-          <button
-            type="button"
-            onClick={handleSummarize}
-            disabled={summarizing}
-            className="rounded-lg bg-paperis-accent px-2.5 py-1 text-xs font-medium text-paperis-bg transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
-          >
-            {summarizing ? m.detail.summarizing : summary ? m.detail.regenerate : m.detail.startSummary}
-          </button>
-        </div>
-        {/* 풀텍스트 ready 상태일 때만 입력 source 토글 노출. abstract만 있으면
-            선택지가 abstract 하나라 토글 의미 X. 토글은 긴 요약·청취 둘 다 영향. */}
-        {ft.status === "ready" ? (
           <div className="inline-flex flex-wrap items-center gap-1 rounded-lg border border-paperis-border bg-paperis-surface p-1 text-[11px]">
             <button
               type="button"
@@ -327,7 +317,30 @@ export default function PaperDetailPanel({ paper, onBack }: Props) {
               {m.detail.useAbstract}
             </button>
           </div>
-        ) : null}
+          <p className="text-xs text-paperis-text-3">
+            {summarySource === "fulltext" && ft.source
+              ? fmt(m.detail.summaryBasedOn, {
+                  label: SOURCE_LABEL[ft.source as FullTextSource],
+                })
+              : m.detail.summaryAbstractOnly}
+          </p>
+        </section>
+      ) : null}
+
+      <section className="mt-5 space-y-2">
+        <div className="flex items-center justify-between">
+          <h3 className="text-[11px] font-semibold uppercase tracking-[0.06em] text-paperis-text-2">
+            {m.detail.longSummary}
+          </h3>
+          <button
+            type="button"
+            onClick={handleSummarize}
+            disabled={summarizing}
+            className="rounded-lg bg-paperis-accent px-2.5 py-1 text-xs font-medium text-paperis-bg transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            {summarizing ? m.detail.summarizing : summary ? m.detail.regenerate : m.detail.startSummary}
+          </button>
+        </div>
         {summaryError ? (
           <div className="rounded-lg border border-paperis-accent/40 bg-paperis-accent-dim/30 p-2 text-xs text-paperis-accent">
             {summaryError}
@@ -337,14 +350,6 @@ export default function PaperDetailPanel({ paper, onBack }: Props) {
           <pre className="whitespace-pre-wrap break-words rounded-lg border border-paperis-border bg-paperis-surface-2 p-3 font-sans text-[13px] leading-relaxed text-paperis-text">
             {summary}
           </pre>
-        ) : !summarizing ? (
-          <p className="text-xs text-paperis-text-3">
-            {ft.status === "ready" && summarySource === "fulltext"
-              ? fmt(m.detail.summaryBasedOn, {
-                  label: SOURCE_LABEL[ft.source as FullTextSource],
-                })
-              : m.detail.summaryAbstractOnly}
-          </p>
         ) : null}
       </section>
 
