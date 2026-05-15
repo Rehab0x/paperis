@@ -16,11 +16,14 @@ import {
   type ModelTier,
 } from "./types";
 
-// 기본 모델 라인업 (Gemini 2.5 시리즈)
+// 기본 모델 라인업 — 작업 유형별 비용/품질 분리.
+//   fast    = 헤드라인·제목 번역 등 가장 가벼운 1줄 작업 (가장 저렴)
+//   balanced = 자연어 검색·미니 요약·narration script (속도+적당한 품질, 3.1 Lite가 가격 우위)
+//   heavy   = 논문 긴 요약·트렌드 풀 분석 (품질 최우선)
 const DEFAULT_MODELS: Record<ModelTier, string> = {
   fast: "gemini-2.5-flash-lite",
-  balanced: "gemini-2.5-flash",
-  heavy: "gemini-2.5-flash", // 트렌드/긴 요약도 flash로 (pro 모델은 비용·rate limit 부담)
+  balanced: "gemini-3.1-flash-lite",
+  heavy: "gemini-3.0-flash",
 };
 
 const MAX_RETRY_ATTEMPTS = 3;

@@ -1,6 +1,12 @@
 // TTS provider registry.
 // 사용자가 클라이언트 settings에서 선호 provider를 선택 → /api/tts 호출 시 그 값을 보냄.
-// v3부터 default = Clova (한국어 자연스러움 + 빠름 + Vercel timeout 회피).
+//
+// Default (2026-05-16 변경) = Google Cloud TTS Neural2.
+// 이전 default는 Clova였으나 Clova Premium은 월 기본료 9만원 + 1000자당 100원으로
+// 운영 비용 부담이 커 BYOK 전용으로 격하. GC TTS Neural2는 월 1M자 무료(이후 $16/1M자)라
+// 구독자(Free/Balanced/Pro) 단위 비용이 압도적으로 낮음. Phase C에서 구독자는 provider
+// 선택 자체가 GC로 강제됨 (UI 잠금 + 서버 게이트).
+//
 // 요청한 provider의 키가 없으면 resolveTtsProvider가 Gemini로 자동 강등.
 
 import { ClovaTtsProvider } from "@/lib/tts/clova";
@@ -14,10 +20,12 @@ providers.set("gemini", new GeminiTtsProvider());
 providers.set("clova", new ClovaTtsProvider());
 providers.set("google-cloud", new GoogleCloudTtsProvider());
 
-// 언어별 default — Clova는 한국어 전용. 영어 narration이 Clova로 가면 발음 어색하거나
-// 에러. 사용자가 명시 안 한 경우 언어 기반으로 합리적인 default 선택.
+// 언어별 default — 한/영 모두 Google Cloud TTS Neural2.
+// 한국어: ko-KR-Neural2-A (여성, 차분, 의학 낭독 톤 양호).
+// 영어: en-US-Neural2-F.
+// Clova는 BYOK 사용자가 명시 선택 시만 사용.
 const DEFAULT_PROVIDER_BY_LANG: Record<Language, string> = {
-  ko: "clova",
+  ko: "google-cloud",
   en: "google-cloud",
 };
 
@@ -74,9 +82,8 @@ export interface ResolvedTtsProvider {
  * language 인자 — 사용자가 provider를 명시 안 했을 때(name=undefined) 언어별 default
  * 결정 (ko=Clova, en=Google Cloud). 명시했으면 그대로 존중.
  *
- * Why: v3 default가 Clova라 Vercel prod env에 Clova 키 없는 상태에서 즉시 깨질 위험.
- *      X-Paperis-Keys 미사용 + Clova 키 부재 사용자가 라이브에 있어도 Gemini fallback.
- *      Phase 2-B에서 영어 narration이 Clova로 가는 미스매치도 방지.
+ * Why: default가 GC TTS여도 GOOGLE_CLOUD_TTS_API_KEY 부재 시 Gemini fallback으로 라우트가
+ *      깨지지 않도록. Clova(BYOK 전용)를 선택했는데 NCP 키 부재인 경우도 동일하게 보호.
  */
 export function resolveTtsProvider(
   name?: string,

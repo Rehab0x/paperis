@@ -51,7 +51,9 @@ export async function translateNaturalLanguage(
     systemInstruction: SYSTEM_INSTRUCTION,
     userPrompt: trimmed,
     temperature: 0.2,
-    tier: "fast",
+    // 자연어 검색은 입력 다양성이 있어 fast(가장 가벼움)보다 balanced(3.1 Lite)가 안전.
+    // 3.1 Lite는 비용도 저렴해 fast 대비 손해 거의 없음.
+    tier: "balanced",
     jsonSchema: querySchema,
   });
 

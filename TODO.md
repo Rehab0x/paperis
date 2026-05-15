@@ -1,6 +1,6 @@
 # Paperis — TODO / 진척 기록
 
-> 마지막 갱신: 2026-05-15 (라이브러리 소스 배지 + reading UX + noise 필터 + 명시적 submit + BYOK API Key 가이드 + 한국어 제목 보조 표시 + 패널 세션 캐시)
+> 마지막 갱신: 2026-05-16 (service-cleanup Phase A — TTS 비용 정리 + Gemini 모델 tier 재구성)
 > 외부 노출 문서는 [README.md](README.md), 컨텍스트는 [CLAUDE.md](CLAUDE.md). 이 파일은 작업 일지·기술부채·의사결정 기록 보관용.
 
 ---
@@ -83,6 +83,25 @@
   - **PaperDetailPanel 세션 캐시** — 사용자가 PDF 업로드 후 다른 논문 탐색하고 돌아오면 첨부 PDF/긴 요약/입력 토글 모두 사라지던 문제 해결. `components/PaperPanelCacheProvider`(in-memory `Map<pmid, { ft, summary, summarySource }>`, MAX 100 FIFO, root layout mount). PaperDetailPanel은 useState 초기값을 캐시에서 + ft/summary 변경 시 patch + 자동 풀텍스트 fetch는 cached.ft.status가 ready/missing이면 스킵. 새로고침 시는 사라짐(in-memory only) — PDF 영속화는 별도 "내 첨부 PDF 라이브러리" 메뉴로 추후 검토
 - ⬜ **Phase 2-C3** 약관 페이지 영어 번역 (legal/terms·privacy·refund — 법률 검토 필요)
 - ⬜ **Phase 2-D** Stripe 결제 연동 (해외 사용자 USD) — 한국 사업자등록(M8) 완료 후
+
+### service-cleanup (2026-05-16~, branch=`service-cleanup`)
+
+운영 비용 + 사용자 등급 구조 재정비. master에서 분기해 Phase 단위 진행 — 회귀 시 빠른 롤백.
+
+- ✅ **Phase A: TTS 비용 정리 + Gemini 모델 tier 재구성** (2026-05-16)
+  - 배경: Clova Premium 월 기본료 9만원 + 1000자당 100원 → 1M자 사용 시 19만원. GC TTS Neural2는 1M자/월 무료(이후 $16/1M자)라 ~10-15배 차이. 솔로 dev 운영비 감당 불가 → Clova는 BYOK 명시 선택 사용자 전용으로 격하
+  - **TTS Korean default**: `clova` → `google-cloud` ([lib/tts/index.ts](lib/tts/index.ts) `DEFAULT_PROVIDER_BY_LANG.ko`). 영어는 기존 그대로 GC. 라우트 자동 강등 가드는 유지 (키 부재 시 Gemini fallback)
+  - **Gemini 모델 tier 재구성** ([lib/ai/gemini-provider.ts](lib/ai/gemini-provider.ts) `DEFAULT_MODELS`):
+    - `fast` = `gemini-2.5-flash-lite` — 헤드라인·제목 번역 (가장 가벼운 1줄 작업)
+    - `balanced` = `gemini-3.1-flash-lite` — 자연어 검색·미니 요약·narration script (속도+적당한 품질, 3.1 Lite가 3.0 Flash보다 가격 우위)
+    - `heavy` = `gemini-3.0-flash` — 논문 긴 요약·트렌드 풀 분석 (품질 최우선)
+  - **사용처 tier 분기 추가**:
+    - [lib/gemini.ts:254](lib/gemini.ts#L254) `streamSummary` — read(긴 요약) → heavy, narration(스크립트) → balanced (mode 분기)
+    - [lib/query-translator.ts:54](lib/query-translator.ts#L54) — 자연어 검색 `fast` → `balanced` (3.1 Lite 새 모델 활용)
+  - 변경 없음 (자동 모델 갱신만 적용): title-translate(fast), summary 미니(balanced), trend headline(fast), trend full(heavy)
+- ⬜ **Phase B (내일+): 요금제 재구성** — `subscriptions.plan`에 "balanced" 추가, PRICING 갱신(BYOK 19,900 / Pro 9,900 / Balanced 4,900), UsageKind 재해석(`fulltext`→긴+풀텍스트 요약 통합 / `curation`→트렌드 풀 분석만), Free 한도: 검색 ∞ / 요약 10 / TTS 5 / 트렌드 3
+- ⬜ **Phase C: Logout 제한 + UI 잠금** — 비로그인은 트렌드 헤드라인만 허용(검색/요약/TTS 불가), Settings drawer AI/TTS provider 섹션은 BYOK 게이트, 구독자는 TTS = Google Cloud 강제, billing 페이지에서 BYOK는 하단 hypertext로 격하
+- ⬜ **Phase D: Cron balanced + 회귀 체크리스트** — `/api/cron/recurring-billing`이 balanced 플랜 자동결제 처리, 라이브 회귀 6단계 수동 검증
 
 ---
 
@@ -196,7 +215,8 @@
 
 ### TTS / 미디어
 
-- **TTS multi-provider, default Clova + Gemini fallback** — 키 부재 시 자동 강등. `x-tts-degraded-from` 헤더
+- **TTS multi-provider, default Google Cloud TTS Neural2 (2026-05-16~)** — 이전 default Clova(v3 M1)는 월 기본료 9만원 + 1000자당 100원으로 운영 비용 부담이 커 BYOK 명시 선택 시만 사용. GC TTS는 1M자/월 무료로 구독자 단위 비용 압도적 우위. 키 부재 시 자동 Gemini fallback (`x-tts-degraded-from` 헤더)
+- **Gemini 모델 tier 분리 (2026-05-16~)** — fast/balanced/heavy = 2.5-flash-lite / 3.1-flash-lite / 3.0-flash. 헤드라인·제목 번역은 fast, 자연어 검색·미니 요약·narration script는 balanced(3.1 Lite가 3.0 Flash보다 가격 우위), 논문 긴 요약·트렌드 풀 분석은 heavy. 작업 비용·품질 균형 최적화
 - **TTS narration only** — dialogue 모드 부활 금지
 - **TTS 트랙 한국어 제목** — 한국어 출력일 때만 Flash Lite로 번역. `x-tts-title-ko-b64` 헤더 → IndexedDB `titleKo` 필드. 라이브러리/PlayerBar는 `titleKo ?? title`
 - **listTrackMetas cursor 순회** — 메모리 폭주(Chrome STATUS_ACCESS_VIOLATION) 회피. blob은 재생 시점에만 로드

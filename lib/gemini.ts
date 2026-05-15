@@ -251,7 +251,9 @@ export async function* streamSummary(
       systemInstruction,
       userPrompt,
       temperature: mode === "read" ? 0.4 : 0.7,
-      tier: "balanced",
+      // read(긴 요약) = 품질 우선 → heavy (3.0 Flash)
+      // narration(스크립트) = 속도 우선 → balanced (3.1 Flash Lite)
+      tier: mode === "read" ? "heavy" : "balanced",
     })) {
       if (chunk) yield chunk;
     }
