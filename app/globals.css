@@ -66,7 +66,10 @@ html.dark {
   --color-paperis-new: var(--paperis-new);
 
   --font-sans: "Pretendard Variable", Pretendard, -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
-  --font-serif: var(--font-fraunces), "Times New Roman", serif;
+  /* serif 체인 — Fraunces는 라틴 글리프만 → 한글은 자동으로 Pretendard로 fallback.
+     "Times New Roman" 단독 fallback은 Windows에서 굴림체로 떨어져 못생김. Pretendard를
+     앞에 끼워넣어 한글이 모바일/데스크탑 양쪽에서 동일하게 자연스럽게 보이도록. */
+  --font-serif: var(--font-fraunces), "Pretendard Variable", Pretendard, "Apple SD Gothic Neo", "Malgun Gothic", "Times New Roman", serif;
   --font-mono: var(--font-geist-mono), ui-monospace, monospace;
 }
 

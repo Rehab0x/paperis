@@ -74,6 +74,21 @@ export default function PaperDetailPanel({ paper, onBack }: Props) {
 
   const summaryAbortRef = useRef<AbortController | null>(null);
   const fetchWithKeys = useFetchWithKeys();
+  const rootRef = useRef<HTMLDivElement | null>(null);
+
+  // 논문 클릭 시 디테일 패널 상단을 viewport 상단(헤더 아래)으로 정렬.
+  // 모바일: 디테일이 결과 목록 아래에 그려져 사용자 손이 내려가야 함 → 자동 스크롤 필수.
+  // 데스크탑: lg:sticky이지만 사용자가 결과를 스크롤 중이면 패널 자연 top이 viewport
+  // 위로 벗어나 있을 수 있어 같이 정렬해야 자연스러움. scroll-mt-* 클래스가 헤더 높이
+  // 만큼 offset 보정. requestAnimationFrame으로 layout 안정 후 호출.
+  useEffect(() => {
+    const el = rootRef.current;
+    if (!el) return;
+    const id = requestAnimationFrame(() => {
+      el.scrollIntoView({ behavior: "smooth", block: "start" });
+    });
+    return () => cancelAnimationFrame(id);
+  }, [paper.pmid]);
 
   // ft/summary/summarySource 변경 시 캐시 동기화. transient(summarizing/error)는 제외.
   useEffect(() => {
@@ -234,7 +249,10 @@ export default function PaperDetailPanel({ paper, onBack }: Props) {
   }
 
   return (
-    <div className="rounded-2xl border border-paperis-border bg-paperis-surface p-5 lg:sticky lg:top-32 lg:max-h-[calc(100vh-9rem)] lg:overflow-auto">
+    <div
+      ref={rootRef}
+      className="scroll-mt-20 rounded-2xl border border-paperis-border bg-paperis-surface p-5 lg:sticky lg:top-32 lg:max-h-[calc(100vh-9rem)] lg:overflow-auto lg:scroll-mt-32"
+    >
       {onBack ? (
         <button
           type="button"
@@ -286,12 +304,12 @@ export default function PaperDetailPanel({ paper, onBack }: Props) {
           {m.detail.abstract}
         </h3>
         {paper.abstract ? (
-          <details className="group rounded-lg border border-paperis-border bg-paperis-surface" open>
+          <details className="group rounded-lg border border-paperis-border bg-paperis-surface">
             <summary className="cursor-pointer list-none px-3 py-2 text-[11px] text-paperis-text-3 transition hover:text-paperis-text">
               <span className="group-open:hidden">{m.fulltextView.expand}</span>
               <span className="hidden group-open:inline">{m.fulltextView.collapse}</span>
             </summary>
-            <div className="max-h-[40vh] space-y-3 overflow-auto border-t border-paperis-border px-3 py-3 text-sm leading-relaxed text-paperis-text-2">
+            <div className="space-y-3 border-t border-paperis-border px-3 py-3 text-sm leading-relaxed text-paperis-text-2">
               {paper.abstract
                 .split(/\n\s*\n/)
                 .map((p) => p.trim())
