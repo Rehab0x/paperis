@@ -598,6 +598,8 @@
       "thirdPartyHint": "필수 — 결제 처리 위해 결제사에 휴대폰/이름/이메일 제공",
       "marketingLabel": "마케팅 수신 동의",
       "marketingHint": "선택 — 새 기능·이벤트 안내 메일",
+      "specialtyTitle": "관심 임상과",
+      "specialtyHint": "선택 — 첫 진입 시 추천 저널을 바로 보여드립니다. 나중에 설정에서 변경 가능.",
       "later": "나중에",
       "save": "완료",
       "saving": "저장 중…",

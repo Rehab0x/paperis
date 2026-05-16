@@ -1,11 +1,12 @@
-// /api/account/onboarding — 온보딩 폼 제출 (휴대폰 + 약관).
-// users 테이블의 v3 확장 컬럼만 업데이트. 임상과 선택은 PR3에서 user_specialty_prefs
-// 테이블이 추가되기 전까지 클라이언트가 localStorage(specialty-prefs)에 직접 저장한다.
+// /api/account/onboarding — 온보딩 폼 제출 (휴대폰 + 약관 + 임상과 선택).
+// users 컬럼 갱신 + user_specialties upsert. 카탈로그 외 specialty ID는 거름.
+// 임상과는 선택사항이라 빈 배열도 허용.
 
-import { eq } from "drizzle-orm";
+import { eq, sql } from "drizzle-orm";
 import { auth } from "@/auth";
 import { getDb, hasDb } from "@/lib/db";
-import { users } from "@/lib/db/schema";
+import { userSpecialties, users } from "@/lib/db/schema";
+import { getJournalCatalog } from "@/lib/journals";
 import type { ApiError } from "@/types";
 
 export const runtime = "nodejs";
@@ -14,6 +15,7 @@ interface OnboardingBody {
   phone?: string;
   termsAgreed?: boolean;
   marketingAgreed?: boolean;
+  specialties?: unknown;
 }
 
 function jsonError(error: string, status = 400) {
@@ -62,6 +64,23 @@ export async function POST(req: Request) {
   }
   const marketingAgreed = body.marketingAgreed === true;
 
+  // 임상과 — 선택 사항. 카탈로그에 존재하는 ID만 허용 (위조/오타 거름)
+  const rawSpecialties = Array.isArray(body.specialties)
+    ? (body.specialties as unknown[]).filter(
+        (v): v is string => typeof v === "string" && v.length > 0 && v.length <= 64
+      )
+    : [];
+  let validSpecialtyIds: string[] = [];
+  if (rawSpecialties.length > 0) {
+    try {
+      const catalog = await getJournalCatalog();
+      const known = new Set(catalog.specialties.map((s) => s.id));
+      validSpecialtyIds = rawSpecialties.filter((id) => known.has(id));
+    } catch {
+      // 카탈로그 로드 실패 — specialty 저장 스킵 (필수 아님)
+    }
+  }
+
   try {
     const db = getDb();
     await db
@@ -73,12 +92,32 @@ export async function POST(req: Request) {
         onboardingDone: true,
       })
       .where(eq(users.id, session.user.id));
+
+    // 사용자 임상과 upsert — 선택한 순서대로 sortOrder. addedAt은 default now().
+    // PK(user_id, specialty_id) 충돌 시 sortOrder만 갱신 (멱등).
+    if (validSpecialtyIds.length > 0) {
+      const userId = session.user.id;
+      const values = validSpecialtyIds.map((id, idx) => ({
+        userId,
+        specialtyId: id,
+        sortOrder: idx,
+      }));
+      await db
+        .insert(userSpecialties)
+        .values(values)
+        .onConflictDoUpdate({
+          target: [userSpecialties.userId, userSpecialties.specialtyId],
+          set: {
+            sortOrder: sql`excluded.sort_order`,
+          },
+        });
+    }
   } catch (err) {
     console.error("[onboarding] db update failed", err);
     return jsonError("온보딩 정보 저장에 실패했습니다.", 500);
   }
 
-  return new Response(JSON.stringify({ ok: true }), {
+  return new Response(JSON.stringify({ ok: true, specialties: validSpecialtyIds }), {
     status: 200,
     headers: { "content-type": "application/json; charset=utf-8" },
   });

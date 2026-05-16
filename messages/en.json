@@ -598,6 +598,8 @@
       "thirdPartyHint": "Required — phone/name/email to the payment processor for billing",
       "marketingLabel": "Agree to marketing emails",
       "marketingHint": "Optional — feature/event notifications",
+      "specialtyTitle": "Your specialties",
+      "specialtyHint": "Optional — we'll show recommended journals right away. Change anytime in Settings.",
       "later": "Later",
       "save": "Done",
       "saving": "Saving…",
