@@ -19,6 +19,8 @@ import {
   users,
   verificationTokens,
 } from "@/lib/db/schema";
+import { sendEmail } from "@/lib/email";
+import { welcomeTemplate } from "@/lib/email-templates";
 
 // 환경변수 4개가 모두 있어야 정식 NextAuth 설정. 부재 시 placeholder로 빌드만
 // 통과시키고, 실제 signIn은 unauthenticated 상태로 머문다.
@@ -57,6 +59,20 @@ export const { handlers, signIn, signOut, auth } = NextAuth(
               session.user.onboardingDone = Boolean(onboardingDone);
             }
             return session;
+          },
+        },
+        events: {
+          // 사용자가 처음 만들어졌을 때 1회. fire-and-forget — 이메일 실패해도 가입은 성공.
+          // RESEND_API_KEY 없으면 sendEmail이 silent skip.
+          async createUser({ user }) {
+            if (!user.email) return;
+            const tpl = welcomeTemplate({ name: user.name, locale: "ko" });
+            // await but errors caught inside sendEmail — 시그널 막힘 없도록 단순 호출
+            await sendEmail({
+              to: user.email,
+              subject: tpl.subject,
+              html: tpl.html,
+            });
           },
         },
         pages: {},

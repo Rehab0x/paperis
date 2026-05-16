@@ -141,6 +141,8 @@ export async function GET(req: Request) {
           updatedAt: new Date(),
         })
         .where(eq(subscriptions.userId, sub.userId));
+      // 갱신 성공 이메일 — fire-and-forget
+      void sendRecurringEmail(sub.email, "success", planPrefix, pricing.amount, newExpires);
       results.push({ userId: sub.userId, outcome: "renewed" });
     } catch (err) {
       const msg =
@@ -155,6 +157,8 @@ export async function GET(req: Request) {
         msg
       );
       await suspend(sub.userId, msg);
+      // 결제 실패 이메일 — fire-and-forget
+      void sendRecurringEmail(sub.email, "failure", planPrefix, pricing.amount, null, msg);
       results.push({ userId: sub.userId, outcome: "suspended", message: msg });
     }
   }
@@ -183,5 +187,31 @@ export async function GET(req: Request) {
         err
       );
     }
+  }
+}
+
+/** 자동결제 성공/실패 이메일 — fire-and-forget. cron 외부에서 결과 안 기다림. */
+async function sendRecurringEmail(
+  email: string | null,
+  kind: "success" | "failure",
+  plan: "balanced" | "pro",
+  amount: number,
+  expiresAt: Date | null,
+  reason?: string
+): Promise<void> {
+  if (!email) return;
+  try {
+    const { sendEmail } = await import("@/lib/email");
+    if (kind === "success") {
+      const { paymentSuccessTemplate } = await import("@/lib/email-templates");
+      const tpl = paymentSuccessTemplate({ plan, amount, expiresAt, locale: "ko" });
+      await sendEmail({ to: email, subject: tpl.subject, html: tpl.html });
+    } else {
+      const { paymentFailureTemplate } = await import("@/lib/email-templates");
+      const tpl = paymentFailureTemplate({ plan, reason, locale: "ko" });
+      await sendEmail({ to: email, subject: tpl.subject, html: tpl.html });
+    }
+  } catch (err) {
+    console.warn("[cron/recurring-billing] email failed", err);
   }
 }

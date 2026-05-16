@@ -259,6 +259,14 @@ export async function checkAndIncrement(
       });
 
     const next = current + 1;
+
+    // 임계 도달 알림 — 80% 첫 진입 시 사용자에게 이메일 1통.
+    // current < T && next >= T → "방금 80% 넘어옴". fire-and-forget (await 안 함).
+    const threshold = Math.ceil(limit * 0.8);
+    if (Number.isFinite(limit) && current < threshold && next >= threshold) {
+      void maybeSendQuotaEmail(identityKey, kind, limit - next, limit);
+    }
+
     return {
       allowed: true,
       current: next,
@@ -394,6 +402,50 @@ function snakeToDrizzleSetKey(column: string): string {
 
 function quoteIdent(name: string): string {
   return `"${name.replace(/"/g, '""')}"`;
+}
+
+/**
+ * 임계 도달 시 사용자에게 이메일 알림. fire-and-forget.
+ * identityKey가 user_id(로그인, prefix 없음)일 때만 작동 — anon: prefix면 이메일 없음.
+ * email/template import는 lazy (cold start 영향 최소화).
+ */
+async function maybeSendQuotaEmail(
+  identityKey: string,
+  kind: UsageKind,
+  remaining: number,
+  limit: number
+): Promise<void> {
+  if (identityKey.startsWith("anon:")) return; // 비로그인 사용자는 이메일 없음
+  try {
+    if (!hasDb()) return;
+    const db = getDb();
+    const { users } = await import("@/lib/db/schema");
+    const row = await db
+      .select({ email: users.email })
+      .from(users)
+      .where(eq(users.id, identityKey))
+      .limit(1);
+    const email = row[0]?.email;
+    if (!email) return;
+
+    const { sendEmail } = await import("@/lib/email");
+    const { quotaThresholdTemplate } = await import("@/lib/email-templates");
+    const tplKind: "summary" | "tts" | "trend" =
+      kind === "fulltext"
+        ? "summary"
+        : kind === "tts"
+          ? "tts"
+          : "trend";
+    const tpl = quotaThresholdTemplate({
+      kind: tplKind,
+      remaining,
+      limit,
+      locale: "ko",
+    });
+    await sendEmail({ to: email, subject: tpl.subject, html: tpl.html });
+  } catch (err) {
+    console.warn("[usage] quota email failed", err);
+  }
 }
 
 /**

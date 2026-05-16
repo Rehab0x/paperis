@@ -146,6 +146,9 @@ export async function POST(req: Request) {
     );
   }
 
+  // 결제 성공 이메일 — fire-and-forget. RESEND_API_KEY 없으면 silent skip.
+  void sendPaymentSuccessEmail(session.user.id, "byok", PRICING.byokOnce.amount, null);
+
   return NextResponse.json({
     ok: true,
     plan: "byok" as const,
@@ -154,4 +157,30 @@ export async function POST(req: Request) {
     orderId: payment.orderId,
     approvedAt: payment.approvedAt,
   });
+}
+
+async function sendPaymentSuccessEmail(
+  userId: string,
+  plan: "byok" | "balanced" | "pro",
+  amount: number,
+  expiresAt: Date | null
+): Promise<void> {
+  try {
+    const db = getDb();
+    const { users } = await import("@/lib/db/schema");
+    const { eq } = await import("drizzle-orm");
+    const row = await db
+      .select({ email: users.email })
+      .from(users)
+      .where(eq(users.id, userId))
+      .limit(1);
+    const email = row[0]?.email;
+    if (!email) return;
+    const { sendEmail } = await import("@/lib/email");
+    const { paymentSuccessTemplate } = await import("@/lib/email-templates");
+    const tpl = paymentSuccessTemplate({ plan, amount, expiresAt, locale: "ko" });
+    await sendEmail({ to: email, subject: tpl.subject, html: tpl.html });
+  } catch (err) {
+    console.warn("[billing/confirm] success email failed", err);
+  }
 }
