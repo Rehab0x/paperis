@@ -407,7 +407,13 @@
         "plan_change": "Plan change",
         "subscription_cancel": "Cancel subscription",
         "user_delete": "Delete account"
-      }
+      },
+      "auditFilterAction": "Action:",
+      "auditFilterTarget": "Target:",
+      "auditFilterAll": "All",
+      "auditFilterClear": "Clear filter",
+      "userAuditTitle": "Recent admin records",
+      "userAuditViewAll": "View all →"
     },
     "journalDetail": {
       "metaFallback": "Journal — Paperis",

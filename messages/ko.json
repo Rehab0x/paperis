@@ -407,7 +407,13 @@
         "plan_change": "Plan 변경",
         "subscription_cancel": "구독 해지",
         "user_delete": "계정 삭제"
-      }
+      },
+      "auditFilterAction": "액션:",
+      "auditFilterTarget": "대상:",
+      "auditFilterAll": "전체",
+      "auditFilterClear": "필터 해제",
+      "userAuditTitle": "최근 관리자 기록",
+      "userAuditViewAll": "전체 보기 →"
     },
     "journalDetail": {
       "metaFallback": "저널 — Paperis",

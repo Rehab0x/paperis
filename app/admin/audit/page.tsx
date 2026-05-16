@@ -1,7 +1,7 @@
 import Link from "next/link";
-import { desc } from "drizzle-orm";
+import { and, desc, eq, type SQL } from "drizzle-orm";
 import { getDb, hasDb } from "@/lib/db";
-import { adminAuditLog } from "@/lib/db/schema";
+import { adminAuditLog, users } from "@/lib/db/schema";
 import { getServerLocale, getMessages, fmt } from "@/lib/i18n";
 
 // /admin/audit — 관리자 액션 감사 로그 (read-only).
@@ -12,9 +12,22 @@ export const dynamic = "force-dynamic";
 export const revalidate = 0;
 
 const PAGE_SIZE = 100;
+const VALID_ACTIONS = [
+  "plan_change",
+  "subscription_cancel",
+  "user_delete",
+] as const;
+type AuditAction = (typeof VALID_ACTIONS)[number];
 
 interface Props {
-  searchParams: Promise<{ page?: string }>;
+  searchParams: Promise<{ page?: string; action?: string; target?: string }>;
+}
+
+function parseAction(value: string | undefined): AuditAction | null {
+  if (!value) return null;
+  return (VALID_ACTIONS as readonly string[]).includes(value)
+    ? (value as AuditAction)
+    : null;
 }
 
 export default async function AdminAuditPage({ searchParams }: Props) {
@@ -25,6 +38,8 @@ export default async function AdminAuditPage({ searchParams }: Props) {
   const page =
     Number.isInteger(pageRaw) && pageRaw >= 1 ? pageRaw : 1;
   const offset = (page - 1) * PAGE_SIZE;
+  const actionFilter = parseAction(params.action);
+  const targetFilter = (params.target ?? "").trim() || null;
 
   if (!hasDb()) {
     return (
@@ -36,17 +51,35 @@ export default async function AdminAuditPage({ searchParams }: Props) {
     );
   }
 
+  // 필터 조건
+  const conds: SQL[] = [];
+  if (actionFilter) conds.push(eq(adminAuditLog.action, actionFilter));
+  if (targetFilter) conds.push(eq(adminAuditLog.targetUserId, targetFilter));
+  const where = conds.length > 0 ? and(...conds) : undefined;
+
   // 그레이스풀 — 테이블 미존재 시 빈 목록 fallback
   let rows: (typeof adminAuditLog.$inferSelect)[] = [];
   let tableMissing = false;
+  let targetEmail: string | null = null;
   try {
     const db = getDb();
     rows = await db
       .select()
       .from(adminAuditLog)
+      .where(where)
       .orderBy(desc(adminAuditLog.createdAt))
       .limit(PAGE_SIZE + 1)
       .offset(offset);
+    // target 필터 시 대상 이메일 표시 (사용자 삭제됐을 수 있어 audit 스냅샷 fallback)
+    if (targetFilter) {
+      const u = await db
+        .select({ email: users.email })
+        .from(users)
+        .where(eq(users.id, targetFilter))
+        .limit(1);
+      targetEmail =
+        u[0]?.email ?? rows[0]?.targetEmail ?? null;
+    }
   } catch (err) {
     console.warn("[admin/audit] query failed", err);
     tableMissing = true;
@@ -69,6 +102,45 @@ export default async function AdminAuditPage({ searchParams }: Props) {
       <p className="mt-1 text-sm text-paperis-text-2">
         {m.admin.auditIntro}
       </p>
+
+      {/* Target 필터 활성 시 chip + 해제 */}
+      {targetFilter ? (
+        <div className="mt-3 flex flex-wrap items-center gap-2 text-xs">
+          <span className="text-paperis-text-3">{m.admin.auditFilterTarget}</span>
+          <Link
+            href={`/admin/users/${targetFilter}`}
+            className="rounded-full bg-paperis-accent-dim/40 px-3 py-0.5 text-paperis-accent hover:bg-paperis-accent-dim/60"
+          >
+            {targetEmail ?? targetFilter.slice(0, 12) + "…"}
+          </Link>
+          <Link
+            href={buildAuditHref({ action: actionFilter })}
+            className="text-paperis-text-3 underline hover:text-paperis-text"
+          >
+            {m.admin.auditFilterClear}
+          </Link>
+        </div>
+      ) : null}
+
+      {/* Action 필터 chip */}
+      <div className="mt-3 flex flex-wrap items-center gap-2 text-xs">
+        <span className="text-paperis-text-3">{m.admin.auditFilterAction}</span>
+        <Link
+          href={buildAuditHref({ target: targetFilter })}
+          className={chipClass(actionFilter === null)}
+        >
+          {m.admin.auditFilterAll}
+        </Link>
+        {VALID_ACTIONS.map((a) => (
+          <Link
+            key={a}
+            href={buildAuditHref({ action: a, target: targetFilter })}
+            className={chipClass(actionFilter === a)}
+          >
+            {m.admin.auditActions[a]}
+          </Link>
+        ))}
+      </div>
 
       {tableMissing ? (
         <div className="mt-6 rounded-xl border border-paperis-accent/40 bg-paperis-accent-dim/40 p-4 text-sm text-paperis-accent">
@@ -140,13 +212,13 @@ export default async function AdminAuditPage({ searchParams }: Props) {
         </table>
       </div>
 
-      {/* 페이지네이션 */}
+      {/* 페이지네이션 — 필터 보존 */}
       <div className="mt-4 flex items-center justify-between text-xs text-paperis-text-3">
         <div>{fmt(m.admin.pageLabel, { page })}</div>
         <div className="flex gap-2">
           {page > 1 ? (
             <Link
-              href={`/admin/audit?page=${page - 1}`}
+              href={buildAuditHref({ action: actionFilter, target: targetFilter, page: page - 1 })}
               className="inline-flex h-8 items-center rounded-lg border border-paperis-border bg-paperis-surface px-3 transition hover:border-paperis-text-3 hover:text-paperis-text"
             >
               {m.admin.prev}
@@ -154,7 +226,7 @@ export default async function AdminAuditPage({ searchParams }: Props) {
           ) : null}
           {hasMore ? (
             <Link
-              href={`/admin/audit?page=${page + 1}`}
+              href={buildAuditHref({ action: actionFilter, target: targetFilter, page: page + 1 })}
               className="inline-flex h-8 items-center rounded-lg border border-paperis-border bg-paperis-surface px-3 transition hover:border-paperis-text-3 hover:text-paperis-text"
             >
               {m.admin.next}
@@ -164,6 +236,28 @@ export default async function AdminAuditPage({ searchParams }: Props) {
       </div>
     </main>
   );
+}
+
+function buildAuditHref(opts: {
+  action?: AuditAction | null;
+  target?: string | null;
+  page?: number;
+}): string {
+  const qs = new URLSearchParams();
+  if (opts.action) qs.set("action", opts.action);
+  if (opts.target) qs.set("target", opts.target);
+  if (opts.page && opts.page > 1) qs.set("page", String(opts.page));
+  const s = qs.toString();
+  return s ? `/admin/audit?${s}` : "/admin/audit";
+}
+
+function chipClass(active: boolean): string {
+  return [
+    "rounded-full border px-3 py-0.5 transition",
+    active
+      ? "border-paperis-accent bg-paperis-accent-dim/40 text-paperis-accent"
+      : "border-paperis-border text-paperis-text-2 hover:border-paperis-text-3 hover:text-paperis-text",
+  ].join(" ");
 }
 
 function ActionBadge({
