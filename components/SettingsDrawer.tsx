@@ -9,6 +9,7 @@ import {
   type ApiKeyName,
 } from "@/components/ApiKeysProvider";
 import JournalBlocksManager from "@/components/JournalBlocksManager";
+import LocalePreferenceToggle from "@/components/LocalePreferenceToggle";
 import MySpecialtiesEditor from "@/components/MySpecialtiesEditor";
 import { useTheme, type Theme } from "@/components/ThemeProvider";
 import { useAppMessages } from "@/components/useAppMessages";
@@ -144,6 +145,13 @@ export default function SettingsDrawer({ open, onClose }: Props) {
         </header>
 
         <div className="flex-1 space-y-2 overflow-auto px-5 py-5 pb-12">
+          <Section
+            title={m.settings.localeTitle}
+            description={m.settings.localeDesc}
+          >
+            <LocalePreferenceToggle />
+          </Section>
+
           <Section title={m.settings.themeTitle} description={m.settings.themeDesc}>
             <RadioGroup
               name="theme"

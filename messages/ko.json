@@ -611,6 +611,8 @@
       "closeAria": "설정 닫기 (ESC)",
       "closeLabel": "닫기 ✕",
       "expand": "›",
+      "localeTitle": "언어 / Language",
+      "localeDesc": "UI와 이메일 알림이 선택한 언어로 표시됩니다. Google 가입 정보에서 자동 감지 후 여기서 변경 가능.",
       "themeTitle": "화면 테마",
       "themeDesc": "라이트/다크/시스템 중에서 선택",
       "themeLight": "라이트",

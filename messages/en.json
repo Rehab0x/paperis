@@ -611,6 +611,8 @@
       "closeAria": "Close settings (ESC)",
       "closeLabel": "Close ✕",
       "expand": "›",
+      "localeTitle": "Language / 언어",
+      "localeDesc": "UI and email notifications use the selected language. Auto-detected from Google profile, changeable here.",
       "themeTitle": "Theme",
       "themeDesc": "Choose light, dark, or system",
       "themeLight": "Light",
