@@ -372,7 +372,16 @@
       "cancelDone": "구독이 해지되었습니다.",
       "queryFailed": "조회 실패",
       "cancelFailed": "해지 실패",
-      "cancelFailedStatus": "해지 실패 ({status})"
+      "cancelFailedStatus": "해지 실패 ({status})",
+      "deleteAccountTitle": "계정 해지",
+      "deleteAccountDesc": "Paperis 계정을 영구 삭제합니다. 되돌릴 수 없어요.",
+      "deleteAccountWarn": "삭제 시 임상과·저널 즐겨찾기·차단·구독 정보가 모두 사라지며, BYOK 평생 결제·구독 잔여 기간은 환불되지 않습니다. (라이브러리 오디오는 브라우저 IndexedDB에 보관되어 별도 보존됩니다.)",
+      "deleteAccountButton": "계정 해지 진행",
+      "deleteAccountConfirm": "정말 영구 삭제할까요? 이 작업은 되돌릴 수 없습니다.",
+      "deleteAccountFinal": "한 번 더 확인 — 영구 삭제",
+      "deleteAccountCancel": "취소",
+      "deleting": "삭제 중…",
+      "deleteFailed": "계정 삭제 실패"
     },
     "billing": {
       "title": "업그레이드",

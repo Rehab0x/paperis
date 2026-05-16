@@ -8,7 +8,8 @@
 
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
-import { useSession } from "next-auth/react";
+import { useRouter } from "next/navigation";
+import { signOut, useSession } from "next-auth/react";
 import type { SubscriptionDto } from "@/app/api/account/subscription/route";
 import { useAppMessages } from "@/components/useAppMessages";
 import { useLocale } from "@/components/useLocale";
@@ -20,6 +21,7 @@ const FEATURE_AUTH = process.env.NEXT_PUBLIC_FEATURE_AUTH === "1";
 export default function AccountPage() {
   const m = useAppMessages();
   const locale = useLocale();
+  const router = useRouter();
   const { data: session, status } = useSession();
   const [sub, setSub] = useState<SubscriptionDto | null>(null);
   const [usage, setUsage] = useState<UsageSnapshot | null>(null);
@@ -27,6 +29,9 @@ export default function AccountPage() {
   const [cancelling, setCancelling] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  // 계정 해지 — 2단계 확인 (warn 노출 → 최종 버튼 → 실제 삭제)
+  const [deleteConfirm, setDeleteConfirm] = useState(false);
+  const [deleting, setDeleting] = useState(false);
 
   const reload = useCallback(async () => {
     setLoading(true);
@@ -49,6 +54,33 @@ export default function AccountPage() {
     if (status !== "authenticated") return;
     void reload();
   }, [status, reload]);
+
+  async function handleDelete() {
+    if (deleting) return;
+    setDeleting(true);
+    setError(null);
+    setMessage(null);
+    try {
+      const res = await fetch("/api/account/delete", { method: "POST" });
+      if (!res.ok) {
+        const text = await res.text();
+        let msg = m.account.deleteFailed;
+        try {
+          const obj = JSON.parse(text) as { error?: string };
+          if (obj.error) msg = obj.error;
+        } catch {}
+        throw new Error(msg);
+      }
+      // signOut → /로 리다이렉트. session 무효화도 자동.
+      await signOut({ redirect: false });
+      router.push("/");
+      router.refresh();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : m.account.deleteFailed);
+      setDeleting(false);
+      setDeleteConfirm(false);
+    }
+  }
 
   async function handleCancel() {
     if (!confirm(m.account.confirmCancel)) {
@@ -275,6 +307,52 @@ export default function AccountPage() {
           {error}
         </div>
       ) : null}
+
+      {/* 계정 해지 — 마지막 섹션. 2단계 확인 (펼침 → 최종 버튼). 토스 빌링키는 dormant. */}
+      <section className="mt-8 rounded-2xl border border-paperis-border bg-paperis-surface p-5">
+        <h2 className="text-sm font-semibold text-paperis-text">
+          {m.account.deleteAccountTitle}
+        </h2>
+        <p className="mt-2 text-xs text-paperis-text-3">
+          {m.account.deleteAccountDesc}
+        </p>
+        {!deleteConfirm ? (
+          <button
+            type="button"
+            onClick={() => setDeleteConfirm(true)}
+            className="mt-3 inline-flex h-8 items-center rounded-lg border border-paperis-border bg-paperis-surface px-3 text-xs font-medium text-paperis-text-3 transition hover:border-paperis-accent hover:text-paperis-accent"
+          >
+            {m.account.deleteAccountButton}
+          </button>
+        ) : (
+          <div className="mt-3 space-y-3 rounded-lg border border-paperis-accent/50 bg-paperis-accent-dim/30 p-3">
+            <p className="text-xs leading-relaxed text-paperis-text">
+              {m.account.deleteAccountWarn}
+            </p>
+            <p className="text-xs font-medium text-paperis-accent">
+              {m.account.deleteAccountConfirm}
+            </p>
+            <div className="flex flex-wrap gap-2">
+              <button
+                type="button"
+                onClick={handleDelete}
+                disabled={deleting}
+                className="inline-flex h-8 items-center rounded-lg bg-paperis-accent px-3 text-xs font-medium text-paperis-bg transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                {deleting ? m.account.deleting : m.account.deleteAccountFinal}
+              </button>
+              <button
+                type="button"
+                onClick={() => setDeleteConfirm(false)}
+                disabled={deleting}
+                className="inline-flex h-8 items-center rounded-lg border border-paperis-border bg-paperis-surface px-3 text-xs text-paperis-text-2 transition hover:border-paperis-text-3 hover:text-paperis-text disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                {m.account.deleteAccountCancel}
+              </button>
+            </div>
+          </div>
+        )}
+      </section>
     </main>
   );
 }

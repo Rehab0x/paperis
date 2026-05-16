@@ -372,7 +372,16 @@
       "cancelDone": "Subscription cancelled.",
       "queryFailed": "Query failed",
       "cancelFailed": "Cancellation failed",
-      "cancelFailedStatus": "Cancellation failed ({status})"
+      "cancelFailedStatus": "Cancellation failed ({status})",
+      "deleteAccountTitle": "Delete account",
+      "deleteAccountDesc": "Permanently delete your Paperis account. This cannot be undone.",
+      "deleteAccountWarn": "Deletion removes your specialties, journal favorites/blocks, and subscription records. BYOK lifetime payments and remaining subscription days are not refunded. (Library audio stays in your browser IndexedDB.)",
+      "deleteAccountButton": "Proceed with deletion",
+      "deleteAccountConfirm": "Really delete permanently? This cannot be undone.",
+      "deleteAccountFinal": "Confirm once more — Delete permanently",
+      "deleteAccountCancel": "Cancel",
+      "deleting": "Deleting…",
+      "deleteFailed": "Account deletion failed"
     },
     "billing": {
       "title": "Upgrade",
