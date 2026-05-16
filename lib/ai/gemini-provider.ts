@@ -20,10 +20,14 @@ import {
 //   fast    = 헤드라인·제목 번역 등 가장 가벼운 1줄 작업 (가장 저렴)
 //   balanced = 자연어 검색·미니 요약·narration script (속도+적당한 품질, 3.1 Lite가 가격 우위)
 //   heavy   = 논문 긴 요약·트렌드 풀 분석 (품질 최우선)
+//
+// 2026-05-16 hotfix: heavy를 `gemini-3.0-flash`로 설정했으나 v1beta API에서
+// "model not found" 에러 → 실제 model ID 미확인. 검증된 2.5-flash로 임시 복구.
+// 정확한 3.x heavy ID 확인되면 다시 갱신.
 const DEFAULT_MODELS: Record<ModelTier, string> = {
   fast: "gemini-2.5-flash-lite",
   balanced: "gemini-3.1-flash-lite",
-  heavy: "gemini-3.0-flash",
+  heavy: "gemini-2.5-flash",
 };
 
 const MAX_RETRY_ATTEMPTS = 3;
