@@ -355,6 +355,14 @@
       "colName": "Name",
       "colPlan": "Plan",
       "colCreated": "Joined",
+      "colUsage": "This month",
+      "colActivity": "Last activity",
+      "sortLabel": "Sort:",
+      "sortOptions": {
+        "created": "Joined",
+        "usage": "Usage ↓",
+        "active": "Last activity ↓"
+      },
       "noUsers": "No users.",
       "tagOnboarding": "Onboarding pending",
       "pageLabel": "Page {page}",

@@ -355,6 +355,14 @@
       "colName": "이름",
       "colPlan": "Plan",
       "colCreated": "가입일",
+      "colUsage": "이번 달",
+      "colActivity": "최근 활동",
+      "sortLabel": "정렬:",
+      "sortOptions": {
+        "created": "가입일",
+        "usage": "사용량 ↓",
+        "active": "최근 활동 ↓"
+      },
       "noUsers": "회원이 없습니다.",
       "tagOnboarding": "온보딩 미완료",
       "pageLabel": "페이지 {page}",
