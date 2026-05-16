@@ -10,6 +10,7 @@ import {
   getPlan,
   limitExceededMessage,
 } from "@/lib/usage";
+import { requireLogin } from "@/lib/auth-gate";
 import { applyUserKeysToEnv } from "@/lib/user-keys";
 import type { Language, Paper, SummarizeReadRequest } from "@/types";
 
@@ -28,6 +29,8 @@ function isPaper(value: unknown): value is Paper {
 }
 
 export async function POST(req: Request) {
+  const gate = await requireLogin();
+  if (!gate.ok) return gate.response;
   await applyUserKeysToEnv(req);
   let body: Partial<SummarizeReadRequest> & { paper?: unknown };
   try {

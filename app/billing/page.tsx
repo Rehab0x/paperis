@@ -33,7 +33,7 @@ export default function BillingPage() {
   const isLoggedIn = !!session?.user;
   const onboardingDone = session?.user?.onboardingDone === true;
 
-  async function startPayment(plan: "byok" | "pro") {
+  async function startPayment(plan: "byok" | "balanced" | "pro") {
     setError(null);
     if (!TOSS_CLIENT_KEY) {
       setError(m.billing.tossNotConfigured);
@@ -80,10 +80,10 @@ export default function BillingPage() {
           failUrl: `${window.location.origin}/billing/fail`,
         });
       } else {
-        // Pro 구독 — 빌링키 인증
+        // Pro/Balanced 구독 — 빌링키 인증. 성공 페이지에서 plan 정보로 차후 charge.
         await tossPayments.requestBillingAuth("카드", {
           customerKey: checkout.customerKey,
-          successUrl: `${window.location.origin}/billing/success?flow=pro`,
+          successUrl: `${window.location.origin}/billing/success?flow=${plan}`,
           failUrl: `${window.location.origin}/billing/fail`,
         });
       }
@@ -138,40 +138,35 @@ export default function BillingPage() {
       ) : null}
 
       <div className="mt-8 grid gap-4 sm:grid-cols-2">
-        {/* BYOK */}
+        {/* Balanced — 메인 좌측 */}
         <div className="flex flex-col rounded-2xl border border-paperis-border bg-paperis-surface p-5">
           <div className="text-[11px] font-semibold uppercase tracking-[0.06em] text-paperis-accent">
-            {m.billing.byokTag}
+            {m.billing.balancedTag}
           </div>
           <h2 className="mt-1 font-serif text-2xl font-medium tracking-tight text-paperis-text">
-            {m.billing.byokName}
+            {m.billing.balancedName}
           </h2>
           <div className="mt-3 text-3xl font-bold tabular-nums text-paperis-text">
-            {m.billing.byokPrice}
-            <span className="ml-0.5 text-base font-medium">{m.billing.byokPriceUnit}</span>
+            {m.billing.balancedPrice}
+            <span className="ml-0.5 text-base font-medium">{m.billing.balancedPriceUnit}</span>
           </div>
-          <p className="mt-1 text-xs text-paperis-text-3">{m.billing.byokSubtitle}</p>
+          <p className="mt-1 text-xs text-paperis-text-3">{m.billing.balancedSubtitle}</p>
           <ul className="mt-4 space-y-2 text-sm text-paperis-text-2">
-            {m.billing.byokFeatures.map((f, i) => (
-              <li
-                key={i}
-                className={i === m.billing.byokFeatures.length - 1 ? "text-paperis-text-3" : undefined}
-              >
-                {f}
-              </li>
+            {m.billing.balancedFeatures.map((f, i) => (
+              <li key={i}>{f}</li>
             ))}
           </ul>
           <button
             type="button"
-            onClick={() => startPayment("byok")}
+            onClick={() => startPayment("balanced")}
             disabled={loading || !FEATURE_AUTH}
-            className="mt-6 inline-flex h-10 w-full items-center justify-center rounded-lg bg-paperis-accent text-sm font-medium text-paperis-bg transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
+            className="mt-6 inline-flex h-10 w-full items-center justify-center rounded-lg border border-paperis-accent bg-transparent text-sm font-medium text-paperis-accent transition hover:bg-paperis-accent-dim/40 disabled:cursor-not-allowed disabled:opacity-50"
           >
-            {loading ? m.billing.loading : m.billing.byokCta}
+            {loading ? m.billing.loading : m.billing.balancedCta}
           </button>
         </div>
 
-        {/* Pro */}
+        {/* Pro — 메인 우측, accent 강조 */}
         <div className="flex flex-col rounded-2xl border border-paperis-accent/40 bg-paperis-accent-dim/20 p-5">
           <div className="text-[11px] font-semibold uppercase tracking-[0.06em] text-paperis-accent">
             {m.billing.proTag}
@@ -199,6 +194,19 @@ export default function BillingPage() {
           </button>
         </div>
       </div>
+
+      {/* BYOK — 결제창 메인에서 격하. 작은 hyperlink로 숨김 */}
+      <p className="mt-6 text-center text-xs text-paperis-text-3">
+        {m.billing.byokQuietPrefix}{" "}
+        <button
+          type="button"
+          onClick={() => startPayment("byok")}
+          disabled={loading || !FEATURE_AUTH}
+          className="underline transition hover:text-paperis-text disabled:cursor-not-allowed disabled:opacity-50"
+        >
+          {m.billing.byokQuietLink}
+        </button>
+      </p>
 
       {error ? (
         <div className="mt-6 rounded-xl border border-paperis-accent/40 bg-paperis-accent-dim/40 p-4 text-sm text-paperis-accent">

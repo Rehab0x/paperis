@@ -80,16 +80,27 @@ export interface ResolvedTtsProvider {
  * 그대로 반환 — synthesize 시점에 친절 에러가 나오도록 한다.
  *
  * language 인자 — 사용자가 provider를 명시 안 했을 때(name=undefined) 언어별 default
- * 결정 (ko=Clova, en=Google Cloud). 명시했으면 그대로 존중.
+ * 결정. 현재 ko/en 모두 Google Cloud TTS.
+ *
+ * plan 인자 (Phase C-4 추가) — Free/Balanced/Pro 구독자는 무조건 google-cloud 강제.
+ * BYOK/Admin만 사용자가 명시한 provider 존중. UI 잠금(Phase C-1)과 별개로 서버에서
+ * 한 번 더 게이트 — 클라가 헤더 위조해도 서버에서 차단.
  *
  * Why: default가 GC TTS여도 GOOGLE_CLOUD_TTS_API_KEY 부재 시 Gemini fallback으로 라우트가
  *      깨지지 않도록. Clova(BYOK 전용)를 선택했는데 NCP 키 부재인 경우도 동일하게 보호.
  */
 export function resolveTtsProvider(
   name?: string,
-  language?: Language
+  language?: Language,
+  plan?: "free" | "balanced" | "pro" | "byok"
 ): ResolvedTtsProvider {
-  const requested = (name ?? defaultTtsProviderFor(language)).toLowerCase();
+  // 비-BYOK은 사용자 명시 provider 무시 — 항상 google-cloud
+  const isSubscriber =
+    plan === "free" || plan === "balanced" || plan === "pro";
+  const effectiveName = isSubscriber ? "google-cloud" : name;
+  const requested = (
+    effectiveName ?? defaultTtsProviderFor(language)
+  ).toLowerCase();
   const provider = providers.get(requested);
   if (!provider) {
     throw new Error(`알 수 없는 TTS provider: ${name}`);

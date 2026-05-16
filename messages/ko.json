@@ -396,6 +396,19 @@
         "✓ TTS provider 자유 선택 (Clova 포함)"
       ],
       "byokCta": "BYOK 결제하기",
+      "byokQuietPrefix": "본인 API 키를 갖고 있고 모든 호출을 무제한으로 쓰고 싶으면",
+      "byokQuietLink": "BYOK 평생 결제 (19,900원) →",
+      "balancedTag": "월 구독",
+      "balancedName": "Balanced",
+      "balancedPrice": "4,900",
+      "balancedPriceUnit": "원/월",
+      "balancedSubtitle": "자동 갱신, 언제든 해지",
+      "balancedFeatures": [
+        "✓ 검색·요약 무제한",
+        "✓ TTS 변환 월 50회",
+        "✓ 우리 서버 키로 즉시 시작"
+      ],
+      "balancedCta": "Balanced 구독하기",
       "proTag": "월 구독",
       "proName": "Pro",
       "proPrice": "9,900",
@@ -404,7 +417,7 @@
       "proFeatures": [
         "✓ 검색·요약 무제한",
         "✓ TTS 변환 월 150회",
-        "✓ 우리 서버 키로 즉시 시작 (별도 설정 불필요)"
+        "✓ 출퇴근 청취 양 많은 분께"
       ],
       "proCta": "Pro 구독하기",
       "loading": "결제 준비 중…",

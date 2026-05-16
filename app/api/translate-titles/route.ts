@@ -11,6 +11,7 @@ import { getEffectiveAiProvider } from "@/lib/ai/registry";
 import { friendlyErrorMessage } from "@/lib/gemini";
 import { getCached, setCached } from "@/lib/journal-cache";
 import { generateBatchTitleTranslations } from "@/lib/title-translate";
+import { requireLogin } from "@/lib/auth-gate";
 import { applyUserKeysToEnv } from "@/lib/user-keys";
 
 export const runtime = "nodejs";
@@ -34,6 +35,8 @@ function cacheKey(pmid: string): string {
 }
 
 export async function POST(req: Request) {
+  const gate = await requireLogin();
+  if (!gate.ok) return gate.response;
   await applyUserKeysToEnv(req);
   let body: { papers?: unknown };
   try {

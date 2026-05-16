@@ -17,7 +17,7 @@ import { useLocale } from "@/components/useLocale";
 import { fmt } from "@/lib/i18n";
 
 type Status = "verifying" | "success" | "fail";
-type Flow = "byok" | "pro";
+type Flow = "byok" | "balanced" | "pro";
 
 interface SuccessState {
   status: Status;
@@ -30,7 +30,9 @@ function SuccessInner() {
   const m = useAppMessages();
   const locale = useLocale();
   const searchParams = useSearchParams();
-  const flow: Flow = searchParams.get("flow") === "pro" ? "pro" : "byok";
+  const flowParam = searchParams.get("flow");
+  const flow: Flow =
+    flowParam === "pro" ? "pro" : flowParam === "balanced" ? "balanced" : "byok";
 
   // BYOK params
   const paymentKey = searchParams.get("paymentKey") ?? "";
@@ -69,7 +71,7 @@ function SuccessInner() {
           return;
         }
 
-        // Pro flow
+        // Pro/Balanced flow — 둘 다 빌링키 발급 + 첫 달 결제 (charge-first가 plan 분기)
         if (!customerKey || !authKey) {
           throw new Error(m.billing.missingProAuth);
         }
@@ -80,11 +82,11 @@ function SuccessInner() {
           body: JSON.stringify({ customerKey, authKey }),
         });
         await throwIfNotOk(issueRes);
-        // 2. 첫 달 결제
+        // 2. 첫 달 결제 — flow 값을 plan으로 그대로 전달
         const chargeRes = await fetch("/api/billing/charge-first", {
           method: "POST",
           headers: { "content-type": "application/json" },
-          body: JSON.stringify({}),
+          body: JSON.stringify({ plan: flow }),
         });
         const chargeData = (await throwIfNotOk(chargeRes)) as {
           expiresAt?: string;

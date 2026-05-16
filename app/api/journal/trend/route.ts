@@ -20,6 +20,7 @@ import {
   getPlan,
   limitExceededMessage,
 } from "@/lib/usage";
+import { requireLogin } from "@/lib/auth-gate";
 import { applyUserKeysToEnv } from "@/lib/user-keys";
 import type { ApiError, Paper } from "@/types";
 
@@ -156,6 +157,8 @@ function buildTrendTerm(issn: string, p: PeriodInfo): string {
 const MIN_PAPERS_FOR_TREND = 10;
 
 export async function GET(req: Request) {
+  const gate = await requireLogin();
+  if (!gate.ok) return gate.response;
   await applyUserKeysToEnv(req);
 
   const { searchParams } = new URL(req.url);

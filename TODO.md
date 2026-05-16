@@ -1,6 +1,6 @@
 # Paperis — TODO / 진척 기록
 
-> 마지막 갱신: 2026-05-16 (service-cleanup Phase A·B — TTS 비용 정리 + 모델 tier + 요금제 재구성)
+> 마지막 갱신: 2026-05-16 (service-cleanup Phase A·B·C — TTS·모델·요금제·UI 잠금·Logout gate 완료)
 > 외부 노출 문서는 [README.md](README.md), 컨텍스트는 [CLAUDE.md](CLAUDE.md). 이 파일은 작업 일지·기술부채·의사결정 기록 보관용.
 
 ---
@@ -112,7 +112,11 @@
   - **결제 라우트 balanced 지원**: `/api/billing/checkout`(plan 검증), `/api/billing/charge-first`(body.plan 분기). `/api/account/subscription`도 balanced 처리 (해지/next billing)
   - **메시지** (`messages/{ko,en}.json`): `usage.kind.fulltext` "풀텍스트 요약"→"요약", upgradeHint 신가격, billing byokPrice/proPrice 갱신, byokGateFree 한도 텍스트, 신규 `planBalanced*` + `balancedTtsQuota` 라벨
   - **UsageBanner**: 모든 finite-limit plan에 표시 (Free + Balanced + Pro의 TTS). BYOK만 제외
-- ⬜ **Phase C (다음 세션): Logout 제한 + UI 잠금** — 비로그인은 트렌드 헤드라인만 허용(검색/요약/TTS 불가), Settings drawer AI/TTS provider 섹션은 BYOK 게이트, 구독자는 TTS = Google Cloud 강제 (`resolveTtsProvider`에 plan 인자), billing 페이지 4-plan UI 재배치 (Free/Balanced/Pro 메인 + BYOK 하단 hypertext)
+- ✅ **Phase C: Logout 제한 + UI 잠금 + billing UI 재배치** (2026-05-16)
+  - **C-1 Settings drawer**: AI provider + TTS provider 섹션 합치기. 비-BYOK은 두 섹션 + API 키 섹션 완전 숨김 (이전엔 잠금 화면). TTS voice/speed는 모든 등급 노출하되 비-BYOK은 effectiveProvider="google-cloud" 고정 (GC 보이스만)
+  - **C-2 Logout 라우트 gate**: `lib/auth-gate.ts requireLogin()` 헬퍼. 10개 라우트(`/api/search`, `/api/summarize{,/read}`, `/api/fulltext`, `/api/pdf`, `/api/tts{,/text,/preview}`, `/api/journal/trend`, `/api/translate-titles`)에 401 가드. 허용 라우트: `/api/journal/{issues,topic,trend-headline,search}`, `/api/account/*`, `/api/billing/*`, `/api/cron/*`
+  - **C-3 billing 4-plan UI**: 2-plan 그리드 → Balanced(좌, outline accent) + Pro(우, fill accent). BYOK는 그리드 아래 작은 hyperlink로 격하 (`byokQuietPrefix` + `byokQuietLink`). `startPayment("balanced"|"pro"|"byok")` 분기, `/billing/success?flow=balanced` 추가 → charge-first가 plan 분기
+  - **C-4 서버 TTS 게이트**: `resolveTtsProvider(name, language, plan?)` plan 인자 추가. Free/Balanced/Pro = google-cloud 강제 (사용자 명시 provider 무시). BYOK/Admin만 자유 선택. 클라 헤더 위조 방지. 3개 TTS 라우트 모두 plan 전달 (preview는 getPlan 새로 추가)
 - ⬜ **Phase D: Cron balanced + 회귀 체크리스트** — `/api/cron/recurring-billing`이 balanced 플랜 자동결제 처리, 라이브 회귀 6단계 수동 검증
 
 ---

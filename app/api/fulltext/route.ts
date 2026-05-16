@@ -4,6 +4,7 @@
 
 import { NextResponse } from "next/server";
 import { fetchFullText } from "@/lib/fulltext";
+import { requireLogin } from "@/lib/auth-gate";
 import { applyUserKeysToEnv } from "@/lib/user-keys";
 import type { ApiError, FullTextRequest, FullTextResponse } from "@/types";
 
@@ -11,6 +12,8 @@ export const runtime = "nodejs";
 export const maxDuration = 60;
 
 export async function POST(req: Request) {
+  const gate = await requireLogin();
+  if (!gate.ok) return gate.response;
   await applyUserKeysToEnv(req);
   let body: Partial<FullTextRequest>;
   try {

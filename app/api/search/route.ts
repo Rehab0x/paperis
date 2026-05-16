@@ -8,6 +8,7 @@ import { enrichPapers } from "@/lib/openalex";
 import { searchPubMed } from "@/lib/pubmed";
 import { getCachedQuery, setCachedQuery } from "@/lib/query-cache";
 import { translateNaturalLanguage } from "@/lib/query-translator";
+import { requireLogin } from "@/lib/auth-gate";
 import { applyUserKeysToEnv } from "@/lib/user-keys";
 import type {
   ApiError,
@@ -36,6 +37,8 @@ function clampInt(value: unknown, min: number, max: number, fallback: number): n
 }
 
 export async function POST(req: Request) {
+  const gate = await requireLogin();
+  if (!gate.ok) return gate.response;
   await applyUserKeysToEnv(req);
   let body: Partial<SearchRequest>;
   try {

@@ -4,6 +4,7 @@
 import "@/lib/promise-polyfill";
 import { NextResponse } from "next/server";
 import { extractText } from "unpdf";
+import { requireLogin } from "@/lib/auth-gate";
 import { applyUserKeysToEnv } from "@/lib/user-keys";
 import type { ApiError } from "@/types";
 
@@ -13,6 +14,8 @@ export const maxDuration = 120;
 const MAX_BYTES = 30 * 1024 * 1024; // 30MB
 
 export async function POST(req: Request) {
+  const gate = await requireLogin();
+  if (!gate.ok) return gate.response;
   await applyUserKeysToEnv(req);
   let form: FormData;
   try {

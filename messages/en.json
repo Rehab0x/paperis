@@ -396,6 +396,19 @@
         "✓ Free choice of TTS provider (Clova included)"
       ],
       "byokCta": "Buy BYOK",
+      "byokQuietPrefix": "Already have your own API key and want unlimited everything?",
+      "byokQuietLink": "BYOK lifetime (KRW 19,900) →",
+      "balancedTag": "Monthly",
+      "balancedName": "Balanced",
+      "balancedPrice": "4,900",
+      "balancedPriceUnit": "KRW/mo",
+      "balancedSubtitle": "Auto-renews · cancel anytime",
+      "balancedFeatures": [
+        "✓ Unlimited search & summaries",
+        "✓ TTS 50 calls/month",
+        "✓ Use our server keys — no setup"
+      ],
+      "balancedCta": "Subscribe Balanced",
       "proTag": "Monthly",
       "proName": "Pro",
       "proPrice": "9,900",
@@ -404,7 +417,7 @@
       "proFeatures": [
         "✓ Unlimited search & summaries",
         "✓ TTS 150 calls/month",
-        "✓ Use our server keys — no setup"
+        "✓ For heavy commute listeners"
       ],
       "proCta": "Subscribe Pro",
       "loading": "Preparing payment…",

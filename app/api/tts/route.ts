@@ -15,6 +15,7 @@ import {
   getPlan,
   limitExceededMessage,
 } from "@/lib/usage";
+import { requireLogin } from "@/lib/auth-gate";
 import { applyUserKeysToEnv } from "@/lib/user-keys";
 import type { ApiError, Language, Paper, TtsRequestBody } from "@/types";
 
@@ -41,6 +42,8 @@ function jsonError(error: string, status = 400) {
 }
 
 export async function POST(req: Request) {
+  const gate = await requireLogin();
+  if (!gate.ok) return gate.response;
   await applyUserKeysToEnv(req);
   let body: Partial<TtsRequestBody> & { fullText?: unknown };
   try {
@@ -71,9 +74,13 @@ export async function POST(req: Request) {
     ? { ...body.paper, abstract: fullText }
     : body.paper;
 
+  // 등급 먼저 — resolveTtsProvider plan 인자에 사용 (구독자는 google-cloud 강제)
+  const identityKey = await getIdentityKey(req);
+  const plan = await getPlan(req);
+
   let resolved;
   try {
-    resolved = resolveTtsProvider(providerName, language);
+    resolved = resolveTtsProvider(providerName, language, plan);
   } catch (err) {
     return jsonError(
       err instanceof Error ? err.message : "TTS provider 오류",
@@ -82,9 +89,7 @@ export async function POST(req: Request) {
   }
   const provider = resolved.provider;
 
-  // Free 한도 체크 (TTS 카테고리). BYOK/Pro는 무제한 통과
-  const identityKey = await getIdentityKey(req);
-  const plan = await getPlan(req);
+  // 한도 체크 (TTS 카테고리). BYOK는 무제한 통과
   const usage = await checkAndIncrement(identityKey, "tts", plan);
   if (!usage.allowed) {
     return jsonError(

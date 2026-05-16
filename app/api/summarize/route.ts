@@ -6,6 +6,7 @@ import { getEffectiveAiProvider } from "@/lib/ai/registry";
 import { friendlyErrorMessage } from "@/lib/gemini";
 import { getRequestLanguage } from "@/lib/i18n";
 import { generateMiniSummaries } from "@/lib/summary";
+import { requireLogin } from "@/lib/auth-gate";
 import { applyUserKeysToEnv } from "@/lib/user-keys";
 import type {
   ApiError,
@@ -32,6 +33,8 @@ function isPaper(value: unknown): value is Paper {
 }
 
 export async function POST(req: Request) {
+  const gate = await requireLogin();
+  if (!gate.ok) return gate.response;
   await applyUserKeysToEnv(req);
   let body: Partial<SummarizeMiniRequest>;
   try {

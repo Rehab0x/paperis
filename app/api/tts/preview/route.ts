@@ -4,6 +4,8 @@
 import { friendlyErrorMessage } from "@/lib/gemini";
 import { getRequestLanguage } from "@/lib/i18n";
 import { resolveTtsProvider } from "@/lib/tts";
+import { requireLogin } from "@/lib/auth-gate";
+import { getPlan } from "@/lib/usage";
 import { applyUserKeysToEnv } from "@/lib/user-keys";
 import type { ApiError, Language } from "@/types";
 
@@ -27,6 +29,8 @@ function jsonError(error: string, status = 400) {
 }
 
 export async function POST(req: Request) {
+  const gate = await requireLogin();
+  if (!gate.ok) return gate.response;
   await applyUserKeysToEnv(req);
   let body: PreviewBody;
   try {
@@ -46,9 +50,11 @@ export async function POST(req: Request) {
       ? body.speakingRate
       : 0;
 
+  // 구독자는 google-cloud 강제 — preview도 동일하게 (UI 잠금과 일관)
+  const plan = await getPlan(req);
   let resolved;
   try {
-    resolved = resolveTtsProvider(providerName, language);
+    resolved = resolveTtsProvider(providerName, language, plan);
   } catch (err) {
     return jsonError(
       err instanceof Error ? err.message : "TTS provider 오류",
