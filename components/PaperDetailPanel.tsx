@@ -144,6 +144,20 @@ export default function PaperDetailPanel({ paper, onBack }: Props) {
             pmcId: paper.pmcId,
           }),
         });
+        // 401/403/5xx 등 비정상 응답은 FullTextResponse 형식이 아님 → missing + 빈 attempted로
+        // 안전하게 강등. 이전엔 json.attempted가 undefined인 채 state에 들어가
+        // FullTextDiagnostic이 .length 호출 시 crash → 모바일에서 "page couldn't load".
+        if (!res.ok) {
+          if (cancelled) return;
+          setFt({
+            status: "missing",
+            text: "",
+            source: null,
+            charCount: 0,
+            attempted: [],
+          });
+          return;
+        }
         const json = (await res.json()) as FullTextResponse;
         if (cancelled) return;
         if (json.ok) {
@@ -161,7 +175,7 @@ export default function PaperDetailPanel({ paper, onBack }: Props) {
             text: "",
             source: null,
             charCount: 0,
-            attempted: json.attempted,
+            attempted: Array.isArray(json.attempted) ? json.attempted : [],
           });
         }
       } catch (err) {
@@ -452,7 +466,8 @@ export default function PaperDetailPanel({ paper, onBack }: Props) {
 
 function FullTextDiagnostic({ attempts }: { attempts: FullTextAttempt[] }) {
   const m = useAppMessages();
-  if (attempts.length === 0) return null;
+  // defensive — 부모가 undefined/null 넘기더라도 crash 방지
+  if (!attempts || attempts.length === 0) return null;
   return (
     <div className="rounded-lg border border-paperis-border bg-paperis-surface-2 p-3 text-xs">
       <p className="mb-1.5 font-medium text-paperis-text">
