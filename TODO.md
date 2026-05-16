@@ -1,6 +1,6 @@
 # Paperis — TODO / 진척 기록
 
-> 마지막 갱신: 2026-05-16 (service-cleanup 전체 + 관리자 회원 관리 + audit log + 메트릭 대시보드)
+> 마지막 갱신: 2026-05-17 (도메인 paperis.app + Resend 이메일 + locale 자동 감지 + PWA 새 아이콘 + Error Boundary + heavy user/audit cleanup)
 > 외부 노출 문서는 [README.md](README.md), 컨텍스트는 [CLAUDE.md](CLAUDE.md). 이 파일은 작업 일지·기술부채·의사결정 기록 보관용.
 
 ---
@@ -147,6 +147,44 @@
   - **`/admin/audit` 뷰어**: 100/page, action·target 필터(chip), CSV export (`/api/admin/audit/export`, UTF-8 BOM, 최대 10K)
   - **`/admin/metrics` 대시보드**: 사용자(전체/온보딩/7d/30d) + 구독(BYOK/Pro/Balanced + 유료 전환율) + 활동(이번 달 활성 사용자% + 총 합계) + 30일 일별 가입 bar chart
   - **`/account`에 admin 진입 링크**: `sub.admin=true`일 때만 "회원 관리 →"
+
+### service-cleanup Phase H (2026-05-17 — 출시 인프라)
+
+도메인 발급 + 이메일 + locale + PWA + Error Boundary + 운영 도구 보강.
+
+- ✅ **온보딩 활성화 개선** (`a850ba6`) — 온보딩 폼에 임상과 선택 chip 통합 (선택사항). 완료 후 첫 임상과 페이지(`/journal/specialty/[firstId]`)로 redirect — 빈 홈 대신 즉시 추천 저널 노출. 카탈로그 화이트리스트 검증 + 멱등 upsert
+- ✅ **이메일 알림 (Resend)** (`9b8c4c8`)
+  - `lib/email.ts`: Resend API fetch wrapper (10s timeout, RESEND_API_KEY 미설정 시 silent skip)
+  - `lib/email-templates.ts`: 4종 (welcome / quotaThreshold / paymentSuccess / paymentFailure). ko/en 분기. 공통 `wrap()` (로고+푸터) + `btn()` 버튼
+  - 트리거: Auth.js `events.signIn`(welcome) + `lib/usage.ts`(80% 도달) + `/api/billing/confirm`+`/charge-first`(payment success) + `/api/cron/recurring-billing`(success/failure)
+  - 모든 트리거 fire-and-forget — 본 요청·DB 작업 차단 X
+- ✅ **이메일 locale 자동 감지** (`ff40d21` · `3671d9f` · `12f00a5`)
+  - `users.locale` text NOT NULL DEFAULT 'ko' 컬럼 추가 (DB add-only)
+  - `lib/email-locale.ts`: `parseGoogleLocale()` (ko-KR/en-US → ko/en), `normalizeUserLocale()`
+  - Auth.js: `events.createUser` → `events.signIn`으로 전환 (profile 접근). isNewUser + profile.locale → DB UPDATE + welcome 그 locale로 발송
+  - 이메일 트리거 4종 모두 user.locale 조회해 분기 (usage/confirm/charge-first/cron)
+  - **사용자 locale 변경 UI**: `/api/account/locale` PATCH + Settings drawer 첫 섹션 "언어 / Language" 토글
+  - **useLocale reactive**: `paperis:locale-change` 커스텀 이벤트 broadcast → 모든 useLocale 사용 컴포넌트 즉시 re-render (새로고침 불필요)
+- ✅ **도메인 + OAuth + Resend 연결** (수동 작업)
+  - `paperis.app` 발급, Vercel Domains 연결 (apex primary, www → 308 redirect)
+  - Google Cloud Console OAuth 2.0 Client redirect URIs 4개 등록 (paperis.app, www.paperis.app, paperis.vercel.app, localhost)
+  - Resend `send.paperis.app` verify (root는 free tier 1개 도메인 제한으로 보류)
+  - Vercel prod env 등록: `RESEND_API_KEY`, `EMAIL_FROM=Paperis <noreply@send.paperis.app>`, `NEXT_PUBLIC_SITE_URL=https://paperis.app`, `AUTH_URL=https://paperis.app`
+- ✅ **PWA 아이콘 + manifest 갱신** (`4b7dda5`)
+  - `public/icons/paperis-icon.svg` — warm orange 풀블리드 + 화이트 serif "P" stroke + 액센트 닷. 폰트 비의존(stroke path), maskable 80% 안전 영역 내부
+  - sharp(Next transitive)로 PNG 6종 변환 (192/512/512-maskable/180-apple/32-favicon/16-favicon)
+  - `app/manifest.ts`: theme_color `#c44b1e`, background_color `#fafaf7`, start_url `/app`(설치 사용자), SVG 아이콘 항목 추가
+  - `app/layout.tsx`: SVG 우선 + favicon-32/16 PNG fallback. viewport themeColor 신 톤
+  - `public/sw.js`: VERSION v2→v3 + activate 시 옛 캐시 자동 삭제 → 사용자 새 아이콘 즉시 수신
+- ✅ **React Error Boundary** (`cdcf0f8`)
+  - `app/error.tsx`: 일반 라우트 폴백 (자식 throw 잡음, 헤더·푸터 유지, 본문만 교체). "다시 시도"(reset) + "홈으로" CTA + error.digest 표시
+  - `app/global-error.tsx`: root layout 깨졌을 때 마지막 폴백. 자체 `<html>` 인라인 스타일, 새로고침 CTA
+  - 모든 에러 console.error → Vercel Logs 자동 캡처. Sentry는 추후 SENTRY_DSN env-gated로 추가 가능
+- ✅ **운영 도구 보강** (`5abd3bb`)
+  - `/admin/metrics`에 **사용량 상위 10명** 섹션 — 이번 달 (trend+summary+tts) 합계 desc, 행 클릭 → 사용자 상세
+  - `/api/cron/audit-cleanup` 신설 — `admin_audit_log` 365일 이상 row 자동 DELETE
+  - `vercel.json` cron 등록: `"0 15 1 * *"` (매월 1일 KST 자정). 등록 시 `vercel deploy --prod --yes --force` 필요했음 (vercel.json 변경 인식 캐시 이슈)
+  - `/admin/audit` 페이지에 보존 정책 안내 ("365일, 자동 정리, CSV export 가능")
 
 ---
 
