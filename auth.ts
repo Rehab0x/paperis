@@ -19,7 +19,9 @@ import {
   users,
   verificationTokens,
 } from "@/lib/db/schema";
+import { eq } from "drizzle-orm";
 import { sendEmail } from "@/lib/email";
+import { parseGoogleLocale } from "@/lib/email-locale";
 import { welcomeTemplate } from "@/lib/email-templates";
 
 // 환경변수 4개가 모두 있어야 정식 NextAuth 설정. 부재 시 placeholder로 빌드만
@@ -62,12 +64,25 @@ export const { handlers, signIn, signOut, auth } = NextAuth(
           },
         },
         events: {
-          // 사용자가 처음 만들어졌을 때 1회. fire-and-forget — 이메일 실패해도 가입은 성공.
-          // RESEND_API_KEY 없으면 sendEmail이 silent skip.
-          async createUser({ user }) {
-            if (!user.email) return;
-            const tpl = welcomeTemplate({ name: user.name, locale: "ko" });
-            // await but errors caught inside sendEmail — 시그널 막힘 없도록 단순 호출
+          // 첫 가입 시 1회 welcome 이메일 + locale 저장. signIn에서 처리하는 이유:
+          // createUser는 profile에 접근 못 함. signIn은 isNewUser + profile 모두 제공해
+          // Google profile.locale을 감지해 DB에 저장 + 첫 이메일도 해당 locale로 발송.
+          async signIn({ user, profile, isNewUser }) {
+            if (!isNewUser || !user.email || !user.id) return;
+            const locale = parseGoogleLocale(
+              (profile as { locale?: unknown } | null)?.locale
+            );
+            // DB locale 업데이트 (이후 모든 이메일 트리거가 이 값 참조)
+            try {
+              await getDb()
+                .update(users)
+                .set({ locale })
+                .where(eq(users.id, user.id));
+            } catch (err) {
+              console.warn("[auth] locale update failed", err);
+            }
+            // welcome 이메일 — 감지된 locale로
+            const tpl = welcomeTemplate({ name: user.name, locale });
             await sendEmail({
               to: user.email,
               subject: tpl.subject,

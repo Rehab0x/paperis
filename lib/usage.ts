@@ -421,7 +421,7 @@ async function maybeSendQuotaEmail(
     const db = getDb();
     const { users } = await import("@/lib/db/schema");
     const row = await db
-      .select({ email: users.email })
+      .select({ email: users.email, locale: users.locale })
       .from(users)
       .where(eq(users.id, identityKey))
       .limit(1);
@@ -430,6 +430,7 @@ async function maybeSendQuotaEmail(
 
     const { sendEmail } = await import("@/lib/email");
     const { quotaThresholdTemplate } = await import("@/lib/email-templates");
+    const { normalizeUserLocale } = await import("@/lib/email-locale");
     const tplKind: "summary" | "tts" | "trend" =
       kind === "fulltext"
         ? "summary"
@@ -440,7 +441,7 @@ async function maybeSendQuotaEmail(
       kind: tplKind,
       remaining,
       limit,
-      locale: "ko",
+      locale: normalizeUserLocale(row[0]?.locale),
     });
     await sendEmail({ to: email, subject: tpl.subject, html: tpl.html });
   } catch (err) {

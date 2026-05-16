@@ -69,6 +69,7 @@ export async function GET(req: Request) {
     billingKey: string | null;
     email: string | null;
     name: string | null;
+    locale: string | null;
   }>;
   try {
     due = await db
@@ -79,6 +80,7 @@ export async function GET(req: Request) {
         billingKey: subscriptions.tossBillingKey,
         email: users.email,
         name: users.name,
+        locale: users.locale,
       })
       .from(subscriptions)
       .innerJoin(users, eq(users.id, subscriptions.userId))
@@ -142,7 +144,7 @@ export async function GET(req: Request) {
         })
         .where(eq(subscriptions.userId, sub.userId));
       // 갱신 성공 이메일 — fire-and-forget
-      void sendRecurringEmail(sub.email, "success", planPrefix, pricing.amount, newExpires);
+      void sendRecurringEmail(sub.email, sub.locale, "success", planPrefix, pricing.amount, newExpires);
       results.push({ userId: sub.userId, outcome: "renewed" });
     } catch (err) {
       const msg =
@@ -158,7 +160,7 @@ export async function GET(req: Request) {
       );
       await suspend(sub.userId, msg);
       // 결제 실패 이메일 — fire-and-forget
-      void sendRecurringEmail(sub.email, "failure", planPrefix, pricing.amount, null, msg);
+      void sendRecurringEmail(sub.email, sub.locale, "failure", planPrefix, pricing.amount, null, msg);
       results.push({ userId: sub.userId, outcome: "suspended", message: msg });
     }
   }
@@ -193,6 +195,7 @@ export async function GET(req: Request) {
 /** 자동결제 성공/실패 이메일 — fire-and-forget. cron 외부에서 결과 안 기다림. */
 async function sendRecurringEmail(
   email: string | null,
+  userLocale: string | null,
   kind: "success" | "failure",
   plan: "balanced" | "pro",
   amount: number,
@@ -202,13 +205,15 @@ async function sendRecurringEmail(
   if (!email) return;
   try {
     const { sendEmail } = await import("@/lib/email");
+    const { normalizeUserLocale } = await import("@/lib/email-locale");
+    const locale = normalizeUserLocale(userLocale);
     if (kind === "success") {
       const { paymentSuccessTemplate } = await import("@/lib/email-templates");
-      const tpl = paymentSuccessTemplate({ plan, amount, expiresAt, locale: "ko" });
+      const tpl = paymentSuccessTemplate({ plan, amount, expiresAt, locale });
       await sendEmail({ to: email, subject: tpl.subject, html: tpl.html });
     } else {
       const { paymentFailureTemplate } = await import("@/lib/email-templates");
-      const tpl = paymentFailureTemplate({ plan, reason, locale: "ko" });
+      const tpl = paymentFailureTemplate({ plan, reason, locale });
       await sendEmail({ to: email, subject: tpl.subject, html: tpl.html });
     }
   } catch (err) {

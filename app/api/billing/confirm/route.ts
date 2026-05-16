@@ -170,7 +170,7 @@ async function sendPaymentSuccessEmail(
     const { users } = await import("@/lib/db/schema");
     const { eq } = await import("drizzle-orm");
     const row = await db
-      .select({ email: users.email })
+      .select({ email: users.email, locale: users.locale })
       .from(users)
       .where(eq(users.id, userId))
       .limit(1);
@@ -178,7 +178,13 @@ async function sendPaymentSuccessEmail(
     if (!email) return;
     const { sendEmail } = await import("@/lib/email");
     const { paymentSuccessTemplate } = await import("@/lib/email-templates");
-    const tpl = paymentSuccessTemplate({ plan, amount, expiresAt, locale: "ko" });
+    const { normalizeUserLocale } = await import("@/lib/email-locale");
+    const tpl = paymentSuccessTemplate({
+      plan,
+      amount,
+      expiresAt,
+      locale: normalizeUserLocale(row[0]?.locale),
+    });
     await sendEmail({ to: email, subject: tpl.subject, html: tpl.html });
   } catch (err) {
     console.warn("[billing/confirm] success email failed", err);

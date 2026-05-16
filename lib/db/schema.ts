@@ -38,6 +38,8 @@ export const users = pgTable("users", {
   marketingAgreed: boolean("marketing_agreed").notNull().default(false),
   /** 온보딩 완료 여부. false면 모든 라우트가 /onboarding으로 redirect */
   onboardingDone: boolean("onboarding_done").notNull().default(false),
+  /** 이메일 알림 locale ('ko' | 'en'). createUser 시 Google profile에서 자동 감지, 사용자 변경 가능 */
+  locale: text("locale").notNull().default("ko"),
   createdAt: timestamp("created_at", { mode: "date" })
     .notNull()
     .default(sql`now()`),
