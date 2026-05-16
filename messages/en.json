@@ -532,6 +532,8 @@
       "notifyRequest": "Request notification permission",
       "keyStatusActive": "Active",
       "keyStatusLocked": "Locked",
+      "byokProvidersTitle": "Provider settings",
+      "byokProvidersDesc": "Choose your AI model and TTS voice (BYOK only).",
       "byokGateTitle1": "Entering your own API key is only available to",
       "byokGateRole": "BYOK customers",
       "byokGateTitle2": ". BYOK is a one-time lifetime purchase that lets you use your own keys for unlimited calls.",

@@ -532,6 +532,8 @@
       "notifyRequest": "알림 권한 요청",
       "keyStatusActive": "활성",
       "keyStatusLocked": "잠김",
+      "byokProvidersTitle": "Provider 설정",
+      "byokProvidersDesc": "AI 모델과 TTS 보이스를 직접 고를 수 있습니다 (BYOK 전용).",
       "byokGateTitle1": "본인 API 키 입력은",
       "byokGateRole": "BYOK 결제자",
       "byokGateTitle2": "만 가능합니다. BYOK는 평생 1회 결제로 자신의 키로 모든 호출을 무제한 이용하는 권한입니다.",

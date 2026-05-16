@@ -73,6 +73,13 @@ export default function SettingsDrawer({ open, onClose }: Props) {
     speakingRate,
     setSpeakingRate,
   } = useTtsProviderPreference();
+  // 등급 게이트 — Free/Balanced/Pro는 provider 선택 불가 (UI 자체 숨김).
+  // BYOK/Admin만 AI/TTS provider 선택 + API 키 입력. 로딩 중에는 가려진 상태로
+  // 시작해 비-BYOK 사용자에게 깜빡임 없게 한다.
+  const { isByok, loading: byokLoading } = useByokStatus();
+  // TTS voice 섹션은 모든 등급에 표시되지만, 비-BYOK은 GC 보이스만 노출 (서버가 GC 강제).
+  const effectiveProvider: TtsProviderName =
+    !byokLoading && !isByok ? "google-cloud" : provider;
 
   // SSR-safe portal target — 헤더의 backdrop-filter가 fixed 자식의 containing block이
   // 되어 드로어가 헤더 영역 안에 갇히는 CSS 사양 회피용. body에 직접 마운트한다.
@@ -96,7 +103,7 @@ export default function SettingsDrawer({ open, onClose }: Props) {
   }, [open, onClose]);
 
   const currentVoice =
-    voiceByProvider[provider] ?? PROVIDER_DEFAULT_VOICE[provider];
+    voiceByProvider[effectiveProvider] ?? PROVIDER_DEFAULT_VOICE[effectiveProvider];
 
   if (!mounted) return null;
 
@@ -146,30 +153,19 @@ export default function SettingsDrawer({ open, onClose }: Props) {
             />
           </Section>
 
-          <Section
-            title={m.settings.ttsProviderTitle}
-            description={m.settings.ttsProviderDesc}
-          >
-            <RadioGroup
-              name="tts"
-              value={provider}
-              options={TTS_OPTIONS}
-              onChange={(v) => setProvider(v as TtsProviderName)}
-            />
-          </Section>
-
+          {/* TTS voice / speed — 모든 등급에 노출. 비-BYOK은 effectiveProvider="google-cloud" */}
           <Section
             title={m.settings.ttsVoiceTitle}
-            description={fmt(m.settings.ttsVoiceDesc, { provider })}
+            description={fmt(m.settings.ttsVoiceDesc, { provider: effectiveProvider })}
           >
             <label className="mb-3 block">
               <span className="mb-1 block text-xs text-paperis-text-3">{m.settings.voiceLabel}</span>
               <select
                 value={currentVoice}
-                onChange={(e) => setVoice(provider, e.target.value)}
+                onChange={(e) => setVoice(effectiveProvider, e.target.value)}
                 className="w-full rounded-lg border border-paperis-border bg-paperis-surface px-2 py-1.5 text-sm text-paperis-text"
               >
-                {PROVIDER_VOICES[provider].map((v) => (
+                {PROVIDER_VOICES[effectiveProvider].map((v) => (
                   <option key={v} value={v}>
                     {v}
                   </option>
@@ -183,13 +179,13 @@ export default function SettingsDrawer({ open, onClose }: Props) {
               options={SPEED_OPTIONS}
               onChange={(v) => setSpeakingRate(v as SpeakingRate)}
             />
-            {provider === "gemini" ? (
+            {effectiveProvider === "gemini" ? (
               <p className="mt-2 text-[11px] text-paperis-text-3">
                 {m.settings.speedNoOpt}
               </p>
             ) : null}
             <VoicePreview
-              provider={provider}
+              provider={effectiveProvider}
               voice={currentVoice}
               speakingRate={speakingRate}
             />
@@ -218,21 +214,45 @@ export default function SettingsDrawer({ open, onClose }: Props) {
             <NotificationPermission />
           </Section>
 
-          <Section
-            title={m.settings.aiProviderTitle}
-            description={m.settings.aiProviderDesc}
-            badge={<ByokGateBadge />}
-          >
-            <AiProviderSection />
-          </Section>
+          {/* Provider 설정 + API 키 — BYOK/Admin 전용. 비-BYOK은 섹션 자체가 없음.
+              로딩 중에도 가려진 상태 유지 (깜빡임 방지). */}
+          {!byokLoading && isByok ? (
+            <>
+              <Section
+                title={m.settings.byokProvidersTitle}
+                description={m.settings.byokProvidersDesc}
+                badge={<ByokGateBadge />}
+              >
+                <div className="space-y-5">
+                  <div>
+                    <h4 className="mb-2 text-[11px] font-semibold uppercase tracking-[0.06em] text-paperis-text-3">
+                      {m.settings.aiProviderTitle}
+                    </h4>
+                    <AiProviderSection />
+                  </div>
+                  <div>
+                    <h4 className="mb-2 text-[11px] font-semibold uppercase tracking-[0.06em] text-paperis-text-3">
+                      {m.settings.ttsProviderTitle}
+                    </h4>
+                    <RadioGroup
+                      name="tts"
+                      value={provider}
+                      options={TTS_OPTIONS}
+                      onChange={(v) => setProvider(v as TtsProviderName)}
+                    />
+                  </div>
+                </div>
+              </Section>
 
-          <Section
-            title={m.settings.apiKeysTitle}
-            description={m.settings.apiKeysDesc}
-            badge={<ByokGateBadge />}
-          >
-            <ApiKeysSection />
-          </Section>
+              <Section
+                title={m.settings.apiKeysTitle}
+                description={m.settings.apiKeysDesc}
+                badge={<ByokGateBadge />}
+              >
+                <ApiKeysSection />
+              </Section>
+            </>
+          ) : null}
 
           <Section
             title={m.settings.specialtiesTitle}
