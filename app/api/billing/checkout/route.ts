@@ -4,7 +4,7 @@
 // "사용자가 100원 보내고 BYOK plan 받기" 같은 시도가 가능하므로 서버가 발급한다.
 // /api/billing/confirm에서도 amount를 다시 검증하므로 이중 가드.
 //
-// 입력: { plan: "byok" | "pro" }
+// 입력: { plan: "byok" | "balanced" | "pro" }
 // 출력: { orderId, amount, orderName, customerKey, customerEmail, customerName }
 //
 // 로그인 + 온보딩 완료 + 휴대폰 등록을 모두 요구. (Toss billing은 customerMobilePhone
@@ -21,7 +21,7 @@ import type { ApiError } from "@/types";
 export const runtime = "nodejs";
 
 interface CheckoutBody {
-  plan?: "byok" | "pro";
+  plan?: "byok" | "balanced" | "pro";
 }
 
 export interface CheckoutResponse {
@@ -58,10 +58,17 @@ export async function POST(req: Request) {
     );
   }
 
-  const plan = body.plan === "pro" ? "pro" : body.plan === "byok" ? "byok" : null;
+  const plan: "byok" | "balanced" | "pro" | null =
+    body.plan === "pro"
+      ? "pro"
+      : body.plan === "balanced"
+        ? "balanced"
+        : body.plan === "byok"
+          ? "byok"
+          : null;
   if (!plan) {
     return NextResponse.json<ApiError>(
-      { error: "plan은 'byok' 또는 'pro'여야 합니다." },
+      { error: "plan은 'byok' / 'balanced' / 'pro' 중 하나여야 합니다." },
       { status: 400 }
     );
   }
@@ -114,7 +121,12 @@ export async function POST(req: Request) {
     );
   }
 
-  const pricing = plan === "pro" ? PRICING.proMonthly : PRICING.byokOnce;
+  const pricing =
+    plan === "pro"
+      ? PRICING.proMonthly
+      : plan === "balanced"
+        ? PRICING.balancedMonthly
+        : PRICING.byokOnce;
   const orderId = newOrderId(plan, userRow.id);
 
   const response: CheckoutResponse = {

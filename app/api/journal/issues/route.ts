@@ -12,12 +12,7 @@ import {
 } from "@/lib/journal-cache";
 import { enrichPapers } from "@/lib/openalex";
 import { searchPubMed } from "@/lib/pubmed";
-import {
-  checkAndIncrement,
-  getIdentityKey,
-  getPlan,
-  limitExceededMessage,
-} from "@/lib/usage";
+// Phase B에서 카운트 제거 — usage import 불필요
 import { applyUserKeysToEnv } from "@/lib/user-keys";
 import type { ApiError, Paper } from "@/types";
 
@@ -103,16 +98,8 @@ export async function GET(req: Request) {
     });
   }
 
-  // 캐시 miss → Free 한도 체크 (BYOK/Pro는 무제한 통과)
-  const identityKey = await getIdentityKey(req);
-  const plan = await getPlan(req);
-  const usage = await checkAndIncrement(identityKey, "curation", plan);
-  if (!usage.allowed) {
-    return jsonError(
-      limitExceededMessage("curation", usage, identityKey?.startsWith("anon:") === false),
-      429
-    );
-  }
+  // service-cleanup Phase B (2026-05-16): 호 검색은 카운트 안 함 — Free 사용자도 무제한.
+  // 트렌드 풀 분석만 curation kind로 카운트. (issues/topic은 검색과 동급으로 처리)
 
   let papers: Paper[];
   let total: number;

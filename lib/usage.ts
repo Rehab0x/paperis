@@ -20,14 +20,46 @@ import { getDb, hasDb } from "@/lib/db";
 import { subscriptions, usageMonthly } from "@/lib/db/schema";
 
 export type UsageKind = "curation" | "tts" | "fulltext";
-export type Plan = "free" | "byok" | "pro";
+export type Plan = "free" | "balanced" | "pro" | "byok";
 
-/** Free 플랜 월별 한도 */
-export const FREE_LIMITS: Record<UsageKind, number> = {
-  curation: 3,
-  tts: 5,
-  fulltext: 3,
+/**
+ * 등급별 월 한도. Infinity = 무제한 (DB 카운트 자체 안 함).
+ *
+ * UsageKind 의미 (service-cleanup Phase B 재해석):
+ *   curation = 저널 트렌드 풀 분석 (issues/topic/headline은 카운트 안 함 — 검색 동급)
+ *   fulltext = 긴 요약 (/api/summarize/read 호출 — 풀텍스트/abstract source 모두 통합)
+ *   tts      = TTS narration 변환
+ *
+ * Free 한도(2026-05-16~): trend 3 / summary 10 / tts 5
+ * Balanced(4,900/월): trend ∞ / summary ∞ / tts 50
+ * Pro(9,900/월): trend ∞ / summary ∞ / tts 150
+ * BYOK(19,900 1회): 모두 ∞
+ */
+export const LIMITS: Record<Plan, Record<UsageKind, number>> = {
+  free: {
+    curation: 3,
+    fulltext: 10,
+    tts: 5,
+  },
+  balanced: {
+    curation: Number.POSITIVE_INFINITY,
+    fulltext: Number.POSITIVE_INFINITY,
+    tts: 50,
+  },
+  pro: {
+    curation: Number.POSITIVE_INFINITY,
+    fulltext: Number.POSITIVE_INFINITY,
+    tts: 150,
+  },
+  byok: {
+    curation: Number.POSITIVE_INFINITY,
+    fulltext: Number.POSITIVE_INFINITY,
+    tts: Number.POSITIVE_INFINITY,
+  },
 };
+
+/** @deprecated Phase B에서 LIMITS.free로 일원화. UI 호환을 위해 유지. */
+export const FREE_LIMITS = LIMITS.free;
 
 /**
  * 사용량 한도 활성화 flag (server-side env). 0/미설정이면 모든 호출 무제한 통과
@@ -108,7 +140,7 @@ export async function getPlan(req: Request): Promise<Plan> {
     if (
       row &&
       (row.status === "active" || row.status === "cancelled") &&
-      (row.plan === "pro" || row.plan === "byok")
+      (row.plan === "pro" || row.plan === "balanced" || row.plan === "byok")
     ) {
       // expiresAt 체크 (만료됐으면 free). BYOK는 expiresAt=null이라 평생 통과.
       if (!row.expiresAt || row.expiresAt.getTime() > Date.now()) {
@@ -147,8 +179,9 @@ export async function checkAndIncrement(
       plan,
     };
   }
-  // plan free 외엔 모두 무제한
-  if (plan !== "free") {
+  const planLimit = LIMITS[plan][kind];
+  // 무제한(Infinity) tier — DB 카운트도 안 함. balanced/pro의 검색·요약, 모든 BYOK 등.
+  if (!Number.isFinite(planLimit)) {
     return {
       allowed: true,
       current: 0,
@@ -162,8 +195,8 @@ export async function checkAndIncrement(
     return {
       allowed: true,
       current: 0,
-      limit: FREE_LIMITS[kind],
-      remaining: FREE_LIMITS[kind],
+      limit: planLimit,
+      remaining: planLimit,
       plan,
     };
   }
@@ -172,14 +205,14 @@ export async function checkAndIncrement(
     return {
       allowed: true,
       current: 0,
-      limit: FREE_LIMITS[kind],
-      remaining: FREE_LIMITS[kind],
+      limit: planLimit,
+      remaining: planLimit,
       plan,
     };
   }
 
   const yearMonth = currentYearMonthKST();
-  const limit = FREE_LIMITS[kind];
+  const limit = planLimit;
   const column = KIND_COLUMN[kind];
 
   try {
@@ -263,14 +296,23 @@ export async function getUsageSnapshot(
   const plan = await getPlan(req);
   const yearMonth = currentYearMonthKST();
 
-  const empty = (kind: UsageKind) => ({
-    current: 0,
-    limit: plan === "free" ? FREE_LIMITS[kind] : Number.POSITIVE_INFINITY,
-    remaining:
-      plan === "free" ? FREE_LIMITS[kind] : Number.POSITIVE_INFINITY,
-  });
+  const empty = (kind: UsageKind) => {
+    const lim = LIMITS[plan][kind];
+    return {
+      current: 0,
+      limit: lim,
+      remaining: lim,
+    };
+  };
 
-  if (plan !== "free" || !identityKey || !hasDb()) {
+  // tts 한도가 finite인 plan(balanced/pro)도 카운트해야 — Free만 카운트하던 이전과 다름.
+  // 모든 finite 한도가 있는 plan은 DB 조회. byok/admin 등 모두 ∞면 빈 snapshot.
+  const hasFiniteLimit =
+    Number.isFinite(LIMITS[plan].curation) ||
+    Number.isFinite(LIMITS[plan].fulltext) ||
+    Number.isFinite(LIMITS[plan].tts);
+
+  if (!hasFiniteLimit || !identityKey || !hasDb()) {
     return {
       yearMonth,
       plan,
@@ -296,7 +338,7 @@ export async function getUsageSnapshot(
     const row = rows[0];
     const make = (kind: UsageKind) => {
       const cur = row ? readKindCount(row, kind) : 0;
-      const lim = FREE_LIMITS[kind];
+      const lim = LIMITS[plan][kind];
       return { current: cur, limit: lim, remaining: Math.max(0, lim - cur) };
     };
     return {
@@ -363,12 +405,15 @@ export function limitExceededMessage(
   isLoggedIn: boolean
 ): string {
   const kindLabel: Record<UsageKind, string> = {
-    curation: "저널 큐레이션 분석",
+    curation: "저널 트렌드 분석",
     tts: "TTS 변환",
-    fulltext: "풀텍스트 요약",
+    fulltext: "요약",
   };
+  // tier별 차등 CTA — TTS는 Balanced/Pro로 등급 차이 있음, 그 외는 Balanced 한 번에 무제한.
   const cta = isLoggedIn
-    ? "BYOK(9,900원·평생) 또는 Pro(4,900원/월) 업그레이드, 또는 본인 Gemini API 키를 설정 → API 키에 입력하면 무제한입니다."
-    : "로그인하면 사용자 단위로 카운트되고, 본인 Gemini API 키를 설정 → API 키에 입력하면 무제한입니다.";
-  return `이번 달 ${kindLabel[kind]} 무료 한도(${result.limit}회)를 모두 사용했습니다. ${cta}`;
+    ? kind === "tts"
+      ? "Balanced(4,900원/월·TTS 50회) 또는 Pro(9,900원/월·TTS 150회), BYOK(19,900원·평생 + 본인 키 무제한) 중 선택해 업그레이드하세요."
+      : "Balanced(4,900원/월) 또는 Pro(9,900원/월)로 업그레이드하면 무제한입니다."
+    : "로그인 후 Balanced/Pro 구독 또는 BYOK 결제로 한도를 해제할 수 있습니다.";
+  return `이번 달 ${kindLabel[kind]} 한도(${result.limit}회)를 모두 사용했습니다. ${cta}`;
 }

@@ -109,6 +109,11 @@ export default function AccountPage() {
   const planLabel = (() => {
     if (!sub || !sub.plan) return m.account.planFree;
     if (sub.plan === "byok") return sub.admin ? m.account.planByokAdmin : m.account.planByokLifetime;
+    if (sub.plan === "balanced") {
+      if (sub.status === "cancelled") return m.account.planBalancedCancelled;
+      if (sub.status === "suspended") return m.account.planBalancedSuspended;
+      return m.account.planBalancedMonthly;
+    }
     if (sub.status === "cancelled") return m.account.planProCancelled;
     if (sub.status === "suspended") return m.account.planProSuspended;
     return m.account.planProMonthly;
@@ -172,7 +177,7 @@ export default function AccountPage() {
         ) : (
           <div className="mt-3 space-y-3 text-sm">
             <div className={`text-base font-semibold ${planColor}`}>{planLabel}</div>
-            {sub?.plan === "pro" ? (
+            {sub?.plan === "pro" || sub?.plan === "balanced" ? (
               <>
                 {sub.nextBillingAt ? (
                   <div className="text-xs text-paperis-text-3">
@@ -253,7 +258,9 @@ export default function AccountPage() {
           <p className="mt-3 text-xs text-paperis-text-3">
             {usage.plan === "byok"
               ? m.account.byokNoQuota
-              : m.account.proNoQuota}
+              : usage.plan === "balanced"
+                ? m.account.balancedTtsQuota
+                : m.account.proNoQuota}
           </p>
         ) : null}
       </section>

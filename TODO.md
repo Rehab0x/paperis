@@ -1,6 +1,6 @@
 # Paperis — TODO / 진척 기록
 
-> 마지막 갱신: 2026-05-16 (service-cleanup Phase A — TTS 비용 정리 + Gemini 모델 tier 재구성)
+> 마지막 갱신: 2026-05-16 (service-cleanup Phase A·B — TTS 비용 정리 + 모델 tier + 요금제 재구성)
 > 외부 노출 문서는 [README.md](README.md), 컨텍스트는 [CLAUDE.md](CLAUDE.md). 이 파일은 작업 일지·기술부채·의사결정 기록 보관용.
 
 ---
@@ -99,8 +99,20 @@
     - [lib/gemini.ts:254](lib/gemini.ts#L254) `streamSummary` — read(긴 요약) → heavy, narration(스크립트) → balanced (mode 분기)
     - [lib/query-translator.ts:54](lib/query-translator.ts#L54) — 자연어 검색 `fast` → `balanced` (3.1 Lite 새 모델 활용)
   - 변경 없음 (자동 모델 갱신만 적용): title-translate(fast), summary 미니(balanced), trend headline(fast), trend full(heavy)
-- ⬜ **Phase B (내일+): 요금제 재구성** — `subscriptions.plan`에 "balanced" 추가, PRICING 갱신(BYOK 19,900 / Pro 9,900 / Balanced 4,900), UsageKind 재해석(`fulltext`→긴+풀텍스트 요약 통합 / `curation`→트렌드 풀 분석만), Free 한도: 검색 ∞ / 요약 10 / TTS 5 / 트렌드 3
-- ⬜ **Phase C: Logout 제한 + UI 잠금** — 비로그인은 트렌드 헤드라인만 허용(검색/요약/TTS 불가), Settings drawer AI/TTS provider 섹션은 BYOK 게이트, 구독자는 TTS = Google Cloud 강제, billing 페이지에서 BYOK는 하단 hypertext로 격하
+- ✅ **Phase B: 요금제 재구성 + 한도 차등** (2026-05-16)
+  - **PRICING 갱신** ([lib/billing.ts](lib/billing.ts)): BYOK 9,900→**19,900**, Pro 4,900→**9,900**, **Balanced 4,900 신설**. `newOrderId(prefix)`에 "balanced" 추가
+  - **Plan 추가** ([lib/usage.ts](lib/usage.ts)): `Plan = "free" | "balanced" | "pro" | "byok"`. `getPlan()` DB row 검사에 balanced 포함
+  - **per-plan LIMITS 도입** — 단일 `FREE_LIMITS` → `LIMITS: Record<Plan, Record<UsageKind, number>>`. Free 한도 fulltext 3→**10**, balanced.tts=50, pro.tts=150, byok 모두 ∞. `checkAndIncrement`/`getUsageSnapshot`이 Infinity 자동 처리 (DB 카운트 스킵)
+  - **UsageKind 의미 재해석** (이름 유지 — DB add-only):
+    - `curation` = 트렌드 풀 분석만 (issues/topic/trend-headline은 카운트 제거)
+    - `fulltext` = 긴 요약 (`/api/summarize/read`) 그대로
+    - `tts` = 그대로
+  - **라우트 카운트 제거**: `/api/journal/issues`, `/api/journal/topic`, `/api/journal/trend-headline` — 검색 동급 무제한
+  - **AI provider 잠금** ([lib/ai/registry.ts](lib/ai/registry.ts)): Free/Balanced/Pro = default(Gemini) 강제. BYOK만 본인 키로 자유 선택. Admin은 본인 키 + env 합집합. (Pro의 provider 선택권 제거 — 사용자 명시 정책)
+  - **결제 라우트 balanced 지원**: `/api/billing/checkout`(plan 검증), `/api/billing/charge-first`(body.plan 분기). `/api/account/subscription`도 balanced 처리 (해지/next billing)
+  - **메시지** (`messages/{ko,en}.json`): `usage.kind.fulltext` "풀텍스트 요약"→"요약", upgradeHint 신가격, billing byokPrice/proPrice 갱신, byokGateFree 한도 텍스트, 신규 `planBalanced*` + `balancedTtsQuota` 라벨
+  - **UsageBanner**: 모든 finite-limit plan에 표시 (Free + Balanced + Pro의 TTS). BYOK만 제외
+- ⬜ **Phase C (다음 세션): Logout 제한 + UI 잠금** — 비로그인은 트렌드 헤드라인만 허용(검색/요약/TTS 불가), Settings drawer AI/TTS provider 섹션은 BYOK 게이트, 구독자는 TTS = Google Cloud 강제 (`resolveTtsProvider`에 plan 인자), billing 페이지 4-plan UI 재배치 (Free/Balanced/Pro 메인 + BYOK 하단 hypertext)
 - ⬜ **Phase D: Cron balanced + 회귀 체크리스트** — `/api/cron/recurring-billing`이 balanced 플랜 자동결제 처리, 라이브 회귀 6단계 수동 검증
 
 ---

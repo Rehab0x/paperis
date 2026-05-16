@@ -61,15 +61,22 @@ export default function UsageBanner() {
   }, []);
 
   if (!usage || dismissed) return null;
-  if (usage.plan !== "free") return null;
+  // BYOK는 모든 한도 ∞ — 배너 안 뜸. Free/Balanced/Pro는 finite 한도 있는 kind만 점검.
+  if (usage.plan === "byok") return null;
 
-  // 어떤 종류든 remaining=0이면 "초과", remaining<=1이면 "임박"
+  // 어떤 종류든 remaining=0이면 "초과", remaining<=1이면 "임박".
+  // limit이 Infinity인 항목은 자동 제외 (remaining도 Infinity → 조건 false).
   const exhausted = (
     ["curation", "tts", "fulltext"] as const
-  ).filter((k) => usage[k].remaining <= 0);
+  ).filter((k) => Number.isFinite(usage[k].limit) && usage[k].remaining <= 0);
   const nearing = (
     ["curation", "tts", "fulltext"] as const
-  ).filter((k) => usage[k].remaining > 0 && usage[k].remaining <= 1);
+  ).filter(
+    (k) =>
+      Number.isFinite(usage[k].limit) &&
+      usage[k].remaining > 0 &&
+      usage[k].remaining <= 1
+  );
 
   if (exhausted.length === 0 && nearing.length === 0) return null;
 

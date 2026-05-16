@@ -1,14 +1,16 @@
-// /api/billing/charge-first — Pro 첫 달 결제. 빌링키 발급 직후 호출.
+// /api/billing/charge-first — Pro/Balanced 첫 달 결제. 빌링키 발급 직후 호출.
+//
+// 입력: { plan: "balanced" | "pro" } (default = "pro" 하위호환)
 //
 // 흐름:
 //   1. /api/billing/issue-billing-key로 billingKey 저장됨
-//   2. 이 라우트가 chargeBilling으로 첫 4,900원 결제
-//   3. 성공 시 subscriptions: plan='pro' status='active' expiresAt=now+30일
+//   2. 이 라우트가 chargeBilling으로 첫 결제 (Balanced 4,900 / Pro 9,900)
+//   3. 성공 시 subscriptions: plan / status='active' / expiresAt=now+30일
 //
 // 별도 라우트 이유: 빌링키 발급과 결제는 분리해야 재시도가 깔끔함. 발급만 됐고
 // 결제 실패한 경우 사용자에게 "다시 시도" UX 제공 (카드 한도 등 일시적 문제).
 //
-// 출력: { ok, plan: 'pro', status: 'active', expiresAt }
+// 출력: { ok, plan, status: 'active', expiresAt }
 
 import { NextResponse } from "next/server";
 import { eq } from "drizzle-orm";
@@ -41,7 +43,17 @@ export async function POST(req: Request) {
       { status: 401 }
     );
   }
-  void req; // body 사용 안 함 — 모든 정보는 DB에서
+  // body에서 plan 읽기 — default "pro"로 하위호환. body 비거나 잘못된 plan이면 pro
+  let requestedPlan: "balanced" | "pro" = "pro";
+  try {
+    const body = (await req.json()) as { plan?: unknown };
+    if (body.plan === "balanced") requestedPlan = "balanced";
+    else if (body.plan === "pro") requestedPlan = "pro";
+  } catch {
+    // 빈 body 등은 무시 — default pro
+  }
+  const pricing =
+    requestedPlan === "balanced" ? PRICING.balancedMonthly : PRICING.proMonthly;
 
   // subscriptions에서 billingKey 조회
   let sub: typeof subscriptions.$inferSelect | null = null;
@@ -73,26 +85,26 @@ export async function POST(req: Request) {
       { status: 400 }
     );
   }
-  // 이미 활성 Pro면 idempotent — 그대로 반환
-  if (sub.status === "active" && sub.plan === "pro") {
+  // 이미 활성 (요청한 plan과 동일)이면 idempotent — 그대로 반환
+  if (sub.status === "active" && sub.plan === requestedPlan) {
     return NextResponse.json({
       ok: true,
-      plan: "pro" as const,
+      plan: requestedPlan,
       status: "active" as const,
       expiresAt: sub.expiresAt?.toISOString(),
       already: true,
     });
   }
 
-  const orderId = newOrderId("pro", session.user.id);
+  const orderId = newOrderId(requestedPlan, session.user.id);
   let payment;
   try {
     payment = await chargeBilling({
       billingKey: sub.tossBillingKey,
       customerKey: sub.tossCustomerKey,
-      amount: PRICING.proMonthly.amount,
+      amount: pricing.amount,
       orderId,
-      orderName: PRICING.proMonthly.label,
+      orderName: pricing.label,
       customerEmail: userRow?.email ?? undefined,
       customerName: userRow?.name ?? undefined,
     });
@@ -125,7 +137,7 @@ export async function POST(req: Request) {
       .update(subscriptions)
       .set({
         status: "active",
-        plan: "pro",
+        plan: requestedPlan,
         expiresAt,
         updatedAt: new Date(),
       })
@@ -147,7 +159,7 @@ export async function POST(req: Request) {
 
   return NextResponse.json({
     ok: true,
-    plan: "pro" as const,
+    plan: requestedPlan,
     status: "active" as const,
     expiresAt: expiresAt.toISOString(),
     orderId: payment.orderId,

@@ -18,7 +18,7 @@ import type { ApiError } from "@/types";
 export const runtime = "nodejs";
 
 export interface SubscriptionDto {
-  plan: "byok" | "pro" | null;
+  plan: "byok" | "balanced" | "pro" | null;
   status: "active" | "inactive" | "suspended" | "cancelled" | string;
   expiresAt: string | null;
   hasBillingKey: boolean;
@@ -93,16 +93,17 @@ export async function GET() {
       return NextResponse.json(empty);
     }
     // 실제 구독이 있더라도 admin이면 plan을 byok로 끌어올림 (admin은 항상 BYOK 효과)
-    const effectivePlan: "byok" | "pro" | null = isAdmin
+    const effectivePlan: "byok" | "balanced" | "pro" | null = isAdmin
       ? "byok"
-      : ((row.plan as "byok" | "pro" | null) ?? null);
+      : ((row.plan as "byok" | "balanced" | "pro" | null) ?? null);
+    const isMonthlySubscriber = row.plan === "pro" || row.plan === "balanced";
     const dto: SubscriptionDto = {
       plan: effectivePlan,
       status: isAdmin ? "active" : row.status,
       expiresAt: row.expiresAt?.toISOString() ?? null,
       hasBillingKey: Boolean(row.tossBillingKey),
       nextBillingAt:
-        row.plan === "pro" && row.status === "active" && row.tossBillingKey
+        isMonthlySubscriber && row.status === "active" && row.tossBillingKey
           ? (row.expiresAt?.toISOString() ?? null)
           : null,
       ...(isAdmin ? { admin: true } : {}),
@@ -147,11 +148,11 @@ export async function DELETE() {
         { status: 404 }
       );
     }
-    if (row.plan !== "pro") {
+    if (row.plan !== "pro" && row.plan !== "balanced") {
       return NextResponse.json<ApiError>(
         {
           error:
-            "Pro 구독만 해지할 수 있습니다. BYOK는 평생 이용권이라 해지가 의미 없습니다.",
+            "월 구독(Balanced/Pro)만 해지할 수 있습니다. BYOK는 평생 이용권이라 해지가 의미 없습니다.",
         },
         { status: 400 }
       );

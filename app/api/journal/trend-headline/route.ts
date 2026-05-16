@@ -15,12 +15,7 @@ import { getRequestLanguage } from "@/lib/i18n";
 import { TTL_24H, getCached, setCached } from "@/lib/journal-cache";
 import { searchPubMed } from "@/lib/pubmed";
 import { generateTrendHeadline } from "@/lib/trend";
-import {
-  checkAndIncrement,
-  getIdentityKey,
-  getPlan,
-  limitExceededMessage,
-} from "@/lib/usage";
+// Phase B에서 카운트 제거 — Logout 사용자도 홈 헤드라인은 봐야 함 (Phase C 정책)
 import { applyUserKeysToEnv } from "@/lib/user-keys";
 import type { ApiError, Paper } from "@/types";
 
@@ -145,20 +140,8 @@ export async function GET(req: Request) {
     });
   }
 
-  // Free 한도 — 라이트지만 Gemini 호출이라 curation 카테고리로 카운트
-  const identityKey = await getIdentityKey(req);
-  const plan = await getPlan(req);
-  const usage = await checkAndIncrement(identityKey, "curation", plan);
-  if (!usage.allowed) {
-    return jsonError(
-      limitExceededMessage(
-        "curation",
-        usage,
-        identityKey?.startsWith("anon:") === false
-      ),
-      429
-    );
-  }
+  // service-cleanup Phase B (2026-05-16): 헤드라인은 카운트 안 함.
+  // Logout 사용자도 홈 트렌드 헤드라인은 보여야 한다는 정책. fast tier(2.5 Lite)라 비용도 작음.
 
   // 1) PubMed 검색 — recency 정렬, retmax 20
   const term = `${issn}[ISSN] AND ("${year}/${pad2(period.fromMonth)}/01"[PDAT] : "${year}/${pad2(period.toMonth)}/${pad2(period.toDay)}"[PDAT])`;

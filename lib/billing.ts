@@ -161,7 +161,10 @@ export async function chargeBilling(
  * orderId 생성 — `${prefix}-${userId}-${timestamp}-${random}`. Toss는 ASCII 64자
  * 안에서 어떤 형식이든 OK. 우리는 결제 종류·사용자·시간 식별을 위해 패턴 통일.
  */
-export function newOrderId(prefix: "byok" | "pro", userId: string): string {
+export function newOrderId(
+  prefix: "byok" | "pro" | "balanced",
+  userId: string
+): string {
   const ts = Date.now();
   const rand = Math.floor(Math.random() * 1_000_000)
     .toString(36)
@@ -174,16 +177,27 @@ export function isLiveBilling(): boolean {
   return process.env.TOSS_LIVE_MODE === "1";
 }
 
-/** 결제 가격 — 환경에 따라 조정 가능. 일단 코드 상수로 (M8 직전 사용자 결정) */
+/**
+ * 결제 가격 — service-cleanup Phase B (2026-05-16) 재구성.
+ *   BYOK 1회: 9,900 → 19,900 (본인 키 + provider 자유 권한)
+ *   Pro 월: 4,900 → 9,900 (TTS 150회/월)
+ *   Balanced 월 (신설): 4,900 (TTS 50회/월)
+ * 결제 라우트 + cron이 이 상수를 단일 source-of-truth로 참조.
+ */
 export const PRICING = {
-  /** BYOK 1회 결제 — 평생 한도 우회 */
+  /** BYOK 1회 결제 — 평생 한도 우회 + 본인 키로 provider 자유 선택 */
   byokOnce: {
-    amount: 9900,
-    label: "BYOK 평생 — 9,900원 (1회)",
+    amount: 19900,
+    label: "BYOK 평생 — 19,900원 (1회)",
   },
-  /** Pro 월 구독 */
-  proMonthly: {
+  /** Balanced 월 구독 — 검색·요약 무제한 + TTS 50회/월 */
+  balancedMonthly: {
     amount: 4900,
-    label: "Pro 월 구독 — 4,900원/월",
+    label: "Balanced 월 구독 — 4,900원/월",
+  },
+  /** Pro 월 구독 — 검색·요약 무제한 + TTS 150회/월 */
+  proMonthly: {
+    amount: 9900,
+    label: "Pro 월 구독 — 9,900원/월",
   },
 } as const;
