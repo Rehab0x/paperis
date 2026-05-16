@@ -392,7 +392,22 @@
       "pSpecialties": "임상과",
       "pFavorites": "즐겨찾기",
       "pAdditions": "직접 추가",
-      "pBlocks": "차단"
+      "pBlocks": "차단",
+      "auditLink": "감사 로그 →",
+      "auditTitle": "감사 로그",
+      "auditIntro": "관리자 액션 영구 기록 — 최근순.",
+      "auditTableMissing": "admin_audit_log 테이블이 아직 없습니다. drizzle-kit push 후 다시 확인하세요.",
+      "auditEmpty": "기록이 없습니다.",
+      "auditAt": "시각",
+      "auditAction": "액션",
+      "auditAdmin": "관리자",
+      "auditTarget": "대상",
+      "auditDetails": "세부",
+      "auditActions": {
+        "plan_change": "Plan 변경",
+        "subscription_cancel": "구독 해지",
+        "user_delete": "계정 삭제"
+      }
     },
     "journalDetail": {
       "metaFallback": "저널 — Paperis",

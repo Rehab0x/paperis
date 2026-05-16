@@ -216,3 +216,26 @@ export const subscriptions = pgTable("subscriptions", {
     .notNull()
     .default(sql`now()`),
 });
+
+/**
+ * 관리자 감사 로그 — admin 액션 영구 기록.
+ *
+ * email은 스냅샷(adminEmail/targetEmail) — 사용자 row가 추후 변경·삭제되어도 로그는 보존.
+ * targetUserId는 FK 없음 (사용자 삭제 후에도 로그 유지).
+ * action: 'plan_change' | 'subscription_cancel' | 'user_delete'
+ * details: 액션별 컨텍스트 (fromPlan/toPlan/durationDays/expiresAt 등)
+ */
+export const adminAuditLog = pgTable("admin_audit_log", {
+  id: text("id")
+    .primaryKey()
+    .$defaultFn(() => crypto.randomUUID()),
+  adminUserId: text("admin_user_id").notNull(),
+  adminEmail: text("admin_email"),
+  action: text("action").notNull(),
+  targetUserId: text("target_user_id").notNull(),
+  targetEmail: text("target_email"),
+  details: jsonb("details"),
+  createdAt: timestamp("created_at", { mode: "date" })
+    .notNull()
+    .default(sql`now()`),
+});

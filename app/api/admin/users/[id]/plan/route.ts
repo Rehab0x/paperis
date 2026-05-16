@@ -11,8 +11,9 @@
 import { NextResponse } from "next/server";
 import { eq } from "drizzle-orm";
 import { isCurrentUserAdmin } from "@/lib/admin";
+import { logAdminAction } from "@/lib/admin-audit";
 import { getDb, hasDb } from "@/lib/db";
-import { subscriptions } from "@/lib/db/schema";
+import { subscriptions, users } from "@/lib/db/schema";
 import type { ApiError } from "@/types";
 
 export const runtime = "nodejs";
@@ -78,9 +79,29 @@ export async function PATCH(
 
   try {
     const db = getDb();
+
+    // 변경 전 plan 스냅샷 + 대상 이메일 (audit log용)
+    const beforeRows = await db
+      .select({
+        plan: subscriptions.plan,
+        email: users.email,
+      })
+      .from(users)
+      .leftJoin(subscriptions, eq(subscriptions.userId, users.id))
+      .where(eq(users.id, id))
+      .limit(1);
+    const fromPlan = beforeRows[0]?.plan ?? null;
+    const targetEmail = beforeRows[0]?.email ?? null;
+
     if (plan === "free") {
       // free = subscriptions row 삭제 (없으면 noop)
       await db.delete(subscriptions).where(eq(subscriptions.userId, id));
+      await logAdminAction({
+        action: "plan_change",
+        targetUserId: id,
+        targetEmail,
+        details: { fromPlan, toPlan: "free" },
+      });
       return NextResponse.json({ ok: true, plan: "free" });
     }
 
@@ -110,6 +131,17 @@ export async function PATCH(
           updatedAt: now,
         },
       });
+    await logAdminAction({
+      action: "plan_change",
+      targetUserId: id,
+      targetEmail,
+      details: {
+        fromPlan,
+        toPlan: plan,
+        durationDays: plan === "byok" ? undefined : durationDays,
+        expiresAt: expiresAt?.toISOString() ?? null,
+      },
+    });
     return NextResponse.json({
       ok: true,
       plan,

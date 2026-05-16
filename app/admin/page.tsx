@@ -101,9 +101,17 @@ export default async function AdminUsersPage({ searchParams }: Props) {
 
   return (
     <main className="mx-auto w-full max-w-6xl flex-1 px-4 py-8 pb-32">
-      <h1 className="font-serif text-3xl font-medium tracking-tight text-paperis-text">
-        {m.admin.usersTitle}
-      </h1>
+      <div className="flex items-center justify-between gap-3">
+        <h1 className="font-serif text-3xl font-medium tracking-tight text-paperis-text">
+          {m.admin.usersTitle}
+        </h1>
+        <Link
+          href="/admin/audit"
+          className="inline-flex h-8 items-center rounded-lg border border-paperis-border bg-paperis-surface px-3 text-xs text-paperis-text-2 transition hover:border-paperis-accent hover:text-paperis-accent"
+        >
+          {m.admin.auditLink}
+        </Link>
+      </div>
       <p className="mt-1 text-sm text-paperis-text-2">
         {fmt(m.admin.usersIntro, {
           count: visible.length,

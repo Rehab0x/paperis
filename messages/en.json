@@ -392,7 +392,22 @@
       "pSpecialties": "Specialties",
       "pFavorites": "Favorites",
       "pAdditions": "Added by user",
-      "pBlocks": "Blocked"
+      "pBlocks": "Blocked",
+      "auditLink": "Audit log →",
+      "auditTitle": "Audit log",
+      "auditIntro": "Permanent record of admin actions — newest first.",
+      "auditTableMissing": "admin_audit_log table doesn't exist yet. Run drizzle-kit push first.",
+      "auditEmpty": "No records.",
+      "auditAt": "Time",
+      "auditAction": "Action",
+      "auditAdmin": "Admin",
+      "auditTarget": "Target",
+      "auditDetails": "Details",
+      "auditActions": {
+        "plan_change": "Plan change",
+        "subscription_cancel": "Cancel subscription",
+        "user_delete": "Delete account"
+      }
     },
     "journalDetail": {
       "metaFallback": "Journal — Paperis",

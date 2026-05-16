@@ -11,6 +11,7 @@ import { NextResponse } from "next/server";
 import { eq } from "drizzle-orm";
 import { auth } from "@/auth";
 import { isAdminEmail, isCurrentUserAdmin } from "@/lib/admin";
+import { logAdminAction } from "@/lib/admin-audit";
 import { getDb, hasDb } from "@/lib/db";
 import { usageMonthly, users } from "@/lib/db/schema";
 import type { ApiError } from "@/types";
@@ -61,6 +62,17 @@ export async function DELETE(
         { status: 404 }
       );
     }
+
+    // audit log는 user 삭제 전에 (FK cascade 후 logAdminAction이 session 조회는 admin user라 안전하지만,
+    // 명시적으로 deletion 전 기록)
+    await logAdminAction({
+      action: "user_delete",
+      targetUserId: id,
+      targetEmail: target[0].email ?? null,
+      details: {
+        note: isAdminEmail(target[0].email) ? "target was admin" : undefined,
+      },
+    });
 
     await db.delete(usageMonthly).where(eq(usageMonthly.identityKey, id));
     await db.delete(users).where(eq(users.id, id));

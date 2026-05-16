@@ -6,8 +6,9 @@
 import { NextResponse } from "next/server";
 import { eq } from "drizzle-orm";
 import { isCurrentUserAdmin } from "@/lib/admin";
+import { logAdminAction } from "@/lib/admin-audit";
 import { getDb, hasDb } from "@/lib/db";
-import { subscriptions } from "@/lib/db/schema";
+import { subscriptions, users } from "@/lib/db/schema";
 import type { ApiError } from "@/types";
 
 export const runtime = "nodejs";
@@ -58,6 +59,23 @@ export async function POST(
         updatedAt: new Date(),
       })
       .where(eq(subscriptions.userId, id));
+
+    // 대상 이메일 — audit log용
+    const userRow = await db
+      .select({ email: users.email })
+      .from(users)
+      .where(eq(users.id, id))
+      .limit(1);
+    await logAdminAction({
+      action: "subscription_cancel",
+      targetUserId: id,
+      targetEmail: userRow[0]?.email ?? null,
+      details: {
+        fromPlan: row.plan,
+        expiresAt: row.expiresAt?.toISOString() ?? null,
+      },
+    });
+
     return NextResponse.json({
       ok: true,
       expiresAt: row.expiresAt?.toISOString() ?? null,
