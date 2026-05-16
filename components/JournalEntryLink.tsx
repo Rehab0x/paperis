@@ -21,7 +21,7 @@ export default function JournalEntryLink({ className }: { className?: string }) 
         "inline-flex items-center justify-center rounded-lg p-1.5 text-lg text-paperis-text-2 transition hover:bg-paperis-surface-2 hover:text-paperis-text"
       }
     >
-      📚
+      🩺
     </Link>
   );
 }

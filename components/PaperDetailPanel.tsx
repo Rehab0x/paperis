@@ -251,7 +251,7 @@ export default function PaperDetailPanel({ paper, onBack }: Props) {
   return (
     <div
       ref={rootRef}
-      className="scroll-mt-20 rounded-2xl border border-paperis-border bg-paperis-surface p-5 lg:sticky lg:top-32 lg:max-h-[calc(100vh-9rem)] lg:overflow-auto lg:scroll-mt-32"
+      className="scroll-mt-20 rounded-2xl border border-paperis-border bg-paperis-surface p-5 lg:sticky lg:top-32 lg:scroll-mt-32"
     >
       {onBack ? (
         <button

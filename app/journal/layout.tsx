@@ -1,6 +1,7 @@
 import { Suspense } from "react";
 import Link from "next/link";
 import AuthMenu from "@/components/AuthMenu";
+import JournalEntryLink from "@/components/JournalEntryLink";
 import LibraryLink from "@/components/LibraryLink";
 import SettingsLink from "@/components/SettingsLink";
 import TtsQueueBadge from "@/components/TtsQueueBadge";
@@ -33,6 +34,7 @@ export default function JournalLayout({
           <Suspense fallback={null}>
             <div className="flex items-center gap-0.5">
               <TtsQueueBadge />
+              <JournalEntryLink className="inline-flex h-8 w-8 items-center justify-center rounded-lg text-base text-paperis-text-2 transition hover:bg-paperis-surface-2 hover:text-paperis-text" />
               <LibraryLink className="relative inline-flex h-8 w-8 items-center justify-center rounded-lg text-paperis-text-2 transition hover:bg-paperis-surface-2 hover:text-paperis-text" />
               <SettingsLink className="inline-flex h-8 w-8 items-center justify-center rounded-lg text-base text-paperis-text-2 transition hover:bg-paperis-surface-2 hover:text-paperis-text" />
               <AuthMenu />
