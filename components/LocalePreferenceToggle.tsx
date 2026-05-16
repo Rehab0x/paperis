@@ -12,7 +12,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { LOCALE_COOKIE, LOCALE_COOKIE_MAX_AGE, type Locale } from "@/lib/i18n";
-import { useLocale } from "@/components/useLocale";
+import { useLocale, LOCALE_CHANGE_EVENT } from "@/components/useLocale";
 
 export default function LocalePreferenceToggle() {
   const current = useLocale();
@@ -23,6 +23,8 @@ export default function LocalePreferenceToggle() {
     if (busy || next === current) return;
     setBusy(true);
     document.cookie = `${LOCALE_COOKIE}=${next}; Path=/; Max-Age=${LOCALE_COOKIE_MAX_AGE}; SameSite=Lax`;
+    // 모든 useLocale 사용 컴포넌트가 즉시 re-render — UI 즉각 반영
+    window.dispatchEvent(new Event(LOCALE_CHANGE_EVENT));
     try {
       // 로그인 사용자만 DB 저장. 비로그인은 401 — 무시.
       await fetch("/api/account/locale", {
@@ -31,9 +33,9 @@ export default function LocalePreferenceToggle() {
         body: JSON.stringify({ locale: next }),
       });
     } catch {
-      // 네트워크 실패 — 쿠키는 이미 set, UI는 정상. 다음 가입·결제 시 재시도되지 않음
-      // (사용자가 다시 토글 시 다시 PATCH 시도)
+      // 네트워크 실패 — 쿠키는 이미 set, UI는 정상
     }
+    // server components(예: /admin) 도 새 locale로 재 fetch
     router.refresh();
     setBusy(false);
   }
