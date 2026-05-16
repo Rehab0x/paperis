@@ -1,6 +1,8 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { and, eq, sql } from "drizzle-orm";
+import { auth } from "@/auth";
+import AdminUserActions from "@/components/AdminUserActions";
 import { getDb, hasDb } from "@/lib/db";
 import {
   subscriptions,
@@ -188,7 +190,44 @@ export default async function AdminUserDetailPage({ params }: Props) {
           <StatBlock label={m.admin.pBlocks} value={blockCount[0]?.c ?? 0} />
         </div>
       </section>
+
+      {/* 관리자 액션 — Plan 변경 / 해지 / 삭제 */}
+      <AdminActionsWrapper
+        userId={user.id}
+        userEmail={user.email}
+        effectivePlan={effectivePlan}
+        hasActiveSub={
+          sub?.plan === "pro" || sub?.plan === "balanced"
+            ? sub.status === "active" || sub.status === "cancelled"
+            : false
+        }
+      />
     </main>
+  );
+}
+
+async function AdminActionsWrapper({
+  userId,
+  userEmail,
+  effectivePlan,
+  hasActiveSub,
+}: {
+  userId: string;
+  userEmail: string | null;
+  effectivePlan: "free" | "balanced" | "pro" | "byok";
+  hasActiveSub: boolean;
+}) {
+  // 본인 계정 보호 — admin이 자기 자신 페이지 보고 있으면 삭제 disable
+  const session = await auth();
+  const isSelf = session?.user?.id === userId;
+  return (
+    <AdminUserActions
+      userId={userId}
+      userEmail={userEmail}
+      currentPlan={effectivePlan}
+      hasActiveSub={hasActiveSub}
+      isSelf={isSelf}
+    />
   );
 }
 
