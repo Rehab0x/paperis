@@ -55,18 +55,24 @@ export default function ContinueListeningCard() {
 
   if (!latest) return null;
 
+  const totalMin = Math.max(1, Math.round((latest.durationMs ?? 0) / 60000));
+  const isCurrent =
+    player.currentIndex >= 0 &&
+    player.queue[player.currentIndex]?.id === latest.id;
+
   function handlePlay() {
     if (!latest) return;
+    // 이미 현재 큐에 있는 트랙이면 재생/일시정지 토글 — 처음부터 다시 재생 회피.
+    // 다른 트랙이거나 새로 시작이면 큐 세팅 + 처음부터 재생.
+    if (isCurrent) {
+      player.togglePlay();
+      return;
+    }
     const idx = tracks.findIndex((t) => t.id === latest.id);
     if (idx >= 0) {
       player.playFromIndex(tracks, idx);
     }
   }
-
-  const totalMin = Math.max(1, Math.round((latest.durationMs ?? 0) / 60000));
-  const isCurrent =
-    player.currentIndex >= 0 &&
-    player.queue[player.currentIndex]?.id === latest.id;
   const progress =
     isCurrent && player.durationMs > 0
       ? Math.min(1, player.currentTimeMs / player.durationMs)
