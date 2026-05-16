@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { count, eq, gte, sql } from "drizzle-orm";
+import { count, desc, eq, gte, sql } from "drizzle-orm";
 import { getDb, hasDb } from "@/lib/db";
 import { subscriptions, usageMonthly, users } from "@/lib/db/schema";
 import { currentYearMonthKST } from "@/lib/usage";
@@ -83,6 +83,26 @@ export default async function AdminMetricsPage() {
       .groupBy(sql`to_char(${users.createdAt} AT TIME ZONE 'Asia/Seoul', 'YYYY-MM-DD')`)
       .orderBy(sql`to_char(${users.createdAt} AT TIME ZONE 'Asia/Seoul', 'YYYY-MM-DD') ASC`),
   ]);
+
+  // Heavy user top 10 — 이번 달 사용량 합계 desc. usage_monthly에 0건이면 자동 제외.
+  const heavyUsers = await db
+    .select({
+      id: users.id,
+      email: users.email,
+      name: users.name,
+      curation: usageMonthly.curationCount,
+      tts: usageMonthly.ttsCount,
+      fulltext: usageMonthly.fulltextCount,
+    })
+    .from(usageMonthly)
+    .innerJoin(users, eq(users.id, usageMonthly.identityKey))
+    .where(eq(usageMonthly.yearMonth, yearMonth))
+    .orderBy(
+      desc(
+        sql`(COALESCE(${usageMonthly.curationCount}, 0) + COALESCE(${usageMonthly.ttsCount}, 0) + COALESCE(${usageMonthly.fulltextCount}, 0))`
+      )
+    )
+    .limit(10);
 
   const totalUsers = totalUsersRow[0]?.c ?? 0;
   const onboarded = onboardedRow[0]?.c ?? 0;
@@ -255,6 +275,62 @@ export default async function AdminMetricsPage() {
             <span>{dailyTrend[dailyTrend.length - 1]?.day}</span>
           </div>
         </div>
+      </section>
+
+      {/* Heavy user top 10 — 이번 달 합계 desc. 사용량 0이면 자동 제외 */}
+      <section className="mt-8">
+        <h2 className="text-sm font-semibold text-paperis-text">
+          {m.admin.metricsHeavyUsers}
+        </h2>
+        <p className="mt-1 text-xs text-paperis-text-3">
+          {fmt(m.admin.metricsHeavyUsersHint, { yearMonth })}
+        </p>
+        {heavyUsers.length === 0 ? (
+          <div className="mt-3 rounded-lg border border-paperis-border bg-paperis-surface p-4 text-sm text-paperis-text-3">
+            {m.admin.metricsHeavyEmpty}
+          </div>
+        ) : (
+          <ol className="mt-3 overflow-hidden rounded-xl border border-paperis-border">
+            {heavyUsers.map((u, i) => {
+              const total =
+                (u.curation ?? 0) + (u.tts ?? 0) + (u.fulltext ?? 0);
+              return (
+                <li
+                  key={u.id}
+                  className="flex items-center justify-between gap-3 border-t border-paperis-border bg-paperis-surface px-4 py-2.5 text-sm first:border-t-0 hover:bg-paperis-surface-2"
+                >
+                  <div className="flex min-w-0 items-center gap-3">
+                    <span className="w-5 shrink-0 text-right text-xs font-semibold text-paperis-text-3 tabular-nums">
+                      {i + 1}
+                    </span>
+                    <Link
+                      href={`/admin/users/${u.id}`}
+                      className="min-w-0 truncate text-paperis-text underline-offset-2 hover:text-paperis-accent hover:underline"
+                    >
+                      {u.email ?? "(no email)"}
+                      {u.name ? (
+                        <span className="ml-2 text-xs text-paperis-text-3">
+                          {u.name}
+                        </span>
+                      ) : null}
+                    </Link>
+                  </div>
+                  <div className="shrink-0 text-right">
+                    <div className="text-base font-semibold tabular-nums text-paperis-text">
+                      {total}
+                    </div>
+                    <div
+                      className="text-[10px] text-paperis-text-3"
+                      title={`trend ${u.curation ?? 0} · summary ${u.fulltext ?? 0} · tts ${u.tts ?? 0}`}
+                    >
+                      {u.curation ?? 0} · {u.fulltext ?? 0} · {u.tts ?? 0}
+                    </div>
+                  </div>
+                </li>
+              );
+            })}
+          </ol>
+        )}
       </section>
     </main>
   );

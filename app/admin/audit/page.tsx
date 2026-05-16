@@ -110,6 +110,9 @@ export default async function AdminAuditPage({ searchParams }: Props) {
       <p className="mt-1 text-sm text-paperis-text-2">
         {m.admin.auditIntro}
       </p>
+      <p className="mt-0.5 text-xs text-paperis-text-3">
+        {m.admin.auditRetention}
+      </p>
 
       {/* Target 필터 활성 시 chip + 해제 */}
       {targetFilter ? (

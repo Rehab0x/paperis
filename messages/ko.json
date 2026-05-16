@@ -396,6 +396,7 @@
       "auditLink": "감사 로그 →",
       "auditTitle": "감사 로그",
       "auditIntro": "관리자 액션 영구 기록 — 최근순.",
+      "auditRetention": "보존 정책: 365일. 그 이전 기록은 매월 1일 KST 자정 cron이 자동 정리합니다. 필요 시 CSV로 미리 내보내기.",
       "auditTableMissing": "admin_audit_log 테이블이 아직 없습니다. drizzle-kit push 후 다시 확인하세요.",
       "auditEmpty": "기록이 없습니다.",
       "auditAt": "시각",
@@ -431,7 +432,10 @@
       "metricsTopUsers": "사용량 상위 사용자 보기",
       "metricsActiveUsers": "최근 활동 사용자 보기",
       "metricsSignupTrend": "최근 {days}일 신규 가입",
-      "metricsDay": "일"
+      "metricsDay": "일",
+      "metricsHeavyUsers": "사용량 상위 10명",
+      "metricsHeavyUsersHint": "{yearMonth} (KST) 사용량 합계 desc — 트렌드 + 요약 + TTS",
+      "metricsHeavyEmpty": "이번 달 사용 기록이 아직 없습니다."
     },
     "journalDetail": {
       "metaFallback": "저널 — Paperis",

@@ -396,6 +396,7 @@
       "auditLink": "Audit log →",
       "auditTitle": "Audit log",
       "auditIntro": "Permanent record of admin actions — newest first.",
+      "auditRetention": "Retention: 365 days. Older entries are auto-deleted by a cron on the 1st of each month (KST midnight). Export CSV beforehand if needed.",
       "auditTableMissing": "admin_audit_log table doesn't exist yet. Run drizzle-kit push first.",
       "auditEmpty": "No records.",
       "auditAt": "Time",
@@ -431,7 +432,10 @@
       "metricsTopUsers": "View top usage",
       "metricsActiveUsers": "View recent activity",
       "metricsSignupTrend": "New signups (last {days}d)",
-      "metricsDay": "day"
+      "metricsDay": "day",
+      "metricsHeavyUsers": "Top 10 heavy users",
+      "metricsHeavyUsersHint": "{yearMonth} (KST) total usage desc — trend + summary + TTS",
+      "metricsHeavyEmpty": "No usage records this month yet."
     },
     "journalDetail": {
       "metaFallback": "Journal — Paperis",
