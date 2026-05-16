@@ -1,6 +1,6 @@
 # Paperis — TODO / 진척 기록
 
-> 마지막 갱신: 2026-05-16 (service-cleanup Phase A·B·C — TTS·모델·요금제·UI 잠금·Logout gate 완료)
+> 마지막 갱신: 2026-05-16 (service-cleanup Phase A·B·C·D 전체 완료 — cron balanced 포함)
 > 외부 노출 문서는 [README.md](README.md), 컨텍스트는 [CLAUDE.md](CLAUDE.md). 이 파일은 작업 일지·기술부채·의사결정 기록 보관용.
 
 ---
@@ -117,7 +117,9 @@
   - **C-2 Logout 라우트 gate**: `lib/auth-gate.ts requireLogin()` 헬퍼. 10개 라우트(`/api/search`, `/api/summarize{,/read}`, `/api/fulltext`, `/api/pdf`, `/api/tts{,/text,/preview}`, `/api/journal/trend`, `/api/translate-titles`)에 401 가드. 허용 라우트: `/api/journal/{issues,topic,trend-headline,search}`, `/api/account/*`, `/api/billing/*`, `/api/cron/*`
   - **C-3 billing 4-plan UI**: 2-plan 그리드 → Balanced(좌, outline accent) + Pro(우, fill accent). BYOK는 그리드 아래 작은 hyperlink로 격하 (`byokQuietPrefix` + `byokQuietLink`). `startPayment("balanced"|"pro"|"byok")` 분기, `/billing/success?flow=balanced` 추가 → charge-first가 plan 분기
   - **C-4 서버 TTS 게이트**: `resolveTtsProvider(name, language, plan?)` plan 인자 추가. Free/Balanced/Pro = google-cloud 강제 (사용자 명시 provider 무시). BYOK/Admin만 자유 선택. 클라 헤더 위조 방지. 3개 TTS 라우트 모두 plan 전달 (preview는 getPlan 새로 추가)
-- ⬜ **Phase D: Cron balanced + 회귀 체크리스트** — `/api/cron/recurring-billing`이 balanced 플랜 자동결제 처리, 라이브 회귀 6단계 수동 검증
+- ✅ **Phase D: Cron balanced 자동결제** (2026-05-16)
+  - `/api/cron/recurring-billing` 갱신: WHERE `plan IN ('pro','balanced')`로 확장 (drizzle `inArray`), plan별 PRICING 분기(`balancedMonthly` vs `proMonthly`), `newOrderId(planPrefix, ...)` plan 명시. 매일 KST 자정 cron이 만료 Pro/Balanced 모두 자동결제 시도, 실패 시 status='suspended'
+  - 회귀 6단계 체크리스트는 사용자가 라이브 검증 (CLAUDE.md §라이브 진화 안전 가드 §4)
 
 ---
 

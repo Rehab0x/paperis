@@ -1,22 +1,24 @@
-// /api/cron/recurring-billing — Vercel Cron이 매일 호출. 만료된 Pro 구독을 자동결제.
+// /api/cron/recurring-billing — Vercel Cron이 매일 호출. 만료된 Pro/Balanced 구독을 자동결제.
 //
 // 보안: Authorization: Bearer ${CRON_SECRET} 검증. Vercel cron은 자동으로
 // `Authorization: Bearer ${process.env.CRON_SECRET}` 헤더를 붙임 (vercel.json에서 설정).
 // 외부에서 호출되면 401.
 //
 // 알고리즘:
-//   1. SELECT users WHERE plan='pro' AND status='active' AND expiresAt <= NOW()
-//   2. 각 사용자에 대해 chargeBilling
+//   1. SELECT users WHERE plan IN ('pro','balanced') AND status='active' AND expiresAt <= NOW()
+//   2. 각 사용자에 대해 plan별 PRICING 금액으로 chargeBilling
 //      - DONE → expiresAt += 30일
 //      - 실패 → status='suspended' (다음 cron이 다시 시도하지 않음)
 //   3. 결과 집계 + 로그
+//
+// service-cleanup Phase D (2026-05-16): balanced plan 추가. plan별 amount/orderName 분기.
 //
 // idempotency: orderId가 매번 새로 생성되므로 같은 사용자를 재호출해도 중복 결제
 // 안 됨 (Toss Idempotency-Key는 다른 orderId면 다른 결제로 처리 — 그래서 expiresAt
 // 가드가 1차 방어선).
 
 import { NextResponse } from "next/server";
-import { and, eq, lte } from "drizzle-orm";
+import { and, eq, inArray, lte } from "drizzle-orm";
 import {
   chargeBilling,
   newOrderId,
@@ -59,9 +61,10 @@ export async function GET(req: Request) {
   const db = getDb();
   const now = new Date();
 
-  // 만료된 활성 Pro 구독 조회 — userRow와 join
+  // 만료된 활성 Pro/Balanced 구독 조회 — userRow와 join
   let due: Array<{
     userId: string;
+    plan: string | null;
     customerKey: string | null;
     billingKey: string | null;
     email: string | null;
@@ -71,6 +74,7 @@ export async function GET(req: Request) {
     due = await db
       .select({
         userId: subscriptions.userId,
+        plan: subscriptions.plan,
         customerKey: subscriptions.tossCustomerKey,
         billingKey: subscriptions.tossBillingKey,
         email: users.email,
@@ -80,7 +84,7 @@ export async function GET(req: Request) {
       .innerJoin(users, eq(users.id, subscriptions.userId))
       .where(
         and(
-          eq(subscriptions.plan, "pro"),
+          inArray(subscriptions.plan, ["pro", "balanced"]),
           eq(subscriptions.status, "active"),
           lte(subscriptions.expiresAt, now)
         )
@@ -104,14 +108,18 @@ export async function GET(req: Request) {
       });
       continue;
     }
-    const orderId = newOrderId("pro", sub.userId);
+    // plan별 가격 분기 — balanced는 4,900, pro는 9,900
+    const planPrefix: "balanced" | "pro" = sub.plan === "balanced" ? "balanced" : "pro";
+    const pricing =
+      planPrefix === "balanced" ? PRICING.balancedMonthly : PRICING.proMonthly;
+    const orderId = newOrderId(planPrefix, sub.userId);
     try {
       const payment = await chargeBilling({
         billingKey: sub.billingKey,
         customerKey: sub.customerKey,
-        amount: PRICING.proMonthly.amount,
+        amount: pricing.amount,
         orderId,
-        orderName: PRICING.proMonthly.label,
+        orderName: pricing.label,
         customerEmail: sub.email ?? undefined,
         customerName: sub.name ?? undefined,
       });
