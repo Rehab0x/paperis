@@ -1,6 +1,6 @@
 # Paperis — TODO / 진척 기록
 
-> 마지막 갱신: 2026-05-16 (service-cleanup Phase A·B·C·D 전체 완료 — cron balanced 포함)
+> 마지막 갱신: 2026-05-16 (service-cleanup 전체 + 관리자 회원 관리 + audit log + 메트릭 대시보드)
 > 외부 노출 문서는 [README.md](README.md), 컨텍스트는 [CLAUDE.md](CLAUDE.md). 이 파일은 작업 일지·기술부채·의사결정 기록 보관용.
 
 ---
@@ -121,6 +121,33 @@
   - `/api/cron/recurring-billing` 갱신: WHERE `plan IN ('pro','balanced')`로 확장 (drizzle `inArray`), plan별 PRICING 분기(`balancedMonthly` vs `proMonthly`), `newOrderId(planPrefix, ...)` plan 명시. 매일 KST 자정 cron이 만료 Pro/Balanced 모두 자동결제 시도, 실패 시 status='suspended'
   - 회귀 6단계 체크리스트는 사용자가 라이브 검증 (CLAUDE.md §라이브 진화 안전 가드 §4)
 
+### service-cleanup 후속 (Phase E~G — 단순화 + 안정성)
+
+서비스 출시 직전 사용자 피드백 기반 단순화 + 버그 fix + 운영 도구.
+
+- ✅ **AI provider 선택 제거 — Gemini 고정 (2026-05-16, `683fa61` · `71f6582`)**
+  - 멀티 AI provider는 코드 복잡도만 늘고 실사용에서 Gemini가 가장 양호 (사용자 결정). 모든 등급 Gemini 고정. `getEffectiveAiProvider`가 항상 `getAiProvider("gemini")` 반환. BYOK는 lifetime Pro+TTS 자유 라이선스로 재정의 (본인 Gemini 키 불필요 — 우리 서버 키 사용)
+  - Settings drawer "TTS provider"만 단일 섹션. ApiKeysSection는 외부 서비스 키(GC TTS·Clova·PubMed·Unpaywall)만 (선택적, 본인 quota 분리용). Claude/OpenAI/Grok 코드는 lib/ai/* dormant 보존
+- ✅ **버그 fix 묶음 (2026-05-16)**
+  - 이어듣기 카드 재클릭이 처음부터 재생되던 버그 → `togglePlay()` (`fbc68b1`)
+  - 디테일 패널 데스크탑 panel 자체 스크롤 제거 — 좌측 results와 같이 자연 길이 (`3368c79`)
+  - 한글 serif fallback chain 개선 — Fraunces 다음에 Pretendard 끼움 (Windows 굴림체 회피) (`4f960fa`)
+  - 헤더에 임상과 진입 버튼 부활 + 청진기 아이콘 (`3368c79`)
+  - 설정 드로어 Section description은 펼친 후만 표시 (compact 헤더) (`bc54192`)
+  - 저널 페이지 진입 시 viewport 최상단 (ScrollToTopOnMount) (`bc54192`)
+  - PaperDetailPanel `/api/fulltext` 401/5xx 응답에 crash (`attempts.length` of undefined) → defensive (`897a838`)
+  - `/api/fulltext` requireLogin gate 제거 — 모바일 Safari 세션 쿠키 인식 이슈 회피, fulltext는 외부 무료 API라 비용 안전 (`6788c3d`)
+- ✅ **계정 해지 (`2845842`)**: `/api/account/delete` POST + `/account` 페이지 2단계 확인. FK cascade(accounts/sessions/specialties/blocks/additions/favorites/subscriptions) + usage_monthly 수동. Toss 빌링키는 dormant
+- ✅ **관리자 회원 관리** (2026-05-16, `400e1ed`~`01f2f6e`)
+  - **`lib/admin.ts requireAdmin()`**: `/admin/*` layout 가드, 비관리자 `notFound()` (URL 존재 자체 숨김)
+  - **`/admin` (회원 목록)**: 이메일·이름 ilike 검색, 50/page 페이지네이션, 정렬(가입일/사용량 합계/최근 활동), 컬럼(Email·Name·Plan badge·이번 달 합계·최근 활동·가입일)
+  - **`/admin/users/[id]` (회원 상세)**: 프로필 / 구독(effective vs DB plan) / 이번 달 사용량(plan 한도 대비 bar) / 임상과·저널 prefs 개수 / 최근 audit 10건 inline
+  - **관리자 액션**: Plan 강제 변경(free/balanced/pro/byok + 기간), 구독 강제 해지, 계정 삭제(2단계 확인, 본인 lockout 방지)
+  - **Audit log**: `admin_audit_log` 테이블 (스냅샷 — adminEmail/targetEmail, FK 없음). `lib/admin-audit.ts logAdminAction()` 헬퍼 — 3개 라우트에서 호출, graceful fail
+  - **`/admin/audit` 뷰어**: 100/page, action·target 필터(chip), CSV export (`/api/admin/audit/export`, UTF-8 BOM, 최대 10K)
+  - **`/admin/metrics` 대시보드**: 사용자(전체/온보딩/7d/30d) + 구독(BYOK/Pro/Balanced + 유료 전환율) + 활동(이번 달 활성 사용자% + 총 합계) + 30일 일별 가입 bar chart
+  - **`/account`에 admin 진입 링크**: `sub.admin=true`일 때만 "회원 관리 →"
+
 ---
 
 ## 다음 후보 / 기술부채
@@ -136,8 +163,9 @@
 
 ### prod 활성화 / 운영 대기
 
-- [ ] **추가 AI provider env 등록** — `ANTHROPIC_API_KEY`/`OPENAI_API_KEY`/`XAI_API_KEY` Vercel prod에 등록 시 Pro 사용자도 선택 가능. 현재는 본인 키 입력한 BYOK 사용자만
-- [ ] **`usage_monthly` 오래된 row cleanup** — lazy reset 패턴이라 행 누적. cron으로 N개월 이전 row delete
+- ~~추가 AI provider env 등록~~ — **service-cleanup Phase E에서 AI provider Gemini 고정으로 결정 → 무관**
+- [ ] **`usage_monthly` 오래된 row cleanup** — lazy reset 패턴이라 행 누적. cron으로 N개월 이전 row delete (현재 row 수는 적어 즉시 부담 X, M8 라이브 후 우선순위)
+- [ ] **`admin_audit_log` 보존 정책** — 영구 보존 중. 1년 이후 archive cold storage 고려 (사용자 수 늘면)
 
 ### UX 개선 후보 (우선순위 낮음)
 
