@@ -391,12 +391,12 @@
       "byokPriceUnit": "원",
       "byokSubtitle": "한 번 결제, 평생 이용",
       "byokFeatures": [
-        "✓ 본인 API 키로 모든 호출 무제한",
-        "✓ AI provider 자유 선택 (Gemini/Claude/OpenAI/Grok)",
-        "✓ TTS provider 자유 선택 (Clova 포함)"
+        "✓ 검색·요약·TTS 모두 무제한 (평생)",
+        "✓ TTS provider 자유 선택 (Clova 포함)",
+        "✓ 별도 갱신 없음 — 한 번 결제로 끝"
       ],
       "byokCta": "BYOK 결제하기",
-      "byokQuietPrefix": "본인 API 키를 갖고 있고 모든 호출을 무제한으로 쓰고 싶으면",
+      "byokQuietPrefix": "한 번 결제로 평생 무제한 + TTS provider 자유 선택을 원하면",
       "byokQuietLink": "BYOK 평생 결제 (19,900원) →",
       "balancedTag": "월 구독",
       "balancedName": "Balanced",
@@ -560,6 +560,7 @@
       "keyGroupAi": "AI 모델 (검색·요약·트렌드 분석)",
       "keyGroupAiHint": "입력한 provider 키만 활성화. \"AI provider 선택\"에서 어떤 걸 쓸지 결정.",
       "keyGroupExt": "외부 서비스 / TTS",
+      "keyGroupExtHint": "모두 선택사항 — 미입력 시 우리 서버 키 사용. 본인 키 입력 시 본인 quota로 분리됩니다.",
       "keyHelpLink": "발급 ↗",
       "keyGuideLink": "📖 API 키 발급 가이드 보기 →",
       "aiGeminiNote": "기본값. Flash Lite/Flash 라인업.",

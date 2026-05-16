@@ -671,9 +671,9 @@ function ApiKeysSection() {
     unpaywall: false,
   });
 
-  // AI provider는 Gemini 고정이라 다른 provider 키는 노출 안 함 (post-Phase D 단순화).
-  // 본인 Gemini 키만 BYOK에서 의미 있음.
-  const aiFields: ApiKeyName[] = ["gemini"];
+  // AI provider는 Gemini 고정 + 모든 등급이 우리 서버 키 사용 — BYOK도 본인 Gemini 키
+  // 입력 의미 없음. 외부 서비스(TTS·PubMed·Unpaywall)만 본인 키 옵션 제공.
+  // 모두 선택사항 — 미입력 시 우리 서버 키 사용.
   const serviceFields: ApiKeyName[] = [
     "googleCloud",
     "clovaId",
@@ -782,17 +782,11 @@ function ApiKeysSection() {
       </a>
       <div>
         <h4 className="mb-2 text-[11px] font-semibold uppercase tracking-[0.06em] text-paperis-text-2">
-          {m.settings.keyGroupAi}
-        </h4>
-        <p className="mb-2 text-[11px] text-paperis-text-3">
-          {m.settings.keyGroupAiHint}
-        </p>
-        <div className="space-y-2.5">{aiFields.map(renderField)}</div>
-      </div>
-      <div>
-        <h4 className="mb-2 text-[11px] font-semibold uppercase tracking-[0.06em] text-paperis-text-2">
           {m.settings.keyGroupExt}
         </h4>
+        <p className="mb-2 text-[11px] text-paperis-text-3">
+          {m.settings.keyGroupExtHint}
+        </p>
         <div className="space-y-2.5">{serviceFields.map(renderField)}</div>
       </div>
     </div>

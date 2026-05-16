@@ -391,12 +391,12 @@
       "byokPriceUnit": "KRW",
       "byokSubtitle": "Pay once, use forever",
       "byokFeatures": [
-        "✓ Unlimited calls with your own API key",
-        "✓ Free choice of AI provider (Gemini/Claude/OpenAI/Grok)",
-        "✓ Free choice of TTS provider (Clova included)"
+        "✓ Unlimited search · summaries · TTS (lifetime)",
+        "✓ Free choice of TTS provider (Clova included)",
+        "✓ One-time payment — no renewal"
       ],
       "byokCta": "Buy BYOK",
-      "byokQuietPrefix": "Already have your own API key and want unlimited everything?",
+      "byokQuietPrefix": "Want lifetime unlimited + free TTS provider choice?",
       "byokQuietLink": "BYOK lifetime (KRW 19,900) →",
       "balancedTag": "Monthly",
       "balancedName": "Balanced",
@@ -560,6 +560,7 @@
       "keyGroupAi": "AI models (search · summary · trend analysis)",
       "keyGroupAiHint": "Only providers with a key entered are activated. \"AI provider\" picks which one to use.",
       "keyGroupExt": "External services / TTS",
+      "keyGroupExtHint": "All optional — uses our server keys when blank. Enter your own keys to use your own quota.",
       "keyHelpLink": "Get key ↗",
       "keyGuideLink": "📖 API key setup guide →",
       "aiGeminiNote": "Default. Flash Lite / Flash family.",
