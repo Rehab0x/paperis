@@ -214,34 +214,22 @@ export default function SettingsDrawer({ open, onClose }: Props) {
             <NotificationPermission />
           </Section>
 
-          {/* Provider 설정 + API 키 — BYOK/Admin 전용. 비-BYOK은 섹션 자체가 없음.
-              로딩 중에도 가려진 상태 유지 (깜빡임 방지). */}
+          {/* TTS provider 선택 + API 키 — BYOK/Admin 전용. 비-BYOK은 섹션 자체가 없음.
+              AI provider는 모든 등급 Gemini 고정 (사용자 선택 불가). 작업별 tier만 자동
+              라우팅(fast/balanced/heavy). */}
           {!byokLoading && isByok ? (
             <>
               <Section
-                title={m.settings.byokProvidersTitle}
-                description={m.settings.byokProvidersDesc}
+                title={m.settings.ttsProviderTitle}
+                description={m.settings.ttsProviderDesc}
                 badge={<ByokGateBadge />}
               >
-                <div className="space-y-5">
-                  <div>
-                    <h4 className="mb-2 text-[11px] font-semibold uppercase tracking-[0.06em] text-paperis-text-3">
-                      {m.settings.aiProviderTitle}
-                    </h4>
-                    <AiProviderSection />
-                  </div>
-                  <div>
-                    <h4 className="mb-2 text-[11px] font-semibold uppercase tracking-[0.06em] text-paperis-text-3">
-                      {m.settings.ttsProviderTitle}
-                    </h4>
-                    <RadioGroup
-                      name="tts"
-                      value={provider}
-                      options={TTS_OPTIONS}
-                      onChange={(v) => setProvider(v as TtsProviderName)}
-                    />
-                  </div>
-                </div>
+                <RadioGroup
+                  name="tts"
+                  value={provider}
+                  options={TTS_OPTIONS}
+                  onChange={(v) => setProvider(v as TtsProviderName)}
+                />
               </Section>
 
               <Section
@@ -683,7 +671,9 @@ function ApiKeysSection() {
     unpaywall: false,
   });
 
-  const aiFields: ApiKeyName[] = ["gemini", "anthropic", "openai", "grok"];
+  // AI provider는 Gemini 고정이라 다른 provider 키는 노출 안 함 (post-Phase D 단순화).
+  // 본인 Gemini 키만 BYOK에서 의미 있음.
+  const aiFields: ApiKeyName[] = ["gemini"];
   const serviceFields: ApiKeyName[] = [
     "googleCloud",
     "clovaId",
