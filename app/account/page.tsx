@@ -166,9 +166,19 @@ export default function AccountPage() {
       >
         {m.common.back}
       </Link>
-      <h1 className="mt-2 text-2xl font-semibold tracking-tight text-paperis-text">
-        {m.account.title}
-      </h1>
+      <div className="mt-2 flex items-center justify-between gap-3">
+        <h1 className="text-2xl font-semibold tracking-tight text-paperis-text">
+          {m.account.title}
+        </h1>
+        {sub?.admin ? (
+          <Link
+            href="/admin"
+            className="inline-flex h-8 items-center rounded-lg border border-paperis-accent/40 bg-paperis-accent-dim/20 px-3 text-xs font-medium text-paperis-accent transition hover:bg-paperis-accent-dim/40"
+          >
+            {m.account.adminLink}
+          </Link>
+        ) : null}
+      </div>
 
       {/* 사용자 정보 */}
       <section className="mt-6 rounded-2xl border border-paperis-border bg-paperis-surface p-5">

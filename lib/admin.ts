@@ -35,3 +35,14 @@ export async function isCurrentUserAdmin(): Promise<boolean> {
     return false;
   }
 }
+
+/**
+ * /admin/* 페이지 가드 — 관리자 아니면 notFound() (404). /admin URL 존재 자체를 숨김.
+ * 호출자가 session 정보 필요 시 await auth() 추가로 호출 (이 함수는 boolean만).
+ */
+export async function requireAdmin(): Promise<void> {
+  const { notFound } = await import("next/navigation");
+  if (!(await isCurrentUserAdmin())) {
+    notFound();
+  }
+}
