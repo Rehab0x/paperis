@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import IssueExplorer from "@/components/IssueExplorer";
 import JournalTabs, { type JournalTab } from "@/components/JournalTabs";
 import MarkJournalVisited from "@/components/MarkJournalVisited";
+import ScrollToTopOnMount from "@/components/ScrollToTopOnMount";
 import TopicExplorer from "@/components/TopicExplorer";
 import TrendDigest from "@/components/TrendDigest";
 import { fmt, getMessages, getServerLocale } from "@/lib/i18n";
@@ -109,6 +110,8 @@ export default async function JournalHomePage({
 
   return (
     <main className="mx-auto w-full max-w-6xl flex-1 px-4 py-8 pb-32">
+      {/* 페이지 진입 시 viewport 최상단으로 — 이전 페이지 스크롤 위치 영향 회피 */}
+      <ScrollToTopOnMount />
       {/* 홈 "내 저널" 카드의 ● (새 호 가능성) 인디케이터 갱신 — 마운트 1회 기록 */}
       <MarkJournalVisited openAlexId={journal.openAlexId} />
       <nav className="mb-3 text-xs text-paperis-text-3">

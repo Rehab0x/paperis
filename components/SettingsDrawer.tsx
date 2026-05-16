@@ -294,18 +294,11 @@ function Section({
         type="button"
         onClick={() => setOpen((v) => !v)}
         aria-expanded={open}
-        className="flex w-full items-center justify-between gap-3 px-4 py-3 text-left"
+        className="flex w-full items-center justify-between gap-3 px-4 py-2.5 text-left"
       >
-        <span className="min-w-0 flex-1">
-          <span className="flex items-center gap-2 text-sm font-semibold text-paperis-text">
-            {title}
-            {badge}
-          </span>
-          {description ? (
-            <span className="mt-0.5 block text-xs text-paperis-text-3">
-              {description}
-            </span>
-          ) : null}
+        <span className="flex min-w-0 flex-1 items-center gap-2 text-sm font-semibold text-paperis-text">
+          {title}
+          {badge}
         </span>
         <span
           className={[
@@ -319,6 +312,9 @@ function Section({
       </button>
       {open ? (
         <div className="border-t border-paperis-border px-4 pb-4 pt-3">
+          {description ? (
+            <p className="mb-3 text-xs text-paperis-text-3">{description}</p>
+          ) : null}
           {children}
         </div>
       ) : null}
