@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512">
+  <!-- Paperis 브랜드 아이콘: warm orange 풀블리드 + 화이트 "P" 스트로크 + 화이트 닷.
+       maskable 80% safe zone(102~410) 내부에 P+닷 모두 위치. 폰트 비의존 (stroke path). -->
+  <rect width="512" height="512" fill="#c44b1e"/>
+  <g stroke="#fafaf7" stroke-width="44" stroke-linecap="round" stroke-linejoin="round" fill="none">
+    <!-- P 세로 줄기 (왼쪽 stem) -->
+    <path d="M 168 384 L 168 130"/>
+    <!-- P 머리 + 우측 loop -->
+    <path d="M 168 130 H 282 A 66 66 0 0 1 282 262 H 168"/>
+  </g>
+  <!-- Paperis. 의 액센트 닷 -->
+  <circle cx="372" cy="372" r="30" fill="#fafaf7"/>
+</svg>

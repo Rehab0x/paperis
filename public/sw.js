@@ -2,14 +2,26 @@
 // 목적: Chrome의 PWA 설치 가능 판정용 fetch 핸들러 등록 + 새 SW가 있으면 즉시 활성화.
 // 스트리밍 요약(/api/summarize)과 오디오(/api/tts) 응답은 개입하면 깨지므로 그대로 통과.
 
-const VERSION = "paperis-v2";
+// VERSION 갱신 → 이전 캐시 자동 삭제. 아이콘 디자인 바뀌었을 때 등 강제 갱신용.
+const VERSION = "paperis-v3";
 
 self.addEventListener("install", (event) => {
   event.waitUntil(self.skipWaiting());
 });
 
 self.addEventListener("activate", (event) => {
-  event.waitUntil(self.clients.claim());
+  event.waitUntil(
+    (async () => {
+      // 옛 버전 캐시(paperis-v1, paperis-v2 등) 정리 — 사용자가 새 아이콘 즉시 받게
+      const names = await caches.keys();
+      await Promise.all(
+        names
+          .filter((n) => n.startsWith("paperis-") && n !== VERSION)
+          .map((n) => caches.delete(n))
+      );
+      await self.clients.claim();
+    })()
+  );
 });
 
 self.addEventListener("fetch", (event) => {
