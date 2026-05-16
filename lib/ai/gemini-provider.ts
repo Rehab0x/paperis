@@ -21,13 +21,12 @@ import {
 //   balanced = 자연어 검색·미니 요약·narration script (속도+적당한 품질, 3.1 Lite가 가격 우위)
 //   heavy   = 논문 긴 요약·트렌드 풀 분석 (품질 최우선)
 //
-// 2026-05-16 hotfix: heavy를 `gemini-3.0-flash`로 설정했으나 v1beta API에서
-// "model not found" 에러 → 실제 model ID 미확인. 검증된 2.5-flash로 임시 복구.
-// 정확한 3.x heavy ID 확인되면 다시 갱신.
+// 2026-05-16: heavy는 `gemini-3-flash-preview` 사용 (3.x 세대 Flash는 현재 preview만
+// API 노출). GA 모델 ID 나오면 교체. preview 모델은 스펙·가격 변동 가능성 있음.
 const DEFAULT_MODELS: Record<ModelTier, string> = {
   fast: "gemini-2.5-flash-lite",
   balanced: "gemini-3.1-flash-lite",
-  heavy: "gemini-2.5-flash",
+  heavy: "gemini-3-flash-preview",
 };
 
 const MAX_RETRY_ATTEMPTS = 3;
