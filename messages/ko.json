@@ -412,6 +412,7 @@
       "auditFilterTarget": "대상:",
       "auditFilterAll": "전체",
       "auditFilterClear": "필터 해제",
+      "auditExport": "CSV 내보내기 ↓",
       "userAuditTitle": "최근 관리자 기록",
       "userAuditViewAll": "전체 보기 →"
     },

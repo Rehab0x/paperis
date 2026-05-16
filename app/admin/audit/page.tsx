@@ -96,9 +96,17 @@ export default async function AdminAuditPage({ searchParams }: Props) {
       >
         ← {m.admin.backToList}
       </Link>
-      <h1 className="mt-2 font-serif text-2xl font-medium tracking-tight text-paperis-text">
-        {m.admin.auditTitle}
-      </h1>
+      <div className="mt-2 flex items-center justify-between gap-3">
+        <h1 className="font-serif text-2xl font-medium tracking-tight text-paperis-text">
+          {m.admin.auditTitle}
+        </h1>
+        <a
+          href={buildAuditExportHref({ action: actionFilter, target: targetFilter })}
+          className="inline-flex h-8 items-center rounded-lg border border-paperis-border bg-paperis-surface px-3 text-xs text-paperis-text-2 transition hover:border-paperis-accent hover:text-paperis-accent"
+        >
+          {m.admin.auditExport}
+        </a>
+      </div>
       <p className="mt-1 text-sm text-paperis-text-2">
         {m.admin.auditIntro}
       </p>
@@ -249,6 +257,17 @@ function buildAuditHref(opts: {
   if (opts.page && opts.page > 1) qs.set("page", String(opts.page));
   const s = qs.toString();
   return s ? `/admin/audit?${s}` : "/admin/audit";
+}
+
+function buildAuditExportHref(opts: {
+  action?: AuditAction | null;
+  target?: string | null;
+}): string {
+  const qs = new URLSearchParams();
+  if (opts.action) qs.set("action", opts.action);
+  if (opts.target) qs.set("target", opts.target);
+  const s = qs.toString();
+  return s ? `/api/admin/audit/export?${s}` : "/api/admin/audit/export";
 }
 
 function chipClass(active: boolean): string {

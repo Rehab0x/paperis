@@ -412,6 +412,7 @@
       "auditFilterTarget": "Target:",
       "auditFilterAll": "All",
       "auditFilterClear": "Clear filter",
+      "auditExport": "Export CSV ↓",
       "userAuditTitle": "Recent admin records",
       "userAuditViewAll": "View all →"
     },
